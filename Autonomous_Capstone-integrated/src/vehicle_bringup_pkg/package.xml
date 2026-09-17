@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>vehicle_bringup_pkg</name><version>0.1.0</version><description>SKKU vehicle launch files</description>
+  <maintainer email="noreply@example.com">skku</maintainer><license>MIT</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>launch</exec_depend><exec_depend>launch_ros</exec_depend>
+  <exec_depend>sensor_bringup_pkg</exec_depend><exec_depend>vehicle_io_pkg</exec_depend>
+  <exec_depend>manual_drive_pkg</exec_depend><exec_depend>skku_track_drive_pkg</exec_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

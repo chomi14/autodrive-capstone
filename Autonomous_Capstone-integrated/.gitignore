@@ -1,0 +1,5 @@
+build/
+install/
+log/
+Collected_Datasets/
+src/camera_perception_pkg/camera_perception_pkg/lib/Collected_Datasets/

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>vehicle_io_pkg</name>
+  <version>0.2.0</version>
+  <description>Arduino serial bridge with steering auto-calibration and operator arm gate</description>
+  <maintainer email="noreply@example.com">skku</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <depend>rclpy</depend>
+  <depend>interfaces_pkg</depend>
+  <depend>std_msgs</depend>
+  <exec_depend>python3-serial</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>
