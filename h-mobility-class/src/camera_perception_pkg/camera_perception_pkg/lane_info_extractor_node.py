@@ -32,6 +32,18 @@ class Yolov8InfoExtractor(Node):
         self.sub_topic = self.declare_parameter('sub_detection_topic', SUB_TOPIC_NAME).value
         self.pub_topic = self.declare_parameter('pub_topic', PUB_TOPIC_NAME).value
         self.show_image = self.declare_parameter('show_image', SHOW_IMAGE).value
+        self.roi_image_topic = self.declare_parameter('roi_image_topic', ROI_IMAGE_TOPIC_NAME).value
+        self.lane_class = self.declare_parameter('lane_class', 'lane2').value
+        self.bev_dst_left_ratio = self.declare_parameter('bev_dst_left_ratio', 0.3).value
+        self.bev_dst_right_ratio = self.declare_parameter('bev_dst_right_ratio', 0.7).value
+        self.bev_src_points = self.declare_parameter('bev_src_points', [238, 316, 402, 313, 501, 476, 155, 476]).value
+        self.roi_cutting_idx = self.declare_parameter('roi_cutting_idx', 300).value
+        self.theta_limit = self.declare_parameter('theta_limit', 70).value
+        self.target_y_start = self.declare_parameter('target_y_start', 5).value
+        self.target_y_stop = self.declare_parameter('target_y_stop', 155).value
+        self.target_y_step = self.declare_parameter('target_y_step', 50).value
+        self.detection_thickness = self.declare_parameter('detection_thickness', 10).value
+        self.lane_width = self.declare_parameter('lane_width', 300).value
 
         self.cv_bridge = CvBridge()
 
@@ -47,20 +59,20 @@ class Yolov8InfoExtractor(Node):
         self.publisher = self.create_publisher(LaneInfo, self.pub_topic, self.qos_profile)
 
         # ROI 이미지 퍼블리셔 추가
-        self.roi_image_publisher = self.create_publisher(Image, ROI_IMAGE_TOPIC_NAME, self.qos_profile)
+        self.roi_image_publisher = self.create_publisher(Image, self.roi_image_topic, self.qos_profile)
 
     def yolov8_detections_callback(self, detection_msg: DetectionArray):
         if len(detection_msg.detections) == 0:
             return
         
-        lane2_edge_image = CPFL.draw_edges(detection_msg, cls_name='lane2', color=255)   # 도로 좌우 경계를 흰색으로 표현
+        lane2_edge_image = CPFL.draw_edges(detection_msg, cls_name=self.lane_class, color=255)   # 도로 좌우 경계를 흰색으로 표현
 
         (h, w) = (lane2_edge_image.shape[0], lane2_edge_image.shape[1]) #(480, 640)
-        dst_mat = [[round(w * 0.3), round(h * 0.0)], [round(w * 0.7), round(h * 0.0)], [round(w * 0.7), h], [round(w * 0.3), h]]
-        src_mat = [[238, 316],[402, 313], [501, 476], [155, 476]]
+        dst_mat = [[round(w * self.bev_dst_left_ratio), round(h * 0.0)], [round(w * self.bev_dst_right_ratio), round(h * 0.0)], [round(w * self.bev_dst_right_ratio), h], [round(w * self.bev_dst_left_ratio), h]]
+        src_mat = [self.bev_src_points[i:i + 2] for i in range(0, 8, 2)]
         
         lane2_bird_image = CPFL.bird_convert(lane2_edge_image, srcmat=src_mat, dstmat=dst_mat)
-        roi_image = CPFL.roi_rectangle_below(lane2_bird_image, cutting_idx=300)
+        roi_image = CPFL.roi_rectangle_below(lane2_bird_image, cutting_idx=self.roi_cutting_idx)
 
         if self.show_image:
             cv2.imshow('lane2_edge_image', lane2_edge_image)
@@ -79,12 +91,12 @@ class Yolov8InfoExtractor(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to convert and publish ROI image: {e}")
         
-        grad = CPFL.dominant_gradient(roi_image, theta_limit=70)
+        grad = CPFL.dominant_gradient(roi_image, theta_limit=self.theta_limit)
                 
         target_points = []
-        for target_point_y in range(5, 155, 50):  # 예시로 5에서 155까지 50씩 증가
+        for target_point_y in range(self.target_y_start, self.target_y_stop, self.target_y_step):  # 예시로 5에서 155까지 50씩 증가
             target_point_x = CPFL.get_lane_center(roi_image, detection_height=target_point_y, 
-                                                detection_thickness=10, road_gradient=grad, lane_width=300)
+                                                detection_thickness=self.detection_thickness, road_gradient=grad, lane_width=self.lane_width)
             
             target_point = TargetPoint()
             target_point.target_x = round(target_point_x)

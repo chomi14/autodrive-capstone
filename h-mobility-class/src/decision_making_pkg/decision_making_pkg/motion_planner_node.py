@@ -53,6 +53,15 @@ class MotionPlanningNode(Node):
         self.declare_parameter("sub_laneinfo_topic", SUB_LANEINFO_TOPIC_NAME)
         self.declare_parameter("pub_topic", PUB_TOPIC_NAME)
         self.declare_parameter("timer", TIMER_SEC)
+        self.wheel_speed_default = self.declare_parameter("wheel_speed_default", WHEEL_SPEED_DEFAULT).value
+        self.steer_cmd_limit = self.declare_parameter("steer_cmd_limit", STEER_CMD_LIMIT).value
+        self.kp = self.declare_parameter("kp", KP).value
+        self.ki = self.declare_parameter("ki", KI).value
+        self.kd = self.declare_parameter("kd", KD).value
+        self.offset_correction = self.declare_parameter("offset_correction", 10).value
+        self.image_center_x_fallback = self.declare_parameter("image_center_x_fallback", 320).value
+        self.red_light_stop_y_max = self.declare_parameter("red_light_stop_y_max", 160).value
+        self.traffic_light_class = self.declare_parameter("traffic_light_class", "traffic_light").value
 
         # ───── QoS 설정 ────────────────────────────────────
         self.qos_profile = QoSProfile(
@@ -147,16 +156,14 @@ class MotionPlanningNode(Node):
         # tgt = self.laneinfo_msg.target_points[mid_idx]
 
 
-        img_center_x = self.laneinfo_msg.image_width / 2 if hasattr(self.laneinfo_msg, "image_width") else 320
+        img_center_x = self.laneinfo_msg.image_width / 2 if hasattr(self.laneinfo_msg, "image_width") else self.image_center_x_fallback
 
         
         
         # error = float(tgt.target_x) - img_center_x
 
         ##  임시추가  ( 왼쪽에 닿으면 + 오른쪽선에 닿으면 -)
-        OFFSET_CORRECTION = 10  # 픽셀 단위로 왼쪽으로 10픽셀 이동 (필요시 조정)
-
-        error = float(tgt.target_x) + OFFSET_CORRECTION - img_center_x
+        error = float(tgt.target_x) + self.offset_correction - img_center_x
 
 
         # PID
@@ -164,8 +171,8 @@ class MotionPlanningNode(Node):
         deriv = (error - self.prev_error) / self.timer_period
         self.prev_error = error
 
-        steer = KP * error + KI * self.int_error + KD * deriv
-        steer = max(min(int(round(steer)),  STEER_CMD_LIMIT), -STEER_CMD_LIMIT)
+        steer = self.kp * error + self.ki * self.int_error + self.kd * deriv
+        steer = max(min(int(round(steer)),  self.steer_cmd_limit), -self.steer_cmd_limit)
         return steer
 
     # # ───────────── 주기적 제어 루프 ───────────────────────
@@ -219,8 +226,8 @@ class MotionPlanningNode(Node):
 
     def timer_cb(self):
         steering_cmd = 0
-        left_speed   = WHEEL_SPEED_DEFAULT
-        right_speed  = WHEEL_SPEED_DEFAULT
+        left_speed   = self.wheel_speed_default
+        right_speed  = self.wheel_speed_default
 
         # LiDAR 장애물 우선 정지
         if self.lidar_msg and self.lidar_msg.data:
@@ -233,11 +240,11 @@ class MotionPlanningNode(Node):
             stop_flag = False
             if self.detection_msg:
                 for detection in self.detection_msg.detections:
-                    if detection.class_name == "traffic_light":
+                    if detection.class_name == self.traffic_light_class:
                         # bbox 하단 y좌표 계산
                         y_max = detection.bbox.center.position.y + detection.bbox.size.y / 2
                         # y_max가 150픽셀 미만일 때(상단에 있을 때)만 정지
-                        if y_max < 160:
+                        if y_max < self.red_light_stop_y_max:
                             stop_flag = True
                         break
 

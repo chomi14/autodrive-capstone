@@ -18,7 +18,7 @@ import os
 PUB_TOPIC_NAME = 'image_raw'
 
 # 데이터 입력 소스: 'camera', 'image', 또는 'video' 중 택1하여 입력
-DATA_SOURCE = 'camera'
+DATA_SOURCE = 'video'
 
 # 카메라(웹캠) 장치 번호 (ls /dev/video* 명령을 터미널 창에 입력하여 확인)
 CAM_NUM = 2
@@ -46,6 +46,8 @@ class ImagePublisherNode(Node):
         self.declare_parameter('pub_topic', pub_topic)
         self.declare_parameter('logger', logger)
         self.declare_parameter('timer', timer)
+        self.declare_parameter('image_width', 640)
+        self.declare_parameter('image_height', 480)
         
         self.data_source = self.get_parameter('data_source').get_parameter_value().string_value
         self.cam_num = self.get_parameter('cam_num').get_parameter_value().integer_value
@@ -54,6 +56,8 @@ class ImagePublisherNode(Node):
         self.pub_topic = self.get_parameter('pub_topic').get_parameter_value().string_value
         self.logger = self.get_parameter('logger').get_parameter_value().bool_value
         self.timer_period = self.get_parameter('timer').get_parameter_value().double_value
+        self.image_width = self.get_parameter('image_width').value
+        self.image_height = self.get_parameter('image_height').value
 
         self.qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.RELIABLE,
@@ -66,12 +70,12 @@ class ImagePublisherNode(Node):
         
         if self.data_source == 'camera':
             self.cap = cv2.VideoCapture(self.cam_num)
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.image_width)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.image_height)
         elif self.data_source == 'video':
             self.cap = cv2.VideoCapture(self.video_path)
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.image_width)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.image_height)
             if not self.cap.isOpened():
                 self.get_logger().error('Cannot open video file: %s' % self.video_path)
                 rclpy.shutdown()
@@ -95,7 +99,7 @@ class ImagePublisherNode(Node):
         if self.data_source == 'camera':
             ret, frame = self.cap.read()
             if ret:
-                frame = cv2.resize(frame, (640, 480))
+                frame = cv2.resize(frame, (self.image_width, self.image_height))
                 image_msg = self.br.cv2_to_imgmsg(frame)
                 image_msg.header = Header()
                 image_msg.header.stamp = self.get_clock().now().to_msg()
@@ -112,7 +116,7 @@ class ImagePublisherNode(Node):
                 if img is None:
                     self.get_logger().warn('Skipping non-image file: %s' % img_file)
                 else:
-                    img = cv2.resize(img, (640, 480))
+                    img = cv2.resize(img, (self.image_width, self.image_height))
                     image_msg = self.br.cv2_to_imgmsg(img)
                     image_msg.header = Header()
                     image_msg.header.stamp = self.get_clock().now().to_msg()
@@ -130,7 +134,7 @@ class ImagePublisherNode(Node):
         elif self.data_source == 'video':
             ret, img = self.cap.read()
             if ret:
-                img = cv2.resize(img, (640, 480))
+                img = cv2.resize(img, (self.image_width, self.image_height))
                 image_msg = self.br.cv2_to_imgmsg(img)
                 image_msg.header = Header()
                 image_msg.header.stamp = self.get_clock().now().to_msg()

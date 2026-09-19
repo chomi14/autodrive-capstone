@@ -6,16 +6,16 @@ const int STEERING_1 = 2;
 const int STEERING_2 = 3;
 const int FORWARD_RIGHT_1 = 4;
 const int FORWARD_RIGHT_2 = 5;
-const int FORWARD_LEFT_1 = 6;
-const int FORWARD_LEFT_2 =7;
+const int FORWARD_LEFT_1 = 7;
+const int FORWARD_LEFT_2 =6;
 const int POT = A2;
 
 // 조향 속도 상수
-const int STEERING_SPEED = 200;
+const int STEERING_SPEED = 50;
 
 // 가변저항 값 범위
-const int resistance_most_left = 505;
-const int resistance_most_right = 370;
+const int resistance_most_left = 425;
+const int resistance_most_right = 278;
 
 // 조향 최대 단계 수 (한 쪽 기준)
 const int MAX_STEERING_STEP = 7;
@@ -63,7 +63,7 @@ void loop() {
     if (currentTime - lastCommandTime >= COMMAND_INTERVAL) {
         // 포텐셔미터 값을 읽어 조향 계산
         resistance = analogRead(POT);
-        mapped_resistance = map(resistance, resistance_most_left, resistance_most_right, -MAX_STEERING_STEP, MAX_STEERING_STEP + 1);
+        mapped_resistance = map(resistance, resistance_most_left, resistance_most_right, -MAX_STEERING_STEP, MAX_STEERING_STEP);
 
         // 조향 상태에 따라 동작 제어
         if (mapped_resistance == angle) {

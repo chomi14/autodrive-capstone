@@ -1,0 +1,89 @@
+image_publisher_node:
+  ros__parameters:
+    data_source: video
+    cam_num: 2
+    img_dir: src/camera_perception_pkg/camera_perception_pkg/lib/Collected_Datasets/sample_dataset
+    video_path: src/camera_perception_pkg/camera_perception_pkg/lib/Collected_Datasets/driving_simulation.mp4
+    pub_topic: image_raw
+    logger: true
+    timer: 0.03
+    image_width: 640
+    image_height: 480
+
+yolov8_node:
+  ros__parameters:
+    model: best66.pt
+    device: 'cuda:0'
+    threshold: 0.5
+    enable: true
+    image_reliability: 1
+
+lane_info_extractor_node:
+  ros__parameters:
+    sub_detection_topic: detections
+    pub_topic: yolov8_lane_info
+    roi_image_topic: roi_image
+    show_image: true
+    lane_class: lane2
+    bev_dst_left_ratio: 0.3
+    bev_dst_right_ratio: 0.7
+    bev_src_points: [238, 316, 402, 313, 501, 476, 155, 476]
+    roi_cutting_idx: 300
+    theta_limit: 70
+    target_y_start: 5
+    target_y_stop: 155
+    target_y_step: 50
+    detection_thickness: 10
+    lane_width: 300
+
+traffic_light_detector_node:
+  ros__parameters:
+    sub_detection_topic: detections
+    sub_image_topic: image_raw
+    pub_topic: yolov8_traffic_light_info
+    sync_queue_size: 1
+    sync_slop: 0.5
+    traffic_light_class: traffic_light
+    hsv_red1_lower: [0, 100, 70]
+    hsv_red1_upper: [10, 255, 255]
+    hsv_red2_lower: [160, 100, 70]
+    hsv_red2_upper: [179, 255, 255]
+    hsv_yellow_lower: [20, 100, 95]
+    hsv_yellow_upper: [30, 255, 255]
+    hsv_green_lower: [40, 100, 95]
+    hsv_green_upper: [90, 255, 255]
+
+motion_planner_node:
+  ros__parameters:
+    sub_detection_topic: detections
+    sub_path_topic: path_planning_result
+    sub_traffic_light_topic: yolov8_traffic_light_info
+    sub_lidar_obstacle_topic: lidar_obstacle_info
+    sub_laneinfo_topic: yolov8_lane_info
+    pub_topic: topic_control_signal
+    timer: 0.1
+    wheel_speed_default: 255
+    steer_cmd_limit: 7
+    kp: 0.05
+    ki: 0.0
+    kd: 0.005
+    offset_correction: 10
+    image_center_x_fallback: 320
+    red_light_stop_y_max: 160
+    traffic_light_class: traffic_light
+
+path_planner_node:
+  ros__parameters:
+    sub_lane_topic: yolov8_lane_info
+    pub_topic: path_planning_result
+    car_center_point: [320, 179]
+    min_target_points: 3
+    interpolation_points: 100
+
+serial_sender_node:
+  ros__parameters:
+    sub_topic: topic_control_signal
+    port: /dev/arduino
+    baudrate: 115200
+    timeout: 1
+    startup_delay: 1.0

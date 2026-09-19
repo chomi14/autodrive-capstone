@@ -20,6 +20,8 @@ class PathPlannerNode(Node):
         self.sub_lane_topic = self.declare_parameter('sub_lane_topic', SUB_LANE_TOPIC_NAME).value
         self.pub_topic = self.declare_parameter('pub_topic', PUB_TOPIC_NAME).value
         self.car_center_point = self.declare_parameter('car_center_point', CAR_CENTER_POINT).value
+        self.min_target_points = self.declare_parameter('min_target_points', 3).value
+        self.interpolation_points = self.declare_parameter('interpolation_points', 100).value
         
         # QoS 설정
         self.qos_profile = QoSProfile(
@@ -44,7 +46,7 @@ class PathPlannerNode(Node):
         self.target_points = msg.target_points
         
         # 타겟 지점이 3개 이상 모이면 경로 계획 시작
-        if len(self.target_points) >= 3:
+        if len(self.target_points) >= self.min_target_points:
             self.plan_path()
 
     def plan_path(self):
@@ -75,7 +77,7 @@ class PathPlannerNode(Node):
         cs = CubicSpline(y_points, x_points, bc_type='natural')
 
         # 생성된 경로 점들 (추가적인 점들을 생성하여 부드러운 경로를 얻음)
-        y_new = np.linspace(min(y_points), max(y_points), 100)
+        y_new = np.linspace(min(y_points), max(y_points), self.interpolation_points)
         x_new = cs(y_new)
 
         # 경로를 따라가는 정보 (PathPlanningResult 메시지로 발행)

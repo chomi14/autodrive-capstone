@@ -37,6 +37,17 @@ class TrafficLightDetector(Node):
         self.sub_detection_topic = self.declare_parameter('sub_detection_topic', SUB_DETECTION_TOPIC_NAME).value
         self.sub_image_topic = self.declare_parameter('sub_image_topic', SUB_IMAGE_TOPIC_NAME).value
         self.pub_topic = self.declare_parameter('pub_topic', PUB_TOPIC_NAME).value
+        self.sync_queue_size = self.declare_parameter('sync_queue_size', 1).value
+        self.sync_slop = self.declare_parameter('sync_slop', 0.5).value
+        self.traffic_light_class = self.declare_parameter('traffic_light_class', 'traffic_light').value
+        self.hsv_red1_lower = self.declare_parameter('hsv_red1_lower', [0, 100, 70]).value
+        self.hsv_red1_upper = self.declare_parameter('hsv_red1_upper', [10, 255, 255]).value
+        self.hsv_red2_lower = self.declare_parameter('hsv_red2_lower', [160, 100, 70]).value
+        self.hsv_red2_upper = self.declare_parameter('hsv_red2_upper', [179, 255, 255]).value
+        self.hsv_yellow_lower = self.declare_parameter('hsv_yellow_lower', [20, 100, 95]).value
+        self.hsv_yellow_upper = self.declare_parameter('hsv_yellow_upper', [30, 255, 255]).value
+        self.hsv_green_lower = self.declare_parameter('hsv_green_lower', [40, 100, 95]).value
+        self.hsv_green_upper = self.declare_parameter('hsv_green_upper', [90, 255, 255]).value
 
         self.cv_bridge = CvBridge()
 
@@ -49,7 +60,7 @@ class TrafficLightDetector(Node):
 
         self.detection_sub = Subscriber(self, DetectionArray, self.sub_detection_topic, qos_profile=self.qos_profile)
         self.image_sub = Subscriber(self, Image, self.sub_image_topic, qos_profile=self.qos_profile)
-        self.ts = ApproximateTimeSynchronizer([self.detection_sub, self.image_sub], queue_size=1, slop=0.5)
+        self.ts = ApproximateTimeSynchronizer([self.detection_sub, self.image_sub], queue_size=self.sync_queue_size, slop=self.sync_slop)
         self.ts.registerCallback(self.sync_callback)
 
         self.publisher = self.create_publisher(String, self.pub_topic, self.qos_profile)
@@ -59,13 +70,13 @@ class TrafficLightDetector(Node):
         
         traffic_light_detected = False
         for detection in detection_msg.detections:
-            if detection.class_name == 'traffic_light':
+            if detection.class_name == self.traffic_light_class:
 
                 hsv_ranges = {
-                    'red1': (np.array([0, 100, 70]), np.array([10, 255, 255])), # V 값 기존 95에서 70으로 조정
-                    'red2': (np.array([160, 100, 70]), np.array([179, 255, 255])),
-                    'yellow': (np.array([20, 100, 95]), np.array([30, 255, 255])),
-                    'green': (np.array([40, 100, 95]), np.array([90, 255, 255]))
+                    'red1': (np.array(self.hsv_red1_lower), np.array(self.hsv_red1_upper)), # V 값 기존 95에서 70으로 조정
+                    'red2': (np.array(self.hsv_red2_lower), np.array(self.hsv_red2_upper)),
+                    'yellow': (np.array(self.hsv_yellow_lower), np.array(self.hsv_yellow_upper)),
+                    'green': (np.array(self.hsv_green_lower), np.array(self.hsv_green_upper))
                 }
 
                 # get_traffic_light_color -> Red, Yellow, Green, Unknown
