@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>interfaces_pkg</name>
+  <version>0.0.0</version>
+  <description>Msgs for YOLOv8</description>
+  <maintainer email="your@email.com">Your Name</maintainer>
+  <license>GPL-3</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- 메시지 생성 의존성 추가 -->
+  <build_depend>rosidl_default_generators</build_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <!-- 표준 메시지 의존성 -->
+  <build_depend>std_msgs</build_depend>
+  <exec_depend>std_msgs</exec_depend>
+
+  <build_depend>geometry_msgs</build_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+
+  <build_depend>sensor_msgs</build_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+
+  <!-- 메시지 생성 관련 의존성 추가 -->
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+
+  <!-- 테스트 관련 의존성 -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <!-- 그룹에 추가 -->
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+

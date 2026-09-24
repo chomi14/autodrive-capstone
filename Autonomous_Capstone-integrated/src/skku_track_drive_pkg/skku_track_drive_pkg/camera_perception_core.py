@@ -1,15 +1,24 @@
 import cv2
 import math
 import numpy as np
+from dataclasses import dataclass
 from typing import Tuple
-from collections import namedtuple
 
-# 차선 중심 추정 결과.
-#   center       : 추정한 차선 중심 x (정수)
-#   edges        : 실제로 검출된 차선 경계 x 목록(1~2개) — 시각화용(초록)
-#   virtual_x    : 경계에서 잘려 가상으로 가정한 차선 x (없으면 None) — 시각화용(주황)
-#   reconstructed: 가상 차선폭으로 복원했는지 여부
-LaneCenter = namedtuple("LaneCenter", ["center", "edges", "virtual_x", "reconstructed"])
+
+@dataclass(frozen=True)
+class LaneCenter:
+    """차선 중심 관측값.
+
+    ``valid=False``는 관측이 없음을 의미한다. 예전처럼 관측이 없을 때
+    영상 중앙을 실제 차선인 것처럼 반환하지 않는다.
+    """
+
+    center: int
+    edges: list
+    virtual_x: int = None
+    reconstructed: bool = False
+    valid: bool = True
+    source: str = "two_edges"
 
 
 def _weighted_median(values, weights):
@@ -88,11 +97,22 @@ def roi_rectangle_below(img, cutting_idx):
 
 
 def draw_edge(cv_image: np.ndarray, detection, color: Tuple[int]) -> np.ndarray:
+    """세그멘테이션 폴리곤을 채운다.
+
+    함수 이름은 기존 호출부 호환을 위해 유지한다. 기존의 1 px 외곽선은
+    BEV 변환 후 큰 빈틈과 노이즈를 만들었다. 채운 마스크를 유지해야
+    각 행의 좌·우 경계를 안정적으로 구할 수 있다.
+    """
     mask_msg = detection.mask
     if not mask_msg.data:
         return cv_image
-    mask_array = np.array([[int(ele.x), int(ele.y)] for ele in mask_msg.data])
-    return cv2.polylines(cv_image, [mask_array], isClosed=True, color=color, thickness=1, lineType=cv2.LINE_AA)
+    mask_array = np.array(
+        [[int(round(ele.x)), int(round(ele.y))] for ele in mask_msg.data],
+        dtype=np.int32,
+    )
+    if len(mask_array) < 3:
+        return cv_image
+    return cv2.fillPoly(cv_image, [mask_array], color=color, lineType=cv2.LINE_8)
 
 
 def draw_edges(detection_msg, cls_name: str, color=255):
@@ -112,9 +132,52 @@ def draw_edges(detection_msg, cls_name: str, color=255):
     return cv_image
 
 
+def clean_lane_mask(mask: np.ndarray, min_component_area: int = 250) -> np.ndarray:
+    """BEV lane-area mask의 작은 빈틈/섬 노이즈를 제거한다.
+
+    세로로 긴 close 커널은 짧게 끊긴 마스크를 잇고, open은 작은
+    부유 픽셀을 제거한다. 이후 가장 큰 연결 영역만 남겨 ROI 내
+    별도 오탐이 중심선으로 선택되지 않게 한다.
+    """
+    if mask is None or mask.size == 0:
+        return np.zeros((0, 0), dtype=np.uint8)
+
+    binary = np.where(mask > 0, 255, 0).astype(np.uint8)
+    close_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 11))
+    open_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, close_kernel)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, open_kernel)
+
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    if count <= 1:
+        return binary
+
+    candidates = [
+        index
+        for index in range(1, count)
+        if int(stats[index, cv2.CC_STAT_AREA]) >= max(1, int(min_component_area))
+    ]
+    if not candidates:
+        return np.zeros_like(binary)
+
+    # 차선 영역은 작은 노이즈보다 넓고 세로 길이가 길다. 면적과
+    # 세로 길이를 같이 점수화해 길고 안정적인 component를 선택한다.
+    selected = max(
+        candidates,
+        key=lambda index: (
+            int(stats[index, cv2.CC_STAT_AREA])
+            + 4 * int(stats[index, cv2.CC_STAT_HEIGHT])
+        ),
+    )
+    output = np.zeros_like(binary)
+    output[labels == selected] = 255
+    return output
+
+
 def get_lane_center(cv_image: np.ndarray, detection_height: int, detection_thickness: int,
                     road_gradient: float, lane_width: int,
-                    virtual_lane_width: int = None, boundary_margin: int = 8) -> LaneCenter:
+                    virtual_lane_width: int = None, boundary_margin: int = 8,
+                    previous_center: float = None) -> LaneCenter:
     """
     한 수평 밴드에서 차선 중심 x를 추정한다.
 
@@ -122,7 +185,9 @@ def get_lane_center(cv_image: np.ndarray, detection_height: int, detection_thick
     반대쪽 차선으로부터 'virtual_lane_width'(가상 차선 폭, px)만큼 떨어진 곳에 있다고
     가정해 중심을 복원한다. 이렇게 하면 기울기 부호 추정이 흔들려도 중심이 튀지 않는다.
 
-    반환: LaneCenter(center, edges, virtual_x, reconstructed)
+    단일 경계의 좌/우는 기울기 부호로 결정하지 않는다. 영상 경계
+    접촉이 있으면 그 방향을 쓰고, 애매하면 이전 중심에 더 가까운
+    가상 차선 후보를 선택한다.
     """
     if virtual_lane_width is None or virtual_lane_width <= 0:
         virtual_lane_width = lane_width
@@ -134,8 +199,7 @@ def get_lane_center(cv_image: np.ndarray, detection_height: int, detection_thick
     xs = np.sort(np.where(cv_image[upper:lower, :] != 0)[1])
 
     if xs.shape[0] < 5:
-        # 정보 없음 -> 영상 중앙
-        return LaneCenter(int(w // 2), [], None, False)
+        return LaneCenter(int(w // 2), [], None, False, False, "invalid")
 
     cut = xs[1:-1] if xs.shape[0] > 2 else xs
     diff = np.diff(cut) if cut.shape[0] > 1 else np.array([0])
@@ -153,14 +217,27 @@ def get_lane_center(cv_image: np.ndarray, detection_height: int, detection_thick
 
     # 1) 양쪽 차선이 명확히 보이고 경계에 안 닿음 -> 실제 중앙
     if two_clusters and not left_touch and not right_touch:
-        return LaneCenter(clamp((left_val + right_val) / 2.0), [left_val, right_val], None, False)
+        return LaneCenter(
+            clamp((left_val + right_val) / 2.0),
+            [left_val, right_val],
+            None,
+            False,
+            True,
+            "two_edges",
+        )
 
     # 2) 한쪽이 경계에 닿아 잘림 -> 보이는 반대쪽 차선 기준으로 가상 차선 가정
     if two_clusters and left_touch and not right_touch:
         # 왼쪽이 잘림: 오른쪽(right_val)이 실제 차선, 왼쪽을 가상으로
-        return LaneCenter(clamp(right_val - half_vw), [right_val], clamp(right_val - virtual_lane_width), True)
+        return LaneCenter(
+            clamp(right_val - half_vw), [right_val],
+            clamp(right_val - virtual_lane_width), True, True, "right_edge",
+        )
     if two_clusters and right_touch and not left_touch:
-        return LaneCenter(clamp(left_val + half_vw), [left_val], clamp(left_val + virtual_lane_width), True)
+        return LaneCenter(
+            clamp(left_val + half_vw), [left_val],
+            clamp(left_val + virtual_lane_width), True, True, "left_edge",
+        )
 
     # 3) 단일 차선만 보임 -> 누락 방향 결정 후 가상 차선 가정
     visible = int(cut[cut.shape[0] // 2])
@@ -168,13 +245,24 @@ def get_lane_center(cv_image: np.ndarray, detection_height: int, detection_thick
         missing_left = True
     elif right_touch and not left_touch:
         missing_left = False
+    elif previous_center is not None:
+        left_edge_center = visible + half_vw
+        right_edge_center = visible - half_vw
+        missing_left = abs(right_edge_center - previous_center) <= abs(
+            left_edge_center - previous_center
+        )
     else:
-        # 경계 접촉이 없으면 기울기 부호로 결정(기존 관례: gradient<=0 -> 왼쪽 누락)
-        missing_left = (road_gradient <= 0)
+        return LaneCenter(int(w // 2), [visible], None, False, False, "ambiguous")
 
     if missing_left:
-        return LaneCenter(clamp(visible - half_vw), [visible], clamp(visible - virtual_lane_width), True)
-    return LaneCenter(clamp(visible + half_vw), [visible], clamp(visible + virtual_lane_width), True)
+        return LaneCenter(
+            clamp(visible - half_vw), [visible],
+            clamp(visible - virtual_lane_width), True, True, "right_edge",
+        )
+    return LaneCenter(
+        clamp(visible + half_vw), [visible],
+        clamp(visible + virtual_lane_width), True, True, "left_edge",
+    )
 
 
 def get_traffic_light_color(cv_image: np.ndarray, bbox, hsv_ranges: dict) -> str:

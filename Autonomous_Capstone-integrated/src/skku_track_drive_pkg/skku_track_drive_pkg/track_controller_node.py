@@ -88,6 +88,10 @@ class TrackControllerNode(Node):
         self.declare_parameter('ema_alpha', 0.3)
         self.declare_parameter('virtual_lane_width', 300)
         self.declare_parameter('bev_pad', 250)
+        self.declare_parameter('center_ema_alpha', 0.35)
+        self.declare_parameter('max_center_jump_px', 80.0)
+        self.declare_parameter('max_missed_frames', 12)
+        self.declare_parameter('min_component_area', 250)
 
         image_topic = self.get_parameter('image_topic').value
         cmd_topic = self.get_parameter('cmd_topic').value
@@ -118,6 +122,7 @@ class TrackControllerNode(Node):
 
         self.speed = int(self.get_parameter('speed').value)
         self.bridge = CvBridge()
+        self._warned_generic_bgr_encoding = False
         self.last_t = None
         self.frame_counter = 0
         self.profile_warmup_total_ms = []
@@ -148,6 +153,10 @@ class TrackControllerNode(Node):
             virtual_lane_width=int(self.get_parameter('virtual_lane_width').value),
             bev_pad=int(self.get_parameter('bev_pad').value),
             capture_debug=self.publish_debug,
+            center_ema_alpha=float(self.get_parameter('center_ema_alpha').value),
+            max_center_jump_px=float(self.get_parameter('max_center_jump_px').value),
+            max_missed_frames=int(self.get_parameter('max_missed_frames').value),
+            min_component_area=int(self.get_parameter('min_component_area').value),
         )
         self.path_planner = PathPlanner(
             car_center_point=(
@@ -223,6 +232,10 @@ class TrackControllerNode(Node):
             'bev_pad': (int, 0, 1000),
             'car_center_x': (float, -2000.0, 2000.0),
             'car_center_y': (float, -2000.0, 2000.0),
+            'center_ema_alpha': (float, 0.0, 1.0),
+            'max_center_jump_px': (float, 1.0, 640.0),
+            'max_missed_frames': (int, 0, 120),
+            'min_component_area': (int, 1, 100000),
         }
 
     @classmethod
@@ -278,6 +291,10 @@ class TrackControllerNode(Node):
             'virtual_lane_width': 'virtual_lane_width',
             'roi_cut': 'roi_cut',
             'bev_pad': 'bev_pad',
+            'center_ema_alpha': 'center_ema_alpha',
+            'max_center_jump_px': 'max_center_jump_px',
+            'max_missed_frames': 'max_missed_frames',
+            'min_component_area': 'min_component_area',
         }
         for parameter_name, attribute_name in lane_attributes.items():
             if parameter_name in updates:
@@ -712,6 +729,7 @@ class TrackControllerNode(Node):
         cv2.putText(out,
                     f'lane={str(lane_detected).lower()} '
                     f'path={str(path_generated).lower()} '
+                    f'src={lane_info.source} conf={lane_info.confidence:.2f} '
                     f'head={self.motion.last_heading_deg:+.1f}deg '
                     f'cte={self.motion.last_cte:+.1f}px',
                     (10, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (0, 255, 255), 1)
@@ -731,10 +749,37 @@ class TrackControllerNode(Node):
             return np.hstack((out, bev_panel))
         return out
 
+    def _image_to_bgr(self, image_msg: Image):
+        """Accept canonical BGR8 and legacy OpenCV 8UC3 image messages.
+
+        Some publishers created with cv_bridge's passthrough default label a
+        three-channel OpenCV frame as ``8UC3``. cv_bridge refuses to convert
+        that generic encoding directly to ``bgr8``, even though those legacy
+        publishers supply BGR data. Handle it explicitly so one such frame does
+        not abort the complete perception/control callback.
+        """
+        encoding = str(image_msg.encoding).lower()
+        if encoding == '8uc3':
+            if not self._warned_generic_bgr_encoding:
+                self.get_logger().warn(
+                    'Received legacy 8UC3 image encoding; treating it as BGR8'
+                )
+                self._warned_generic_bgr_encoding = True
+            frame = self.bridge.imgmsg_to_cv2(
+                image_msg, desired_encoding='passthrough'
+            )
+        else:
+            frame = self.bridge.imgmsg_to_cv2(
+                image_msg, desired_encoding='bgr8'
+            )
+        if frame.ndim != 3 or frame.shape[2] != 3:
+            raise ValueError(f'Expected a 3-channel image, got shape={frame.shape}')
+        return np.ascontiguousarray(frame)
+
     def on_image(self, image_msg: Image):
         try:
             callback_start = time.perf_counter() if self.profile else None
-            frame = self.bridge.imgmsg_to_cv2(image_msg, desired_encoding='bgr8')
+            frame = self._image_to_bgr(image_msg)
             conversion_end = time.perf_counter() if self.profile else None
             with self._parameter_lock:
                 detections = self.yolo.detect(frame)
@@ -765,10 +810,7 @@ class TrackControllerNode(Node):
             fps = 0.0 if self.last_t is None else 1.0 / max(1e-6, now - self.last_t)
             self.last_t = now
             self.frame_counter += 1
-            lane_detected = any(
-                det.class_name == 'lane2' and bool(det.mask.data)
-                for det in detections.detections
-            )
+            lane_detected = bool(lane_info.valid)
             path_generated = len(path_result.x_points) >= 2
 
             if self.debug_log and self.frame_counter % self.debug_log_interval == 0:

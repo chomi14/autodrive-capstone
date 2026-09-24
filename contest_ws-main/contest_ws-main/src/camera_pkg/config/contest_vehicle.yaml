@@ -1,0 +1,19 @@
+contest_motion_command_guard:
+  ros__parameters:
+    input_topic: /contest/motion_command
+    output_topic: /topic_control_signal
+    max_steering: 7
+    max_speed: 100
+    steering_sign: 1
+    command_timeout: 0.5
+
+serial_sender_node_v2:
+  ros__parameters:
+    port: /dev/arduino
+    baud: 115200
+    topic: /topic_control_signal
+    arm_topic: /vehicle/armed
+    ready_topic: /vehicle/calibration_ready
+    status_topic: /vehicle/calibration_status
+    auto_calibrate: false
+    calibration_tolerance: 35

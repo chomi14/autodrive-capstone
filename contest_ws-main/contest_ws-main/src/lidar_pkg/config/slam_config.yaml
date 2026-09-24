@@ -1,0 +1,21 @@
+# slam_toolbox를 위한 설정 파일 예시
+slam_toolbox:
+  ros__parameters:
+    # --- 필수 프레임 및 토픽 설정 ---
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_link
+    scan_topic: /scan # 라이다 데이터 토픽
+
+    # --- SLAM 성능 튜닝 파라미터 ---
+    # 해상도 (m/pixel) - 낮을수록 정밀하지만 무거워짐
+    resolution: 0.05
+    # 지도 업데이트 빈도 (초)
+    map_update_interval: 1.0
+    # 스캔 매칭 알고리즘 설정
+    matcher_search_radius: 3.0
+    
+    # 그 외 주요 파라미터들 (기본값으로 시작)
+    mode: mapping          # 'mapping' (지도 생성) 또는 'localization' (지도 불러와서 위치만 추정)
+    use_scan_matching: true
+    max_laser_range: 12.0 # 사용하는 라이다의 최대 인식 거리 (RPLIDAR A1M8)

@@ -38,7 +38,9 @@ def _launch_nodes(context):
     show_bev = _as_bool(context, 'show_bev')
     controller_parameters = dict(tuning_parameters)
     controller_parameters.update({
-        'image_topic': 'image_raw',
+        # Keep the real-time track stream isolated from legacy /image_raw
+        # publishers, some of which label OpenCV frames as generic 8UC3.
+        'image_topic': '/track/image_raw',
         'cmd_topic': 'topic_control_signal',
         'device': device,
         'start_enabled': True,
@@ -47,6 +49,10 @@ def _launch_nodes(context):
         'publish_debug': enable_visualization,
         'publish_bev_debug': show_bev,
         'debug_log': True,
+        'profile': True,
+        'profile_input_fps': 30.0,
+        'profile_report_interval': 100,
+        'image_reliability': 'best_effort',
     })
 
     return [
@@ -58,10 +64,17 @@ def _launch_nodes(context):
             output='screen',
             parameters=[{
                 'device': camera_device,
-                'topic': 'image_raw',
+                'topic': '/track/image_raw',
                 'width': 640,
                 'height': 480,
                 'fps': 30.0,
+                'fourcc': 'YUYV',
+                'buffer_size': 1,
+                'reopen_after_failures': 2,
+                'disable_dynamic_framerate': True,
+                # Raw 640x480 BGR frames are large. On the isolated track topic,
+                # prefer the newest frame instead of waiting for retransmission.
+                'reliability': 'best_effort',
                 'show': False,
             }],
         ),
@@ -164,7 +177,7 @@ def generate_launch_description():
             'arduino_port',
             default_value=VehicleDefault('arduino.port', '/dev/arduino'),
         ),
-        DeclareLaunchArgument('device', default_value='cpu'),
+        DeclareLaunchArgument('device', default_value='cuda:0'),
         DeclareLaunchArgument('enable_visualization', default_value='true'),
         DeclareLaunchArgument('show_bev', default_value='true'),
         DeclareLaunchArgument('steering_sign', default_value='1.0'),

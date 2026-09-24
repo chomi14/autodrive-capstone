@@ -10,8 +10,14 @@ track_controller_node:
     confidence: 0.50
     bev_top_shift: -8
     look_shift: 50
-    ema_alpha: 0.30
+    ema_alpha: 0.60
     virtual_lane_width: 300
+    # Filled-mask centerline stabilization. These are advanced parameters and
+    # are intentionally not exposed as GUI sliders.
+    center_ema_alpha: 0.35
+    max_center_jump_px: 80.0
+    max_missed_frames: 12
+    min_component_area: 250
 
     # Steering angle used by the Stanley angle-to-command mapping
     max_steering_angle: 50.0

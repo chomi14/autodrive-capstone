@@ -4,10 +4,10 @@ image_publisher_node:
     cam_num: 2
     img_dir: src/camera_perception_pkg/camera_perception_pkg/lib/Collected_Datasets/sample_dataset
     video_path: src/camera_perception_pkg/camera_perception_pkg/lib/Collected_Datasets/driving_simulation.mp4
-    pub_topic: image_raw
+    pub_topic: /track/image_raw
     logger: true
     # 20 FPS keeps latency stable when YOLO cannot sustain 30+ FPS.
-    timer: 0.04
+    timer: 0.03
     image_width: 640
     image_height: 480
     camera_buffer_size: 1
@@ -18,7 +18,7 @@ yolov8_node:
   ros__parameters:
     model: best66.pt
     device: 'cuda:0'
-    threshold: 0.5
+    threshold: 0.35
     enable: true
     image_reliability: 2
 
@@ -70,7 +70,7 @@ motion_planner_node:
     sub_laneinfo_topic: yolov8_lane_info
     pub_topic: topic_control_signal
     timer: 0.1
-    wheel_speed_default: 255
+    wheel_speed_default: 240
     steer_cmd_limit: 7
     kp: 0.05
     ki: 0.0

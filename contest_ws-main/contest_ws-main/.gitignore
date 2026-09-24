@@ -1,0 +1,8 @@
+build/
+log/
+install/
+src/camera_pkg/camera_pkg/lib/image/
+src/camera_pkg/camera_pkg/lib/lane2/
+src/camera_pkg/camera_pkg/lib/Collected_Datasets/
+*.pyc
+src/control_pkg/control_pkg/__pycache__/control.cpython-310.pyc

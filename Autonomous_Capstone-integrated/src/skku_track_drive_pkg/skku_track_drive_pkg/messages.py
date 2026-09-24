@@ -48,6 +48,9 @@ class TargetPoint:
 class LaneInfo:
     slope: float = 0.0
     target_points: List[TargetPoint] = field(default_factory=list)
+    valid: bool = False
+    confidence: float = 0.0
+    source: str = "invalid"
 
 @dataclass
 class PathPlanningResult:

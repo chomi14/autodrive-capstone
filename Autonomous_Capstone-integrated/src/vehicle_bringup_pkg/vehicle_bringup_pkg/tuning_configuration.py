@@ -27,6 +27,10 @@ ADVANCED_TUNING_PARAMETERS = {
     'bev_pad',
     'car_center_x',
     'car_center_y',
+    'center_ema_alpha',
+    'max_center_jump_px',
+    'max_missed_frames',
+    'min_component_area',
 }
 ALLOWED_TUNING_PARAMETERS = set(TUNING_TYPES) | ADVANCED_TUNING_PARAMETERS
 

@@ -27,7 +27,7 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_rotation', default_value=VehicleDefault('lidar.rotation_offset_deg', '180.0')),
         DeclareLaunchArgument('use_lidar', default_value='true'),
         DeclareLaunchArgument('arduino_port', default_value=VehicleDefault('arduino.port', '/dev/arduino')),
-        DeclareLaunchArgument('device', default_value='cpu'),
+        DeclareLaunchArgument('device', default_value='cuda:0'),
         DeclareLaunchArgument('speed', default_value='80'),
         DeclareLaunchArgument('steering_sign', default_value='1.0'),
         DeclareLaunchArgument('calibration_tolerance', default_value=VehicleDefault('steering.calibration_tolerance', '35')),

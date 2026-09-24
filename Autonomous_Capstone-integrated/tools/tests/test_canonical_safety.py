@@ -3,14 +3,19 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import cv2
+import numpy as np
 from launch import LaunchContext
+from sensor_bringup_pkg.camera_publisher_node import CameraPublisherNode
 from vehicle_bringup_pkg.configuration import VehicleDefault
 from vehicle_io_pkg.serial_sender_node import SerialSenderNode
 from interfaces_pkg.msg import MotionCommand
 from skku_track_drive_pkg.messages import DetectionArray, PathPlanningResult
 from skku_track_drive_pkg.motion_planner import MotionPlanner
+from skku_track_drive_pkg.track_controller_node import TrackControllerNode
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -135,6 +140,57 @@ class CanonicalSafetyTests(unittest.TestCase):
         self.assertEqual(command.steering, -5)
         self.assertEqual(command.left_speed, 255)
         self.assertEqual(command.right_speed, 255)
+
+    def test_camera_requests_configured_transport_and_single_buffer(self):
+        capture = Mock()
+        capture.isOpened.return_value = True
+        capture.get.side_effect = lambda prop: {
+            cv2.CAP_PROP_FRAME_WIDTH: 640.0,
+            cv2.CAP_PROP_FRAME_HEIGHT: 480.0,
+            cv2.CAP_PROP_FPS: 30.0,
+            cv2.CAP_PROP_FOURCC: cv2.VideoWriter_fourcc(*'YUYV'),
+        }.get(prop, 0.0)
+        node = SimpleNamespace(
+            cap=None,
+            device='/dev/video-test',
+            fourcc='YUYV',
+            width=640,
+            height=480,
+            fps=30.0,
+            buffer_size=1,
+            consecutive_failures=4,
+            last_frame_time=123.0,
+            fourcc_text=CameraPublisherNode.fourcc_text,
+            apply_v4l2_controls=Mock(),
+            get_logger=Mock(return_value=Mock()),
+        )
+        with patch(
+            'sensor_bringup_pkg.camera_publisher_node.cv2.VideoCapture',
+            return_value=capture,
+        ):
+            self.assertTrue(CameraPublisherNode.open_camera(node))
+        capture.set.assert_any_call(
+            cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'YUYV')
+        )
+        capture.set.assert_any_call(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.assertEqual(node.consecutive_failures, 0)
+        self.assertIsNone(node.last_frame_time)
+
+    def test_track_controller_accepts_legacy_8uc3_images(self):
+        expected = np.zeros((4, 6, 3), dtype=np.uint8)
+        node = SimpleNamespace(
+            bridge=Mock(),
+            _warned_generic_bgr_encoding=False,
+            get_logger=Mock(return_value=Mock()),
+        )
+        node.bridge.imgmsg_to_cv2.return_value = expected
+        message = SimpleNamespace(encoding='8UC3')
+        converted = TrackControllerNode._image_to_bgr(node, message)
+        node.bridge.imgmsg_to_cv2.assert_called_once_with(
+            message, desired_encoding='passthrough'
+        )
+        self.assertEqual(converted.shape, (4, 6, 3))
+        self.assertTrue(node._warned_generic_bgr_encoding)
 
 
 if __name__ == '__main__':

@@ -123,7 +123,7 @@ class Yolov8Node(LifecycleNode):
         # subs
         self._sub = self.create_subscription(
             Image,
-            "image_raw",
+            "/track/image_raw",
             self.image_cb,
             self.image_qos_profile
         )
