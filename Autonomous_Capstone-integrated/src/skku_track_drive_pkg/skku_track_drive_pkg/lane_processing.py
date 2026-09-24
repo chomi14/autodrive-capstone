@@ -74,15 +74,29 @@ class LaneInfoExtractor:
                               [round(w * 0.7), h], [round(w * 0.3), h]])
         src_mat = np.float32(self._src_mat())
         M = cv2.getPerspectiveTransform(src_mat, dst_mat)
+
+        # Pixels outside the calibrated source trapezoid can be projected into
+        # the driving ROI as large false regions. Mask them before the warp and
+        # carry a separate valid-region mask through the same homography.
+        source_valid = np.zeros((h, w), dtype=np.uint8)
+        cv2.fillConvexPoly(source_valid, np.rint(src_mat).astype(np.int32), 255)
+        lane2_mask = cv2.bitwise_and(lane2_mask, source_valid)
         lane2_bird_image = cv2.warpPerspective(
             lane2_mask, M, (w, h), flags=cv2.INTER_NEAREST
         )
+        valid_bird = cv2.warpPerspective(
+            source_valid, M, (w, h), flags=cv2.INTER_NEAREST
+        )
 
         roi_cut = int(max(0, min(h - 10, self.roi_cut)))
+        valid_roi = cv2.erode(
+            valid_bird[roi_cut:], np.ones((3, 3), dtype=np.uint8), iterations=1
+        )
         roi_image = CPFL.clean_lane_mask(
             lane2_bird_image[roi_cut:],
             min_component_area=self.min_component_area,
         )
+        roi_image[valid_roi == 0] = 0
 
         # BEV 원근 사다리꼴의 상/하단 폭. 윗변(먼 곳)은 좁고 아랫변(가까운 곳)은 넓다.
         # 직사각형으로 잡아당기면 위로 갈수록 더 크게 확대되므로, 가상 차선 폭도 그만큼 늘린다.
@@ -104,6 +118,7 @@ class LaneInfoExtractor:
                 target_y,
                 virtual_width,
                 previous_center,
+                valid_roi,
             )
             if observation.valid:
                 row_observations.append((target_y, observation))
@@ -200,7 +215,9 @@ class LaneInfoExtractor:
         split_indices = np.flatnonzero(np.diff(xs) > 1) + 1
         return [part for part in np.split(xs, split_indices) if len(part) > 0]
 
-    def _row_center(self, mask, target_y, virtual_width, previous_center):
+    def _row_center(
+        self, mask, target_y, virtual_width, previous_center, valid_mask=None
+    ):
         h, w = mask.shape[:2]
         upper = max(0, int(target_y) - 2)
         lower = min(h, int(target_y) + 3)
@@ -211,13 +228,26 @@ class LaneInfoExtractor:
                 center=w // 2, edges=[], valid=False, source="invalid"
             )
 
+        valid_left = 0
+        valid_right = w - 1
+        if valid_mask is not None and valid_mask.size > 0:
+            valid_xs = np.flatnonzero(
+                np.any(valid_mask[upper:lower] > 0, axis=0)
+            )
+            if len(valid_xs) == 0:
+                return CPFL.LaneCenter(
+                    center=w // 2, edges=[], valid=False, source="invalid"
+                )
+            valid_left = int(valid_xs[0])
+            valid_right = int(valid_xs[-1])
+
         candidates = []
         for run in runs:
             left = int(run[0])
             right = int(run[-1])
             run_width = right - left + 1
-            left_touch = left <= 3
-            right_touch = right >= w - 4
+            left_touch = left <= valid_left + 3
+            right_touch = right >= valid_right - 3
             half_width = virtual_width / 2.0
 
             if left_touch and not right_touch:

@@ -42,6 +42,39 @@ def test_mask_cleanup_rejects_small_disconnected_noise():
     assert cleaned[22, 182] == 0
 
 
+def test_full_bitmap_mask_is_preferred_over_polygon_approximation():
+    bitmap = np.zeros((64, 64), dtype=np.uint8)
+    bitmap[12:52, 8:56] = 255
+    detection = Detection(
+        class_name='lane2',
+        mask=Mask(
+            data=[Point2D(10, 10), Point2D(20, 10), Point2D(20, 20)],
+            height=64,
+            width=64,
+            bitmap=bitmap,
+        ),
+    )
+
+    mask = core.draw_edges(DetectionArray([detection]), 'lane2')
+
+    assert mask[30, 40] == 255
+    assert mask[5, 5] == 0
+
+
+def test_valid_bev_boundary_drives_clipped_side_reconstruction():
+    mask = np.zeros((80, 200), dtype=np.uint8)
+    valid = np.zeros_like(mask)
+    valid[:, 40:161] = 255
+    mask[:, 40:121] = 255
+    extractor = LaneInfoExtractor(show_image=False)
+
+    result = extractor._row_center(mask, 40, 120, None, valid)
+
+    assert result.valid
+    assert result.source == 'right_edge'
+    assert result.center == 60
+
+
 def test_single_edge_assignment_uses_history_not_slope_sign():
     mask = np.zeros((80, 200), dtype=np.uint8)
     mask[35:45, 98:103] = 255
@@ -88,4 +121,3 @@ def test_target_filter_limits_jump_and_holds_short_miss():
     assert held.valid
     assert held.source == 'held'
     assert [point.target_x for point in held.target_points] == [120, 130, 140]
-

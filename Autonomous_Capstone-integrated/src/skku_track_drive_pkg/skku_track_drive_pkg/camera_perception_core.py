@@ -104,6 +104,16 @@ def draw_edge(cv_image: np.ndarray, detection, color: Tuple[int]) -> np.ndarray:
     각 행의 좌·우 경계를 안정적으로 구할 수 있다.
     """
     mask_msg = detection.mask
+    bitmap = getattr(mask_msg, "bitmap", None)
+    if bitmap is not None and bitmap.size > 0:
+        if bitmap.shape[:2] != cv_image.shape[:2]:
+            bitmap = cv2.resize(
+                bitmap,
+                (cv_image.shape[1], cv_image.shape[0]),
+                interpolation=cv2.INTER_NEAREST,
+            )
+        cv_image[bitmap > 0] = color
+        return cv_image
     if not mask_msg.data:
         return cv_image
     mask_array = np.array(

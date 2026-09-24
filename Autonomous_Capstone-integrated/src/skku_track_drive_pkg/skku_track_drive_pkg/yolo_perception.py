@@ -14,6 +14,8 @@ OpenVINO 사용 시:
 from pathlib import Path
 from typing import List, Optional
 
+import cv2
+import numpy as np
 from ultralytics import YOLO
 from .messages import DetectionArray, Detection, BoundingBox2D, Pose2D, Point2D, Vector2, Mask
 
@@ -132,7 +134,16 @@ class YoloDetector:
               f"device={self.device}, imgsz={self.imgsz or 'auto'}, conf={conf}")
 
     def _predict(self, frame):
-        kwargs = dict(source=frame, verbose=False, stream=False, conf=self.conf, device=self.device)
+        kwargs = dict(
+            source=frame,
+            verbose=False,
+            stream=False,
+            conf=self.conf,
+            device=self.device,
+            # Preserve masks in original-image coordinates instead of the
+            # letterboxed inference canvas.
+            retina_masks=True,
+        )
         if self.imgsz:
             kwargs["imgsz"] = self.imgsz
         return self.yolo.predict(**kwargs)[0].cpu()
@@ -161,11 +172,32 @@ class YoloDetector:
 
         # mask가 있을 경우, box와 같은 순서라고 가정하여 넣음
         if results.masks is not None and len(boxes) > 0:
+            mask_bitmaps = results.masks.data.numpy()
+            orig_height = int(results.orig_img.shape[0])
+            orig_width = int(results.orig_img.shape[1])
             for i, mask in enumerate(results.masks):
                 if i >= len(boxes):
                     break
-                points = [Point2D(float(x), float(y)) for x, y in mask.xy[0].tolist()]
-                boxes[i].mask = Mask(data=points, height=int(results.orig_img.shape[0]), width=int(results.orig_img.shape[1]))
+                polygons = mask.xy
+                points = (
+                    [Point2D(float(x), float(y)) for x, y in polygons[0].tolist()]
+                    if polygons
+                    else []
+                )
+                bitmap = mask_bitmaps[i]
+                if bitmap.shape[:2] != (orig_height, orig_width):
+                    bitmap = cv2.resize(
+                        bitmap.astype(np.float32),
+                        (orig_width, orig_height),
+                        interpolation=cv2.INTER_NEAREST,
+                    )
+                bitmap = np.where(bitmap > 0.5, 255, 0).astype(np.uint8)
+                boxes[i].mask = Mask(
+                    data=points,
+                    height=orig_height,
+                    width=orig_width,
+                    bitmap=bitmap,
+                )
 
         detections.detections = boxes
         return detections

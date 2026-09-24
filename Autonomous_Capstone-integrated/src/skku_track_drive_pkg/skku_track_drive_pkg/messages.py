@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import Any, List
 
 @dataclass
 class Point2D:
@@ -26,6 +26,9 @@ class Mask:
     data: List[Point2D] = field(default_factory=list)
     height: int = 0
     width: int = 0
+    # In-process perception keeps the full binary mask here. ``data`` remains
+    # available for polygon visualization and future ROS-message conversion.
+    bitmap: Any = None
 
 @dataclass
 class Detection:
