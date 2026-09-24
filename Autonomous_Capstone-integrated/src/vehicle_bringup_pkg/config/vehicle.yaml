@@ -1,0 +1,24 @@
+# Shared defaults. Laptop-specific USB topology belongs in a local profile.
+arduino:
+  port: /dev/arduino
+  baud: 115200
+camera:
+  front:
+    device: /dev/video0
+    topic: /camera/front/image_raw
+  aux:
+    device: /dev/video2
+    topic: /camera/aux/image_raw
+lidar:
+  port: /dev/lidar
+  topic: /lidar_raw
+  rotation_offset_deg: 180.0
+steering:
+  # Documentation baseline, NOT automatically written to firmware.
+  # Update firmware DEFAULT_* together after physical measurement.
+  left_adc: 600
+  center_adc: 522  # provisional historical midpoint; measure straight wheels
+  right_adc: 445
+  max_step: 7
+  auto_calibrate: false
+  calibration_tolerance: 35

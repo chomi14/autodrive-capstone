@@ -64,7 +64,7 @@ class Yolov8Node(LifecycleNode):
         self.declare_parameter("threshold", 0.5)
         self.declare_parameter("enable", True)
         self.declare_parameter("image_reliability",
-                               QoSReliabilityPolicy.RELIABLE)
+                               QoSReliabilityPolicy.BEST_EFFORT)
 
         self.get_logger().info('Yolov8Node created')
 
@@ -246,8 +246,6 @@ class Yolov8Node(LifecycleNode):
         return keypoints_list
 
     def image_cb(self, msg: Image) -> None:
-        print(msg.header)
-
         if self.enable:
 
             # convert image + predict

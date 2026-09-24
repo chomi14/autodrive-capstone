@@ -32,6 +32,7 @@ class Yolov8InfoExtractor(Node):
         self.sub_topic = self.declare_parameter('sub_detection_topic', SUB_TOPIC_NAME).value
         self.pub_topic = self.declare_parameter('pub_topic', PUB_TOPIC_NAME).value
         self.show_image = self.declare_parameter('show_image', SHOW_IMAGE).value
+        self.show_bev_image = self.declare_parameter('show_bev_image', False).value
         self.roi_image_topic = self.declare_parameter('roi_image_topic', ROI_IMAGE_TOPIC_NAME).value
         self.lane_class = self.declare_parameter('lane_class', 'lane2').value
         self.bev_dst_left_ratio = self.declare_parameter('bev_dst_left_ratio', 0.3).value
@@ -76,8 +77,12 @@ class Yolov8InfoExtractor(Node):
 
         if self.show_image:
             cv2.imshow('lane2_edge_image', lane2_edge_image)
-            cv2.imshow('lane2_bird_img', lane2_bird_image)
             cv2.imshow('roi_img', roi_image)
+
+        if self.show_bev_image:
+            cv2.imshow('lane2_bird_img', lane2_bird_image)
+
+        if self.show_image or self.show_bev_image:
             cv2.waitKey(1)
 
         # roi_image를 uint8 형식으로 변환

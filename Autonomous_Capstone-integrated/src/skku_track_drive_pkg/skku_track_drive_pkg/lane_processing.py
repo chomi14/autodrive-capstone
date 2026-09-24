@@ -22,8 +22,11 @@ class LaneInfoExtractor:
 
     def __init__(self, show_image: bool = True, bev_top_shift: int = 0,
                  roi_cut: int = 300, look_shift: int = 0, slope_ema_alpha: float = 0.3,
-                 virtual_lane_width: int = 300, bev_pad: int = 0):
+                 virtual_lane_width: int = 300, bev_pad: int = 0,
+                 capture_debug: bool = False):
         self.show_image = show_image
+        self.capture_debug = capture_debug
+        self.last_debug = None
         self.bev_top_shift = bev_top_shift
         self.roi_cut = roi_cut
         self.look_shift = look_shift
@@ -45,6 +48,8 @@ class LaneInfoExtractor:
         return s
 
     def process(self, detections, frame=None) -> LaneInfo:
+        if self.capture_debug:
+            self.last_debug = None
         if len(detections.detections) == 0:
             return LaneInfo()
 
@@ -104,6 +109,14 @@ class LaneInfoExtractor:
             )
             target_points.append(TargetPoint(target_x=round(res.center), target_y=round(target_point_y)))
             samples.append((target_point_y, res))
+
+        if self.capture_debug:
+            self.last_debug = {
+                'bev_mask': lane2_bird_image,
+                'inverse_transform': cv2.getPerspectiveTransform(dst_mat, src_mat),
+                'roi_cut': roi_cut,
+                'samples': samples,
+            }
 
         if self.show_image:
             pad = int(max(0, self.bev_pad))

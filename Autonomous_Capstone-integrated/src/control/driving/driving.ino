@@ -6,8 +6,8 @@ const int STEERING_1 = 3;
 const int STEERING_2 = 2;
 const int FORWARD_RIGHT_1 = 4;
 const int FORWARD_RIGHT_2 = 5;
-const int FORWARD_LEFT_1 = 6;
-const int FORWARD_LEFT_2 = 7;
+const int FORWARD_LEFT_1 = 7;
+const int FORWARD_LEFT_2 = 6;
 const int POT = A2;
 
 
@@ -28,8 +28,8 @@ const int STEERING_SPEED = 128;
 // 가변저항 값 범위
 
 //capstone
-const int resistance_most_left = 600;
-const int resistance_most_right = 445;
+const int resistance_most_left = 440;
+const int resistance_most_right = 270;
 
 //urp
 //const int resistance_most_left = 685;

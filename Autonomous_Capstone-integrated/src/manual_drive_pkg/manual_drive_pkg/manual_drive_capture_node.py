@@ -52,7 +52,7 @@ class ManualDriveCaptureNode(Node):
         self.declare_parameter('cmd_topic', 'topic_control_signal')
         self.declare_parameter('arm_topic', 'vehicle/armed')
         self.declare_parameter('ready_topic', 'vehicle/calibration_ready')
-        self.declare_parameter('output_dir', '~/ros2_ws/datasets/manual_drive')
+        self.declare_parameter('output_dir', '~/autodrive_dataset/manual_drive')
         self.declare_parameter('speed_step', 20)
         self.declare_parameter('steering_step', 1)
         self.declare_parameter('max_speed', 255)

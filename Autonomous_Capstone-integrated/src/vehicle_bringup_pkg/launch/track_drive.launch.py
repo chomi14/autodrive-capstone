@@ -1,3 +1,4 @@
+from vehicle_bringup_pkg.configuration import config_argument, VehicleDefault
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -18,15 +19,18 @@ def generate_launch_description():
     cal_tolerance = LaunchConfiguration('calibration_tolerance')
 
     return LaunchDescription([
-        DeclareLaunchArgument('camera_device', default_value='/dev/video0'),
-        DeclareLaunchArgument('lidar_port', default_value='/dev/lidar'),
-        DeclareLaunchArgument('lidar_rotation', default_value='180.0'),
+        config_argument(),
+        DeclareLaunchArgument('auto_calibrate', default_value=VehicleDefault('steering.auto_calibrate', False)),
+        DeclareLaunchArgument('arduino_baud', default_value=VehicleDefault('arduino.baud', 115200)),
+        DeclareLaunchArgument('camera_device', default_value=VehicleDefault('camera.front.device', '/dev/video0')),
+        DeclareLaunchArgument('lidar_port', default_value=VehicleDefault('lidar.port', '/dev/lidar')),
+        DeclareLaunchArgument('lidar_rotation', default_value=VehicleDefault('lidar.rotation_offset_deg', '180.0')),
         DeclareLaunchArgument('use_lidar', default_value='true'),
-        DeclareLaunchArgument('arduino_port', default_value='/dev/arduino'),
+        DeclareLaunchArgument('arduino_port', default_value=VehicleDefault('arduino.port', '/dev/arduino')),
         DeclareLaunchArgument('device', default_value='cpu'),
         DeclareLaunchArgument('speed', default_value='80'),
         DeclareLaunchArgument('steering_sign', default_value='1.0'),
-        DeclareLaunchArgument('calibration_tolerance', default_value='35'),
+        DeclareLaunchArgument('calibration_tolerance', default_value=VehicleDefault('steering.calibration_tolerance', '35')),
 
         # All sensors are started with the run.  LiDAR is optional only so the
         # track code can still be debugged on a bench without the sensor attached.
@@ -74,10 +78,11 @@ def generate_launch_description():
             name='serial_sender_node_v2', output='screen',
             parameters=[{
                 'port': arduino_port,
+                'baud': ParameterValue(LaunchConfiguration('arduino_baud'), value_type=int),
                 'topic': 'topic_control_signal',
                 'arm_topic': 'vehicle/armed',
                 'ready_topic': 'vehicle/calibration_ready',
-                'auto_calibrate': True,
+                'auto_calibrate': ParameterValue(LaunchConfiguration('auto_calibrate'), value_type=bool),
                 'calibration_tolerance': ParameterValue(cal_tolerance, value_type=int),
             }],
         ),

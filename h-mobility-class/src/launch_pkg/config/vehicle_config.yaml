@@ -1,14 +1,18 @@
 image_publisher_node:
   ros__parameters:
-    data_source: video
+    data_source: camera
     cam_num: 2
     img_dir: src/camera_perception_pkg/camera_perception_pkg/lib/Collected_Datasets/sample_dataset
     video_path: src/camera_perception_pkg/camera_perception_pkg/lib/Collected_Datasets/driving_simulation.mp4
     pub_topic: image_raw
     logger: true
-    timer: 0.03
+    # 20 FPS keeps latency stable when YOLO cannot sustain 30+ FPS.
+    timer: 0.04
     image_width: 640
     image_height: 480
+    camera_buffer_size: 1
+    # QoSReliabilityPolicy.BEST_EFFORT: drop stale frames instead of blocking.
+    image_reliability: 2
 
 yolov8_node:
   ros__parameters:
@@ -16,14 +20,15 @@ yolov8_node:
     device: 'cuda:0'
     threshold: 0.5
     enable: true
-    image_reliability: 1
+    image_reliability: 2
 
 lane_info_extractor_node:
   ros__parameters:
     sub_detection_topic: detections
     pub_topic: yolov8_lane_info
     roi_image_topic: roi_image
-    show_image: true
+    show_image: false
+    show_bev_image: true
     lane_class: lane2
     bev_dst_left_ratio: 0.3
     bev_dst_right_ratio: 0.7
@@ -41,8 +46,11 @@ traffic_light_detector_node:
     sub_detection_topic: detections
     sub_image_topic: image_raw
     pub_topic: yolov8_traffic_light_info
-    sync_queue_size: 1
-    sync_slop: 0.5
+    # Keep a few source frames while YOLO runs, but do not pair detections
+    # with an image that is hundreds of milliseconds newer.
+    sync_queue_size: 5
+    sync_slop: 0.05
+    image_reliability: 2
     traffic_light_class: traffic_light
     hsv_red1_lower: [0, 100, 70]
     hsv_red1_upper: [10, 255, 255]

@@ -1,0 +1,17 @@
+track_controller_node:
+  ros__parameters:
+    # Primary driving controls
+    speed: 80
+    stanley_gain: 0.020
+    heading_gain: 0.60
+    lookahead_index: 10
+
+    # Perception and lane extraction
+    confidence: 0.50
+    bev_top_shift: -8
+    look_shift: 50
+    ema_alpha: 0.30
+    virtual_lane_width: 300
+
+    # Steering angle used by the Stanley angle-to-command mapping
+    max_steering_angle: 50.0

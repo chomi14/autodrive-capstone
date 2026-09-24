@@ -47,6 +47,7 @@ class MotionPlanner:
         self.last_heading_deg = 0.0
         self.last_cte = 0.0
         self.last_target_steer = 0
+        self.last_reference_point = None
         # 빨간불 정지 확인 진행 상태(avoid.py가 퍼센트 바 표시에 사용)
         self.last_red_light_close = False   # 이번 프레임에 "정지선을 넘은 빨간불"이 보였는지
         self.last_red_confirm_count = 0     # 연속 확인 프레임 수(0~red_light_confirm_frames)
@@ -81,24 +82,28 @@ class MotionPlanner:
             self.path_data = sorted(raw_path, key=lambda p: p[1], reverse=True)
             steering = self.compute_stanley_steering()
         else:
-            steering = 0
-            self.last_heading_deg = 0.0
-            self.last_cte = 0.0
-            self.last_target_steer = 0
+            # A momentary YOLO/lane miss must not snap the steering back to
+            # center at full speed. Keep the most recent valid steering command
+            # until a new valid path produces an updated command.
+            steering = self.last_target_steer
+            self.last_reference_point = None
 
         return MotionCommand(steering=steering, left_speed=self.default_left_speed, right_speed=self.default_right_speed)
 
     def compute_stanley_steering(self):
         if not self.path_data or len(self.path_data) < 2:
+            self.last_reference_point = None
             return 0
 
         vehicle_pos = (self.car_center_x, self.car_center_y)
         nearest_idx = self.find_nearest_index(vehicle_pos, self.path_data)
         if nearest_idx is None:
+            self.last_reference_point = None
             return 0
 
         lookahead = int(max(1, self.lookahead_steps))
         ref_idx = min(len(self.path_data) - 2, max(nearest_idx, lookahead))
+        self.last_reference_point = self.path_data[ref_idx]
         ref_heading = self.path_heading(ref_idx)
         vehicle_heading = -math.pi / 2
 

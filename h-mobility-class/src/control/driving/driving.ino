@@ -11,7 +11,7 @@ const int FORWARD_LEFT_2 =6;
 const int POT = A2;
 
 // 조향 속도 상수
-const int STEERING_SPEED = 50;
+const int STEERING_SPEED = 200;
 
 // 가변저항 값 범위
 const int resistance_most_left = 425;

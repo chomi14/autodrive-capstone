@@ -18,7 +18,7 @@ import os
 PUB_TOPIC_NAME = 'image_raw'
 
 # 데이터 입력 소스: 'camera', 'image', 또는 'video' 중 택1하여 입력
-DATA_SOURCE = 'video'
+DATA_SOURCE = 'camera'
 
 # 카메라(웹캠) 장치 번호 (ls /dev/video* 명령을 터미널 창에 입력하여 확인)
 CAM_NUM = 2
@@ -48,6 +48,8 @@ class ImagePublisherNode(Node):
         self.declare_parameter('timer', timer)
         self.declare_parameter('image_width', 640)
         self.declare_parameter('image_height', 480)
+        self.declare_parameter('camera_buffer_size', 1)
+        self.declare_parameter('image_reliability', QoSReliabilityPolicy.BEST_EFFORT)
         
         self.data_source = self.get_parameter('data_source').get_parameter_value().string_value
         self.cam_num = self.get_parameter('cam_num').get_parameter_value().integer_value
@@ -58,9 +60,13 @@ class ImagePublisherNode(Node):
         self.timer_period = self.get_parameter('timer').get_parameter_value().double_value
         self.image_width = self.get_parameter('image_width').value
         self.image_height = self.get_parameter('image_height').value
+        self.camera_buffer_size = self.get_parameter('camera_buffer_size').value
+        self.image_reliability = self.get_parameter('image_reliability').value
 
         self.qos_profile = QoSProfile(
-            reliability=QoSReliabilityPolicy.RELIABLE,
+            # Camera streams should favor the newest frame over retransmitting
+            # an old one when a perception subscriber falls behind.
+            reliability=self.image_reliability,
             history=QoSHistoryPolicy.KEEP_LAST,
             durability=QoSDurabilityPolicy.VOLATILE,
             depth=1
@@ -70,8 +76,13 @@ class ImagePublisherNode(Node):
         
         if self.data_source == 'camera':
             self.cap = cv2.VideoCapture(self.cam_num)
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self.camera_buffer_size)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.image_width)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.image_height)
+            if not self.cap.isOpened():
+                self.get_logger().error('Cannot open camera: %s' % self.cam_num)
+                rclpy.shutdown()
+                sys.exit(1)
         elif self.data_source == 'video':
             self.cap = cv2.VideoCapture(self.video_path)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.image_width)
@@ -99,12 +110,12 @@ class ImagePublisherNode(Node):
         if self.data_source == 'camera':
             ret, frame = self.cap.read()
             if ret:
-                frame = cv2.resize(frame, (self.image_width, self.image_height))
-                image_msg = self.br.cv2_to_imgmsg(frame)
-                image_msg.header = Header()
+                if frame.shape[1] != self.image_width or frame.shape[0] != self.image_height:
+                    frame = cv2.resize(frame, (self.image_width, self.image_height))
+                image_msg = self.br.cv2_to_imgmsg(frame, encoding='bgr8')
                 image_msg.header.stamp = self.get_clock().now().to_msg()
-                image_msg.header.frame_id = 'image_frame' 
-                self.publisher.publish(self.br.cv2_to_imgmsg(frame))
+                image_msg.header.frame_id = 'image_frame'
+                self.publisher.publish(image_msg)
                 if self.logger:
                     cv2.imshow('Camera Image', frame)
                     cv2.waitKey(1)

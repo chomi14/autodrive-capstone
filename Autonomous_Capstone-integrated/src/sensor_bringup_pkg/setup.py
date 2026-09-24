@@ -11,6 +11,7 @@ setup(
     description='Camera and RPLidar bringup nodes for SKKU autonomous vehicle', license='MIT',
     entry_points={'console_scripts': [
         'camera_publisher_node = sensor_bringup_pkg.camera_publisher_node:main',
+        'video_replay_node = sensor_bringup_pkg.video_replay_node:main',
         'lidar_publisher_node_v2 = sensor_bringup_pkg.lidar_publisher_node:main',
     ]},
 )

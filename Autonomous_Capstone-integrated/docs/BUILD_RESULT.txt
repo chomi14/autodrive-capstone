@@ -1,0 +1,27 @@
+Starting >>> interfaces_pkg
+Starting >>> sensor_bringup_pkg
+Starting >>> camera_perception_pkg
+Starting >>> decision_making_pkg
+Starting >>> lidar_perception_pkg
+Starting >>> debug_pkg
+Starting >>> serial_communication_pkg
+Finished <<< interfaces_pkg [5.19s]
+Starting >>> manual_drive_pkg
+Starting >>> skku_track_drive_pkg
+Starting >>> vehicle_io_pkg
+Finished <<< serial_communication_pkg [10.1s]
+Finished <<< decision_making_pkg [10.2s]
+Finished <<< debug_pkg [10.4s]
+Finished <<< lidar_perception_pkg [10.4s]
+Finished <<< camera_perception_pkg [10.5s]
+Finished <<< sensor_bringup_pkg [10.8s]
+Finished <<< skku_track_drive_pkg [6.07s]
+Finished <<< manual_drive_pkg [6.20s]
+Finished <<< vehicle_io_pkg [6.58s]
+Starting >>> vehicle_bringup_pkg
+Finished <<< vehicle_bringup_pkg [3.63s]
+Starting >>> launch_pkg
+[Processing: launch_pkg]
+Finished <<< launch_pkg [32.8s]
+
+Summary: 12 packages finished [49.0s]

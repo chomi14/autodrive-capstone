@@ -12,7 +12,9 @@
  *   2) Upload this sketch and open Serial Monitor at 115200 baud.
  *   3) Type c + Enter once.
  *   4) The steering moves slowly LEFT -> RIGHT -> CENTER.
- *   5) Copy RESULT_LEFT and RESULT_RIGHT into DEFAULT_LEFT/DEFAULT_RIGHT
+ *   5) Endpoint RESULT_CENTER is only an estimated midpoint, not straight wheels.
+ *      With steering stopped, align wheels manually and send p to read CENTER ADC.
+ *   6) Copy RESULT_LEFT and RESULT_RIGHT into DEFAULT_LEFT/DEFAULT_RIGHT
  *      in driving_user_pins.ino.
  *
  * The end-stop detector watches the potentiometer.  If its value stops changing
@@ -106,6 +108,16 @@ void setup() {
 void loop() {
   if (Serial.available() > 0) {
     char c = Serial.read();
+    if (c == 'x' || c == 'X') {
+      fail("operator stop");
+      return;
+    }
+    if ((c == 'p' || c == 'P') && !running) {
+      stopDrive();
+      stopSteering();
+      Serial.print("STRAIGHT_CENTER_ADC=");
+      Serial.println(analogRead(POT));
+    }
     if ((c == 'c' || c == 'C') && !running) {
       stopDrive();
       running = true;

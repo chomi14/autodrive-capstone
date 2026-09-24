@@ -1,3 +1,33 @@
+# Canonical Workspace 운영 안내
+
+기준 workspace: `/home/autolab/autodrive_ws/Autonomous_Capstone-integrated`.
+CANONICAL - USE THIS: `vehicle_bringup_pkg` + `vehicle_io_pkg` + `driving_user_pins.ino`.
+
+현재 변경 후 기본값은 **auto_calibrate=false**입니다. launch만으로 endpoint 측정을 시작하지 않습니다.
+이 모드에서는 펌웨어에 저장된 baseline을 신뢰해 READY가 되며, operator ARM 전에는
+주행 명령이 전달되지 않습니다. CONFIG 조회/검증은 `auto_calibrate=true`에서만 필수입니다.
+기존 자동 endpoint 시험은 명시적 `auto_calibrate:=true`로만 선택합니다 (실제 조향이 움직임).
+
+- [전체 감사 및 launch 안전 표](docs/WORKSPACE_AUDIT.md)
+- [ROS 계약](docs/ROS_INTERFACE.md)
+- [팀 workflow](docs/TEAM_WORKFLOW.md)
+- [모델 현황](docs/MODEL_MIGRATION.md)
+- [검증 및 실차 시험 순서](docs/VALIDATION.md)
+
+`launch_pkg/main_launch.py`, `parking_launch.py`, `serial_communication_pkg`,
+`src/data_collection`은 **LEGACY - DO NOT USE FOR VEHICLE RUN**입니다.
+`launch_pkg/mission_launch.py`는 새 gate를 사용하는 호환 미션 경로입니다.
+
+공유 설정: `src/vehicle_bringup_pkg/config/vehicle.yaml`.
+노트북 USB 예시는 `laptop_autolab.example.yaml`을 명시적으로 선택합니다.
+기존 launch argument는 유지하며 YAML보다 우선합니다. steering ADC YAML은 기록용이고
+실제 firmware DEFAULT_LEFT/CENTER/RIGHT를 바꾸지 않습니다.
+
+아래 v2 설명은 삭제하지 않고 이력으로 보존합니다. **아래의 ros2_ws 경로와 자동 startup
+calibration 안내는 현재 운영 지침이 아닙니다.** 위 문서를 우선합니다.
+
+---
+
 # SKKU 자율주행 차량 Ubuntu/ROS2 통합본 v2
 
 기준 자료:

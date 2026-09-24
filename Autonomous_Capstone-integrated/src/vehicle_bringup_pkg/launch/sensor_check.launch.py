@@ -1,3 +1,4 @@
+from vehicle_bringup_pkg.configuration import config_argument, VehicleDefault
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -12,10 +13,14 @@ def generate_launch_description():
     lidar_rotation = LaunchConfiguration('lidar_rotation')
 
     return LaunchDescription([
-        DeclareLaunchArgument('camera_device', default_value='/dev/v4l/by-path/pci-0000:00:14.0-usb-0:1:1.0-video-index0'),
-        DeclareLaunchArgument('aux_camera_device', default_value='/dev/v4l/by-path/pci-0000:00:14.0-usb-0:4.1:1.0-video-index0'),
-        DeclareLaunchArgument('lidar_port', default_value='/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0'),
-        DeclareLaunchArgument('lidar_rotation', default_value='180.0'),
+        config_argument(),
+        DeclareLaunchArgument('aux_camera_topic', default_value=VehicleDefault('camera.aux.topic', '/camera/aux/image_raw')),
+        DeclareLaunchArgument('lidar_topic', default_value=VehicleDefault('lidar.topic', '/lidar_raw')),
+        DeclareLaunchArgument('camera_topic', default_value=VehicleDefault('camera.front.topic', '/camera/front/image_raw')),
+        DeclareLaunchArgument('camera_device', default_value=VehicleDefault('camera.front.device', '/dev/video0')),
+        DeclareLaunchArgument('aux_camera_device', default_value=VehicleDefault('camera.aux.device', '/dev/video2')),
+        DeclareLaunchArgument('lidar_port', default_value=VehicleDefault('lidar.port', '/dev/lidar')),
+        DeclareLaunchArgument('lidar_rotation', default_value=VehicleDefault('lidar.rotation_offset_deg', '180.0')),
 
         Node(
             package='sensor_bringup_pkg',
@@ -24,7 +29,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'device': camera_device,
-                'topic': '/camera/front/image_raw',
+                'topic': LaunchConfiguration('camera_topic'),
                 'frame_id': 'front_camera_frame',
                 'width': 640,
                 'height': 480,
@@ -35,7 +40,7 @@ def generate_launch_description():
         Node(
             package='sensor_bringup_pkg', executable='camera_publisher_node',
             name='aux_camera_publisher_node', output='screen',
-            parameters=[{'device': aux_camera_device, 'topic': '/camera/aux/image_raw',
+            parameters=[{'device': aux_camera_device, 'topic': LaunchConfiguration('aux_camera_topic'),
                          'frame_id': 'aux_camera_frame', 'width': 640, 'height': 480,
                          'fps': 30.0, 'show': False}],
         ),
@@ -46,7 +51,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'port': lidar_port,
-                'topic': 'lidar_raw',
+                'topic': LaunchConfiguration('lidar_topic'),
                 'rotation_offset_deg': ParameterValue(lidar_rotation, value_type=float),
             }],
         ),

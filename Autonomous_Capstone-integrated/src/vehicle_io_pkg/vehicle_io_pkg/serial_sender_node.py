@@ -59,7 +59,7 @@ class SerialSenderNode(Node):
         self.declare_parameter('ready_topic', 'vehicle/calibration_ready')
         self.declare_parameter('status_topic', 'vehicle/calibration_status')
         self.declare_parameter('timeout', 0.05)
-        self.declare_parameter('auto_calibrate', True)
+        self.declare_parameter('auto_calibrate', False)
         self.declare_parameter('calibration_tolerance', 35)
         self.declare_parameter('min_calibration_span', 80)
         self.declare_parameter('calibration_timeout', 22.0)
@@ -95,8 +95,8 @@ class SerialSenderNode(Node):
 
         self.calibration_ready = False
         self.armed = False
-        self.calibration_state = 'WAIT_CONFIG'
-        self.calibration_deadline = time.monotonic() + self.cal_timeout
+        self.calibration_state = 'STARTING'
+        self.calibration_deadline = 0.0
         self.last_query_time = 0.0
         self.last_cmd = MotionCommand()
         self.last_cmd.steering = 0
@@ -125,10 +125,7 @@ class SerialSenderNode(Node):
         self.keep_stop_timer = self.create_timer(0.20, self.enforce_safe_state)
 
         self.send_ascii('X')
-        self.publish_ready(False)
-        self.publish_status('WAIT_CONFIG: querying Arduino baseline')
-        self.send_ascii('?')
-        self.last_query_time = time.monotonic()
+        self.start_calibration_sequence()
 
         self.get_logger().info(
             f'Arduino serial opened: {self.port} @ {self.baud}; '
@@ -150,6 +147,34 @@ class SerialSenderNode(Node):
         self.status_pub.publish(msg)
         self.get_logger().info(str(text))
 
+    def start_calibration_sequence(self):
+        """Select startup policy without making manual-baseline mode wait forever.
+
+        ``auto_calibrate=False`` means that the operator has chosen to trust the
+        steering limits already installed in the Arduino firmware.  Requiring a
+        CONFIG reply in that mode made otherwise compatible/legacy firmware stay
+        locked in WAIT_CONFIG, so the arm UI could never become READY.
+
+        The CONFIG handshake remains mandatory before the explicit automatic
+        endpoint measurement because those values are needed to validate it.
+        """
+        if not self.auto_calibrate:
+            self.calibration_state = 'READY'
+            self.calibration_deadline = 0.0
+            self.publish_ready(True)
+            self.publish_status(
+                'READY: automatic calibration disabled; trusting the steering '
+                'baseline installed in firmware. Press W to arm/start.'
+            )
+            return
+
+        self.calibration_state = 'WAIT_CONFIG'
+        self.calibration_deadline = time.monotonic() + self.cal_timeout
+        self.publish_ready(False)
+        self.publish_status('WAIT_CONFIG: querying Arduino baseline')
+        self.send_ascii('?')
+        self.last_query_time = time.monotonic()
+
     # ------------------------------------------------------------------
     # Serial helpers
     # ------------------------------------------------------------------
@@ -162,7 +187,11 @@ class SerialSenderNode(Node):
     def send_stop(self):
         try:
             if self.ser is not None and self.ser.is_open:
-                self.ser.write(encode_command(0, 0, 0))
+                # Calibration needs a heartbeat; ordinary STOP must not recenter steering.
+                if self.calibration_state in ('WAIT_MEASURE', 'WAIT_APPLY'):
+                    self.ser.write(encode_command(0, 0, 0))
+                else:
+                    self.ser.write(b'X\n')
         except Exception:
             pass
 
@@ -191,10 +220,18 @@ class SerialSenderNode(Node):
 
         m = _CONFIG_RE.fullmatch(line)
         if m:
+            if self.calibration_state != 'WAIT_CONFIG':
+                return
             self.config_left = int(m.group(1))
             self.config_right = int(m.group(2))
             self.config_center = int(m.group(3))
             self.max_step = int(m.group(4))
+            if not (0 <= min(self.config_left, self.config_right)
+                    < self.config_center < max(self.config_left, self.config_right) <= 1023
+                    and abs(self.config_left - self.config_right) >= self.min_cal_span
+                    and self.max_step == 7):
+                self.fail_calibration('Invalid firmware steering baseline')
+                return
             self.publish_status(
                 f'BASELINE: left={self.config_left}, right={self.config_right}, '
                 f'center={self.config_center}, max_step={self.max_step}'
@@ -213,6 +250,8 @@ class SerialSenderNode(Node):
 
         m = _CAL_RESULT_RE.fullmatch(line)
         if m:
+            if self.calibration_state != 'WAIT_MEASURE':
+                return
             measured_left = int(m.group(1))
             measured_right = int(m.group(2))
             measured_center = int(m.group(3))
@@ -224,6 +263,8 @@ class SerialSenderNode(Node):
 
         m = _CAL_APPLIED_RE.fullmatch(line)
         if m:
+            if self.calibration_state != 'WAIT_APPLY':
+                return
             applied_left = int(m.group(1))
             applied_right = int(m.group(2))
             applied_center = int(m.group(3))
@@ -253,6 +294,12 @@ class SerialSenderNode(Node):
     def evaluate_calibration(self, left: int, right: int, center: int, span: int):
         if self.config_left is None or self.config_right is None:
             self.fail_calibration('Measured limits arrived before baseline CONFIG')
+            return
+
+        if not (0 <= min(left, right) < center < max(left, right) <= 1023
+                and span == abs(left - right)
+                and (right - left) * (self.config_right - self.config_left) > 0):
+            self.fail_calibration('Invalid measured steering calibration')
             return
 
         ref_span = abs(self.config_left - self.config_right)
@@ -342,10 +389,8 @@ class SerialSenderNode(Node):
             left_speed = int(msg.left_speed)
             right_speed = int(msg.right_speed)
         else:
-            # Keep steering centered and drive wheels stopped while locked.
-            steering = 0
-            left_speed = 0
-            right_speed = 0
+            self.send_stop()
+            return
 
         payload = encode_command(steering, left_speed, right_speed)
         try:

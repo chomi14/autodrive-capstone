@@ -12,5 +12,8 @@ setup(
     install_requires=['setuptools'], zip_safe=True,
     maintainer='skku', maintainer_email='noreply@example.com',
     description='ROS2 wrapper for 2026_skku_autodrive-final track driving pipeline', license='MIT',
-    entry_points={'console_scripts': ['track_controller_node = skku_track_drive_pkg.track_controller_node:main']},
+    entry_points={'console_scripts': [
+        'track_controller_node = skku_track_drive_pkg.track_controller_node:main',
+        'track_tuner_node = skku_track_drive_pkg.track_tuner_node:main',
+    ]},
 )

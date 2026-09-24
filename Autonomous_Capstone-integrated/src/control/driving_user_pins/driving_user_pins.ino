@@ -18,10 +18,11 @@
  *                        and report CAL_RESULT,left=...,right=...,center=...,span=...
  *   K{left},{right}    -> apply measured calibration for THIS power/run only
  *                        and report CAL_APPLIED,...
- *   X                 -> emergency stop + steering target center
+ *   X                 -> stop all PWM outputs; no automatic recentering
  *
  * IMPORTANT
- *   DEFAULT_LEFT / DEFAULT_RIGHT are the baseline values measured with
+ *   DEFAULT_LEFT / DEFAULT_CENTER / DEFAULT_RIGHT are vehicle-specific values;
+ *   CENTER must be measured with physically straight wheels. Endpoints use
  *   steering_limit_calibration.ino.  Runtime auto-calibration is intentionally
  *   accepted by the PC only when the new values are close to this baseline.
  */
@@ -48,15 +49,23 @@ const int POT = A2;
 const int MAX_STEERING_STEP = 7;
 const int STEERING_SPEED = 128;
 
-// Replace these ONCE after running steering_limit_calibration.ino on this car.
-const int DEFAULT_LEFT = 600;
-const int DEFAULT_RIGHT = 445;
+// Vehicle-specific endpoints; measure and verify on this car.
+const int DEFAULT_LEFT = 440;
+const int DEFAULT_RIGHT = 270;
+// Vehicle-specific straight-wheel ADC: preserved old midpoint until measured.
+const int DEFAULT_CENTER = 355;
+const unsigned long COMMAND_TIMEOUT_MS = 500;
+unsigned long last_command_time = 0;
+bool command_active = false;
+static_assert((DEFAULT_CENTER > DEFAULT_RIGHT && DEFAULT_CENTER < DEFAULT_LEFT) ||
+              (DEFAULT_CENTER > DEFAULT_LEFT && DEFAULT_CENTER < DEFAULT_RIGHT),
+              "Default center must be between endpoints");
 
 // Runtime values.  The PC may update these with K<left>,<right> after startup
 // calibration.  They are intentionally not written to EEPROM.
 int runtime_left = DEFAULT_LEFT;
 int runtime_right = DEFAULT_RIGHT;
-int runtime_center = (DEFAULT_LEFT + DEFAULT_RIGHT) / 2;
+int runtime_center = DEFAULT_CENTER;
 
 int target_angle = 0;
 int left_speed = 0;
@@ -106,7 +115,9 @@ void processIncomingByte(const byte inByte);
 void processData(const char *data);
 void stopDriveMotors();
 void emergencyStop();
-int potToStep(int pot, int leftValue, int rightValue);
+int potToStep(int pot, int leftValue, int centerValue, int rightValue);
+int correctedCenter(int leftValue, int rightValue);
+bool parseValue(const char *&cursor, char separator, int low, int high, int &value);
 void startCalibration();
 void runCalibration();
 void calibrationFail(const char *reason);
@@ -130,20 +141,27 @@ void setup() {
 }
 
 void loop() {
-  while (Serial.available() > 0) {
+  // Bound serial work so a continuous malformed stream cannot starve watchdog.
+  for (unsigned int n = 0; n < MAX_INPUT && Serial.available() > 0; ++n) {
     processIncomingByte(Serial.read());
   }
 
   const unsigned long now = millis();
+
+  if ((command_active || calibration_running) &&
+      now - last_command_time >= COMMAND_TIMEOUT_MS) {
+    if (calibration_running) calibrationFail("command_timeout");
+    emergencyStop();
+  }
 
   if (calibration_running) {
     runCalibration();
     return;
   }
 
-  if (now - lastControlTime >= CONTROL_INTERVAL_MS) {
+  if (command_active && now - lastControlTime >= CONTROL_INTERVAL_MS) {
     const int resistance = analogRead(POT);
-    const int current_angle = potToStep(resistance, runtime_left, runtime_right);
+    const int current_angle = potToStep(resistance, runtime_left, runtime_center, runtime_right);
 
     if (current_angle == target_angle) {
       maintainSteering();
@@ -228,14 +246,25 @@ void stopDriveMotors() {
 }
 
 void emergencyStop() {
+  command_active = false;
   target_angle = 0;
   stopDriveMotors();
   maintainSteering();
 }
 
-int potToStep(int pot, int leftValue, int rightValue) {
-  if (leftValue == rightValue) return 0;
-  long mapped = map(pot, leftValue, rightValue, -MAX_STEERING_STEP, MAX_STEERING_STEP);
+int correctedCenter(int leftValue, int rightValue) {
+  // Preserve the calibrated straight position's fraction for legacy Kleft,right.
+  return leftValue + (long)(DEFAULT_CENTER - DEFAULT_LEFT) *
+         (rightValue - leftValue) / (DEFAULT_RIGHT - DEFAULT_LEFT);
+}
+
+int potToStep(int pot, int leftValue, int centerValue, int rightValue) {
+  if (!((leftValue < centerValue && centerValue < rightValue) ||
+        (rightValue < centerValue && centerValue < leftValue))) return 0;
+  bool leftSide = leftValue < rightValue ? pot <= centerValue : pot >= centerValue;
+  long mapped = leftSide
+      ? map(pot, leftValue, centerValue, -MAX_STEERING_STEP, 0)
+      : map(pot, centerValue, rightValue, 0, MAX_STEERING_STEP);
   return constrain((int)mapped, -MAX_STEERING_STEP, MAX_STEERING_STEP);
 }
 
@@ -259,6 +288,7 @@ void startCalibration() {
   emergencyStop();
   calibration_waiting_apply = false;
   calibration_running = true;
+  last_command_time = millis();
   calibration_state = 0;
   state_start_ms = millis();
   Serial.println("CAL_START");
@@ -370,7 +400,7 @@ void runCalibration() {
       stable_max = max(stable_max, p);
       if (now - state_start_ms >= END_STABLE_MS) {
         measured_right = (stable_min + stable_max) / 2;
-        measured_center = (measured_left + measured_right) / 2;
+        measured_center = correctedCenter(measured_left, measured_right);
         const int span = abs(measured_left - measured_right);
 
         Serial.print("CAL_RIGHT,value=");
@@ -378,7 +408,8 @@ void runCalibration() {
         Serial.print(",jitter=");
         Serial.println(stable_max - stable_min);
 
-        if (span < MIN_VALID_SPAN) {
+        if (span < MIN_VALID_SPAN ||
+            (long)(measured_right - measured_left) * (DEFAULT_RIGHT - DEFAULT_LEFT) <= 0) {
           calibrationFail("span_too_small");
           break;
         }
@@ -390,7 +421,7 @@ void runCalibration() {
       break;
     }
 
-    case 6: {  // use TEMPORARY measured endpoints only to return to midpoint
+    case 6: {  // return to the baseline straight-position fraction
       if (now - state_start_ms > CENTER_TIMEOUT_MS) {
         calibrationFail("center_timeout");
         break;
@@ -414,8 +445,8 @@ void runCalibration() {
         break;
       }
 
-      const int current_step = potToStep(p, measured_left, measured_right);
-      if (current_step > 0) {
+      const bool rightOfCenter = measured_right > measured_left ? p > measured_center : p < measured_center;
+      if (rightOfCenter) {
         steerLeft(CAL_STEERING_SPEED);
       } else {
         steerRight(CAL_STEERING_SPEED);
@@ -431,13 +462,18 @@ void runCalibration() {
 void processIncomingByte(const byte inByte) {
   static char input_line[MAX_INPUT];
   static unsigned int input_pos = 0;
+  static bool overflow = false;
 
   if (inByte == '\n') {
     input_line[input_pos] = '\0';
-    processData(input_line);
+    if (!overflow) processData(input_line);
     input_pos = 0;
-  } else if (inByte != '\r' && input_pos < MAX_INPUT - 1) {
-    input_line[input_pos++] = (char)inByte;
+    overflow = false;
+  } else if (inByte == 0) {
+    overflow = true;  // Embedded NUL must not hide trailing payload.
+  } else if (inByte != '\r') {
+    if (input_pos < MAX_INPUT - 1) input_line[input_pos++] = (char)inByte;
+    else overflow = true;
   }
 }
 
@@ -471,23 +507,19 @@ void processData(const char *data) {
       return;
     }
 
-    const char *comma = strchr(data + 1, ',');
-    if (!comma) {
-      Serial.println("CAL_ERROR,reason=bad_apply_format");
-      return;
-    }
-
-    const int new_left = atoi(data + 1);
-    const int new_right = atoi(comma + 1);
-    if (new_left < 0 || new_left > 1023 || new_right < 0 || new_right > 1023 ||
-        abs(new_left - new_right) < MIN_VALID_SPAN) {
+    int new_left, new_right;
+    const char *cursor = data + 1;
+    if (!parseValue(cursor, ',', 0, 1023, new_left) ||
+        !parseValue(cursor, '\0', 0, 1023, new_right) ||
+        abs(new_left - new_right) < MIN_VALID_SPAN ||
+        (long)(new_right - new_left) * (DEFAULT_RIGHT - DEFAULT_LEFT) <= 0) {
       Serial.println("CAL_ERROR,reason=bad_apply_values");
       return;
     }
 
     runtime_left = new_left;
     runtime_right = new_right;
-    runtime_center = (runtime_left + runtime_right) / 2;
+    runtime_center = correctedCenter(runtime_left, runtime_right);
     calibration_waiting_apply = false;
     target_angle = 0;
 
@@ -500,17 +532,36 @@ void processData(const char *data) {
     return;
   }
 
-  // Ignore driving commands while steering calibration is physically moving.
-  if (calibration_running || calibration_waiting_apply) {
-    return;
+  // Strictly validate complete motion frames before refreshing the watchdog.
+  int steering, left, right;
+  if (data[0] != 's') return;
+  const char *cursor = data + 1;
+  if (!parseValue(cursor, 'l', -MAX_STEERING_STEP, MAX_STEERING_STEP, steering) ||
+      !parseValue(cursor, 'r', -255, 255, left) ||
+      !parseValue(cursor, '\0', -255, 255, right)) return;
+  last_command_time = millis();
+  // Zero frames from the bridge are the heartbeat during explicit calibration.
+  if (calibration_running || calibration_waiting_apply) return;
+  target_angle = steering;
+  left_speed = left;
+  right_speed = right;
+  command_active = true;
+}
+
+// Bounded integer parser: no atoi truncation or AVR int overflow on bad input.
+bool parseValue(const char *&cursor, char separator, int low, int high, int &value) {
+  bool negative = *cursor == '-';
+  if (negative || *cursor == '+') ++cursor;
+  if (*cursor < '0' || *cursor > '9') return false;
+  long magnitude = 0;
+  while (*cursor >= '0' && *cursor <= '9') {
+    magnitude = magnitude * 10 + (*cursor++ - '0');
+    if (magnitude > 1023) return false;
   }
-
-  const char *s = strchr(data, 's');
-  const char *l = strchr(data, 'l');
-  const char *r = strchr(data, 'r');
-  if (!s || !l || !r) return;
-
-  target_angle = constrain(atoi(s + 1), -MAX_STEERING_STEP, MAX_STEERING_STEP);
-  left_speed = constrain(atoi(l + 1), -255, 255);
-  right_speed = constrain(atoi(r + 1), -255, 255);
+  if (*cursor != separator) return false;
+  if (separator != '\0') ++cursor;
+  long result = negative ? -magnitude : magnitude;
+  if (result < low || result > high) return false;
+  value = (int)result;
+  return true;
 }
