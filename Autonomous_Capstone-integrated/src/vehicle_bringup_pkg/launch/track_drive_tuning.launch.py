@@ -14,6 +14,11 @@ from vehicle_bringup_pkg.tuning_configuration import (
 )
 
 
+# Track driving intentionally has no longitudinal-speed tuning.  While armed,
+# both drive motors receive this same PWM command (safety stops still send 0).
+FIXED_TRACK_SPEED = 250
+
+
 def _as_bool(context, name):
     value = LaunchConfiguration(name).perform(context).strip().lower()
     if value in ('1', 'true', 'yes', 'on'):
@@ -36,6 +41,8 @@ def _launch_nodes(context):
     cal_tolerance = LaunchConfiguration('calibration_tolerance')
     enable_visualization = _as_bool(context, 'enable_visualization')
     show_bev = _as_bool(context, 'show_bev')
+    profile = _as_bool(context, 'profile')
+    debug_log = _as_bool(context, 'debug_log')
     controller_parameters = dict(tuning_parameters)
     controller_parameters.update({
         # Keep the real-time track stream isolated from legacy /image_raw
@@ -44,15 +51,20 @@ def _launch_nodes(context):
         'cmd_topic': 'topic_control_signal',
         'device': device,
         'start_enabled': True,
+        'speed': FIXED_TRACK_SPEED,
+        'allow_speed_tuning': False,
         'steering_sign': ParameterValue(steering_sign, value_type=float),
         'max_steering': 7.0,
         'publish_debug': enable_visualization,
         'publish_bev_debug': show_bev,
-        'debug_log': True,
-        'profile': True,
+        'debug_log': debug_log,
+        'profile': profile,
         'profile_input_fps': 30.0,
         'profile_report_interval': 100,
-        'image_reliability': 'best_effort',
+        # 640x480 BGR8 is about 0.92 MB per frame.  With BEST_EFFORT, losing
+        # one DDS fragment discards the entire image; isolated measurements on
+        # this host dropped receiver throughput from ~30 Hz to ~15 Hz.
+        'image_reliability': 'reliable',
     })
 
     return [
@@ -68,13 +80,15 @@ def _launch_nodes(context):
                 'width': 640,
                 'height': 480,
                 'fps': 30.0,
-                'fourcc': 'YUYV',
+                # Keep USB 2.0 transport compressed.  ROS still publishes BGR8,
+                # so DDS reliability below remains necessary.
+                'fourcc': 'MJPG',
                 'buffer_size': 1,
                 'reopen_after_failures': 2,
                 'disable_dynamic_framerate': True,
-                # Raw 640x480 BGR frames are large. On the isolated track topic,
-                # prefer the newest frame instead of waiting for retransmission.
-                'reliability': 'best_effort',
+                # Match the controller subscription.  Depth remains 1 in the
+                # camera node so retransmission cannot build a frame backlog.
+                'reliability': 'reliable',
                 'show': False,
             }],
         ),
@@ -108,6 +122,8 @@ def _launch_nodes(context):
                 'debug_topic': '/track_debug_image',
                 'save_path': str(save_path),
                 'loaded_config_path': str(selected_config),
+                'allow_speed_tuning': False,
+                'fixed_speed': FIXED_TRACK_SPEED,
             }],
         ),
         # This is the unchanged actuator safety chain. TrackTunerNode has no
@@ -178,8 +194,22 @@ def generate_launch_description():
             default_value=VehicleDefault('arduino.port', '/dev/arduino'),
         ),
         DeclareLaunchArgument('device', default_value='cuda:0'),
-        DeclareLaunchArgument('enable_visualization', default_value='true'),
+        DeclareLaunchArgument(
+            'enable_visualization',
+            default_value='false',
+            description='Publish/display debug images; disabled for minimum control latency',
+        ),
         DeclareLaunchArgument('show_bev', default_value='true'),
+        DeclareLaunchArgument(
+            'profile',
+            default_value='false',
+            description='Collect and periodically report controller timing statistics',
+        ),
+        DeclareLaunchArgument(
+            'debug_log',
+            default_value='false',
+            description='Print detailed per-frame controller state',
+        ),
         DeclareLaunchArgument('steering_sign', default_value='1.0'),
         DeclareLaunchArgument(
             'calibration_tolerance',

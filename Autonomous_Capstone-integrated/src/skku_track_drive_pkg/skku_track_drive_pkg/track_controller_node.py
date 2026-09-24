@@ -71,6 +71,7 @@ class TrackControllerNode(Node):
         # Vehicle/control. Current Arduino firmware uses -7..+7 and negative=left.
         self.declare_parameter('max_steering', 7.0)
         self.declare_parameter('speed', 255)
+        self.declare_parameter('allow_speed_tuning', True)
         self.declare_parameter('steering_sign', 1.0)
         self.declare_parameter('max_steering_angle', 50.0)
         self.declare_parameter('stanley_gain', 0.02)
@@ -121,6 +122,9 @@ class TrackControllerNode(Node):
         conf = float(self.get_parameter('confidence').value)
 
         self.speed = int(self.get_parameter('speed').value)
+        self.allow_speed_tuning = bool(
+            self.get_parameter('allow_speed_tuning').value
+        )
         self.bridge = CvBridge()
         self._warned_generic_bgr_encoding = False
         self.last_t = None
@@ -198,9 +202,16 @@ class TrackControllerNode(Node):
             reliability=ReliabilityPolicy.RELIABLE,
             history=HistoryPolicy.KEEP_LAST,
         )
+        debug_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            history=HistoryPolicy.KEEP_LAST,
+        )
         self.sub = self.create_subscription(Image, image_topic, self.on_image, image_qos)
         self.cmd_pub = self.create_publisher(RosMotionCommand, cmd_topic, cmd_qos)
-        self.debug_pub = self.create_publisher(Image, debug_topic, cmd_qos)
+        # Debug images are large and optional.  Never let a slow GUI apply
+        # reliable-DDS backpressure to the control callback.
+        self.debug_pub = self.create_publisher(Image, debug_topic, debug_qos)
         self.enable_srv = self.create_service(SetBool, '~/set_enabled', self.on_set_enabled)
 
         self.get_logger().info(
@@ -307,6 +318,13 @@ class TrackControllerNode(Node):
             )
 
     def on_tuning_parameters(self, parameters):
+        if not self.allow_speed_tuning and any(
+            parameter.name == 'speed' for parameter in parameters
+        ):
+            return SetParametersResult(
+                successful=False,
+                reason='speed is fixed for this launch',
+            )
         display_parameter_names = {'publish_debug', 'publish_bev_debug'}
         restart_only = [
             parameter.name
@@ -506,6 +524,23 @@ class TrackControllerNode(Node):
         msg.steering = 0
         msg.left_speed = 0
         msg.right_speed = 0
+        self.cmd_pub.publish(msg)
+
+    def publish_perception_fallback(self):
+        """Keep driving through a transient perception/pipeline failure.
+
+        A broken lane mask must not inject a zero-speed command between valid
+        frames.  Hold the most recent valid steering command and keep the
+        configured, equal motor command.  Explicit disable/arm safety paths
+        still use ``publish_stop`` and remain unchanged.
+        """
+        if not self.enabled:
+            self.publish_stop()
+            return
+        msg = RosMotionCommand()
+        msg.steering = int(max(-7, min(7, self.motion.last_target_steer)))
+        msg.left_speed = int(max(-255, min(255, self.speed)))
+        msg.right_speed = int(max(-255, min(255, self.speed)))
         self.cmd_pub.publish(msg)
 
     @staticmethod
@@ -856,8 +891,11 @@ class TrackControllerNode(Node):
                 })
 
         except Exception as exc:
-            self.get_logger().error(f'Track pipeline error: {type(exc).__name__}: {exc}')
-            self.publish_stop()
+            self.get_logger().error(
+                f'Track pipeline error: {type(exc).__name__}: {exc}; '
+                'holding last steering and configured speed'
+            )
+            self.publish_perception_fallback()
 
     def destroy_node(self):
         try:

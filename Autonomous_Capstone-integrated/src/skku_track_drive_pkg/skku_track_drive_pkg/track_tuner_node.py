@@ -76,7 +76,6 @@ TRACKBARS = {
     ),
 }
 DISPLAY_PARAMETERS = ('publish_debug', 'publish_bev_debug')
-MANAGED_PARAMETERS = tuple(TRACKBARS) + DISPLAY_PARAMETERS
 
 
 class TrackTunerNode(Node):
@@ -91,10 +90,20 @@ class TrackTunerNode(Node):
             'save_path', str(Path('~/.config/autodrive/track_tuning.yaml').expanduser())
         )
         self.declare_parameter('loaded_config_path', '')
+        self.declare_parameter('allow_speed_tuning', True)
+        self.declare_parameter('fixed_speed', 250)
 
         self.target_node = str(self.get_parameter('target_node').value).rstrip('/')
         self.save_path = Path(str(self.get_parameter('save_path').value)).expanduser()
         self.loaded_config_path = str(self.get_parameter('loaded_config_path').value)
+        self.allow_speed_tuning = bool(
+            self.get_parameter('allow_speed_tuning').value
+        )
+        self.fixed_speed = int(self.get_parameter('fixed_speed').value)
+        self.trackbars = dict(TRACKBARS)
+        if not self.allow_speed_tuning:
+            self.trackbars.pop('speed')
+        self.managed_parameters = tuple(self.trackbars) + DISPLAY_PARAMETERS
 
         self.get_client = self.create_client(
             GetParameters, f'{self.target_node}/get_parameters'
@@ -108,23 +117,23 @@ class TrackTunerNode(Node):
             self.on_parameter_event,
             qos_profile_parameter_events,
         )
-        cmd_qos = QoSProfile(
+        monitor_qos = QoSProfile(
             depth=1,
-            reliability=ReliabilityPolicy.RELIABLE,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
             history=HistoryPolicy.KEEP_LAST,
         )
         self.cmd_sub = self.create_subscription(
             MotionCommand,
             str(self.get_parameter('cmd_topic').value),
             self.on_command,
-            cmd_qos,
+            monitor_qos,
         )
         self.bridge = CvBridge()
         self.debug_sub = self.create_subscription(
             Image,
             str(self.get_parameter('debug_topic').value),
             self.on_debug_image,
-            cmd_qos,
+            monitor_qos,
         )
 
         self.current_values = {}
@@ -175,7 +184,7 @@ class TrackTunerNode(Node):
             return
         changed = {}
         for parameter_message in event.changed_parameters:
-            if parameter_message.name in MANAGED_PARAMETERS:
+            if parameter_message.name in self.managed_parameters:
                 changed[parameter_message.name] = Parameter.from_parameter_msg(
                     parameter_message
                 ).value
@@ -187,7 +196,7 @@ class TrackTunerNode(Node):
 
     def _request_initial_values(self):
         request = GetParameters.Request()
-        request.names = list(MANAGED_PARAMETERS)
+        request.names = list(self.managed_parameters)
         self._get_future = self.get_client.call_async(request)
         self._get_future.add_done_callback(self._on_initial_values)
 
@@ -196,7 +205,7 @@ class TrackTunerNode(Node):
             response = future.result()
             values = {
                 name: parameter_value_to_python(value)
-                for name, value in zip(MANAGED_PARAMETERS, response.values)
+                for name, value in zip(self.managed_parameters, response.values)
             }
         except Exception as exc:
             self.get_logger().error(f'Failed to read tuning parameters: {exc}')
@@ -209,10 +218,9 @@ class TrackTunerNode(Node):
         rendered = ', '.join(f'{name}={value}' for name, value in values.items())
         self.get_logger().info(f'Initial tuning parameters: {rendered}')
 
-    @staticmethod
-    def _position_for(name, value):
-        maximum = TRACKBARS[name][1]
-        position = TRACKBARS[name][3](value)
+    def _position_for(self, name, value):
+        maximum = self.trackbars[name][1]
+        position = self.trackbars[name][3](value)
         return max(0, min(maximum, int(position)))
 
     def _create_ui(self):
@@ -220,7 +228,7 @@ class TrackTunerNode(Node):
             cv2.namedWindow(TUNER_WINDOW_NAME, cv2.WINDOW_NORMAL)
             cv2.resizeWindow(TUNER_WINDOW_NAME, 900, 720)
             self._initializing_ui = True
-            for name, (label, maximum, _decode, _encode) in TRACKBARS.items():
+            for name, (label, maximum, _decode, _encode) in self.trackbars.items():
                 position = self._position_for(name, self.current_values[name])
                 cv2.createTrackbar(
                     label,
@@ -241,16 +249,16 @@ class TrackTunerNode(Node):
     def _on_trackbar(self, name, position):
         if self._initializing_ui:
             return
-        self.desired_values[name] = TRACKBARS[name][2](position)
+        self.desired_values[name] = self.trackbars[name][2](position)
 
     def _set_trackbar_positions(self):
         if not self._ui_ready:
             return
         self._initializing_ui = True
-        for name in TRACKBARS:
+        for name in self.trackbars:
             value = self.desired_values[name]
             cv2.setTrackbarPos(
-                TRACKBARS[name][0],
+                self.trackbars[name][0],
                 TUNER_WINDOW_NAME,
                 self._position_for(name, value),
             )
@@ -328,7 +336,7 @@ class TrackTunerNode(Node):
             raise
 
     def save(self):
-        values = {name: self.desired_values[name] for name in TRACKBARS}
+        values = {name: self.desired_values[name] for name in self.trackbars}
         self.write_yaml_atomic(self.save_path, values)
         self.get_logger().info(f'Saved tuning parameters to:\n{self.save_path}')
         for name, value in values.items():
@@ -342,7 +350,11 @@ class TrackTunerNode(Node):
                 f'Debug: {"ON" if self.desired_values.get("publish_debug") else "OFF"}   '
                 f'BEV: {"ON" if self.desired_values.get("publish_bev_debug") else "OFF"}'
             ),
-            f'configured speed: {self.desired_values.get("speed", "-")}',
+            (
+                f'configured speed: {self.desired_values.get("speed", "-")}'
+                if self.allow_speed_tuning
+                else f'fixed speed: {self.fixed_speed} (longitudinal tuning disabled)'
+            ),
             (
                 f'command steering: {self.current_steering:+d}   '
                 f'L/R speed: {self.current_left_speed}/{self.current_right_speed}'

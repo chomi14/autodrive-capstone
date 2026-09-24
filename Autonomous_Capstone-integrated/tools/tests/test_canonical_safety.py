@@ -9,6 +9,8 @@ from unittest.mock import Mock, patch
 import cv2
 import numpy as np
 from launch import LaunchContext
+from launch_ros.utilities import evaluate_parameters
+from rclpy.parameter import Parameter
 from sensor_bringup_pkg.camera_publisher_node import CameraPublisherNode
 from vehicle_bringup_pkg.configuration import VehicleDefault
 from vehicle_io_pkg.serial_sender_node import SerialSenderNode
@@ -21,6 +23,45 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class CanonicalSafetyTests(unittest.TestCase):
+    def test_track_tuning_uses_reliable_latest_frame_transport(self):
+        path = ROOT / 'src/vehicle_bringup_pkg/launch/track_drive_tuning.launch.py'
+        spec = importlib.util.spec_from_file_location('track_tuning_launch_test', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        context = LaunchContext()
+        context.launch_configurations.update({
+            'camera_device': '/dev/video-test',
+            'lidar_port': '/dev/lidar-test',
+            'lidar_rotation': '180',
+            'use_lidar': 'false',
+            'arduino_port': '/dev/arduino-test',
+            'device': 'cpu',
+            'steering_sign': '1',
+            'calibration_tolerance': '35',
+            'enable_visualization': 'false',
+            'show_bev': 'false',
+            'profile': 'false',
+            'debug_log': 'false',
+            'arduino_baud': '115200',
+            'auto_calibrate': 'false',
+        })
+        tuning = ({'speed': 80}, Path('/tmp/in'), Path('/tmp/out'), 'test')
+        with patch.object(module, 'resolve_tuning', return_value=tuning):
+            nodes = module._launch_nodes(context)
+        parameters = {
+            getattr(node, '_Node__node_name', ''): evaluate_parameters(
+                context, getattr(node, '_Node__parameters')
+            )[0]
+            for node in nodes
+            if hasattr(node, '_Node__parameters')
+        }
+        camera = parameters['camera_publisher_node']
+        controller = parameters['track_controller_node']
+        self.assertEqual(camera['fourcc'], 'MJPG')
+        self.assertEqual(camera['reliability'], 'reliable')
+        self.assertEqual(controller['image_reliability'], 'reliable')
+        self.assertFalse(controller['publish_debug'])
+
     def test_profile_and_fallback(self):
         with tempfile.TemporaryDirectory() as tmp:
             share = Path(tmp)
@@ -140,6 +181,27 @@ class CanonicalSafetyTests(unittest.TestCase):
         self.assertEqual(command.steering, -5)
         self.assertEqual(command.left_speed, 255)
         self.assertEqual(command.right_speed, 255)
+
+    def test_fixed_track_speed_rejects_runtime_changes(self):
+        node = object.__new__(TrackControllerNode)
+        node.allow_speed_tuning = False
+        result = TrackControllerNode.on_tuning_parameters(
+            node, [Parameter('speed', value=80)]
+        )
+        self.assertFalse(result.successful)
+        self.assertEqual(result.reason, 'speed is fixed for this launch')
+
+    def test_perception_failure_holds_steering_and_speed(self):
+        node = object.__new__(TrackControllerNode)
+        node.enabled = True
+        node.speed = 250
+        node.motion = SimpleNamespace(last_target_steer=-5)
+        node.cmd_pub = Mock()
+        TrackControllerNode.publish_perception_fallback(node)
+        command = node.cmd_pub.publish.call_args.args[0]
+        self.assertEqual(command.steering, -5)
+        self.assertEqual(command.left_speed, 250)
+        self.assertEqual(command.right_speed, 250)
 
     def test_camera_requests_configured_transport_and_single_buffer(self):
         capture = Mock()
