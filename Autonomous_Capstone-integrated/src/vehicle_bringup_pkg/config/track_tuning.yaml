@@ -5,7 +5,7 @@ track_controller_node:
     stanley_gain: 0.020
     heading_gain: 0.60
     lookahead_index: 10
-
+    car_center_x: 325.0
     # Perception and lane extraction
     confidence: 0.50
     bev_top_shift: -8

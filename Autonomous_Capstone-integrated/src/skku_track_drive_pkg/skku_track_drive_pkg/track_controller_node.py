@@ -79,7 +79,7 @@ class TrackControllerNode(Node):
         self.declare_parameter('lookahead_index', 10)
         self.declare_parameter('heading_step', 3)
         self.declare_parameter('heading_gain', 0.6)
-        self.declare_parameter('car_center_x', 320.0)
+        self.declare_parameter('car_center_x', 340.0)
         self.declare_parameter('car_center_y', 179.0)
 
         # Lane/BEV values copied from the summer track-driving config.

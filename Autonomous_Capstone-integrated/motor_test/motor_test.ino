@@ -17,8 +17,8 @@
 // ------------------------------------------------------------
 
 // 조향 모터 드라이버
-const int STEERING_1 = 3;
-const int STEERING_2 = 2;
+const int STEERING_1 = 2;
+const int STEERING_2 = 3;
 
 // 오른쪽 구동 모터 드라이버
 const int FORWARD_RIGHT_1 = 4;
