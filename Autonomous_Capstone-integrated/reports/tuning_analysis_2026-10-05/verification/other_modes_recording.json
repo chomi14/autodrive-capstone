@@ -1,0 +1,32 @@
+{
+  "perpendicular": {
+    "rows": 60,
+    "parameter_snapshot": true,
+    "serial_or_gate_started": false,
+    "calibration_output_matches_arm_state": null,
+    "geometry_confirmed_unchanged": true,
+    "not_applicable_checks": [
+      "calibration_output_matches_arm_state"
+    ]
+  },
+  "parallel": {
+    "rows": 63,
+    "parameter_snapshot": true,
+    "serial_or_gate_started": false,
+    "calibration_output_matches_arm_state": null,
+    "geometry_confirmed_unchanged": true,
+    "not_applicable_checks": [
+      "calibration_output_matches_arm_state"
+    ]
+  },
+  "calibration": {
+    "rows": 55,
+    "parameter_snapshot": true,
+    "serial_or_gate_started": false,
+    "calibration_output_matches_arm_state": true,
+    "geometry_confirmed_unchanged": null,
+    "not_applicable_checks": [
+      "geometry_confirmed_unchanged"
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "track": {
+    "two_second_inference_delay": {
+      "observed_stall_s": 1.25,
+      "motion_writes": 25,
+      "max_serial_gap_s": 0.0502,
+      "health_independent": true,
+      "armed": true
+    },
+    "s_during_delay": {
+      "direct_stop": "X",
+      "late_result_keeps_disarmed": true,
+      "fresh_w_required": true
+    },
+    "camera_gap_s": 1.2,
+    "intentional_stop_held": true,
+    "controller_ctrl_c_stop_s": 0.0225,
+    "controller_sigstop_stop_s": 0.7004,
+    "controller_sigkill_stop_s": 0.7008,
+    "process_loss_bounded_and_new_w_required": true,
+    "controller_lease_s": 0.75
+  },
+  "mission": {
+    "two_second_inference_delay": {
+      "observed_stall_s": 1.25,
+      "motion_writes": 25,
+      "max_serial_gap_s": 0.0505,
+      "health_independent": true,
+      "armed": true
+    },
+    "s_during_delay": {
+      "direct_stop": "X",
+      "late_result_keeps_disarmed": true,
+      "fresh_w_required": true
+    },
+    "camera_gap_s": 1.2,
+    "intentional_stop_held": true,
+    "controller_ctrl_c_stop_s": 0.0405,
+    "controller_sigstop_stop_s": 0.7016,
+    "controller_sigkill_stop_s": 0.6893,
+    "process_loss_bounded_and_new_w_required": true,
+    "controller_lease_s": 0.75
+  }
+}

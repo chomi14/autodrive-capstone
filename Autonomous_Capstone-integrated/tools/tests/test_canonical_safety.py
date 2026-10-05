@@ -44,6 +44,8 @@ class CanonicalSafetyTests(unittest.TestCase):
             'debug_log': 'false',
             'arduino_baud': '115200',
             'auto_calibrate': 'false',
+            'command_timeout': '0.0',
+            'ui_timeout': '0.75',
         })
         tuning = ({'speed': 80}, Path('/tmp/in'), Path('/tmp/out'), 'test')
         with patch.object(module, 'resolve_tuning', return_value=tuning):
@@ -61,6 +63,9 @@ class CanonicalSafetyTests(unittest.TestCase):
         self.assertEqual(camera['reliability'], 'reliable')
         self.assertEqual(controller['image_reliability'], 'reliable')
         self.assertFalse(controller['publish_debug'])
+        self.assertEqual(parameters['serial_sender_node_v2']['command_timeout'], 0.0)
+        self.assertTrue(parameters['serial_sender_node_v2']['require_tuner_heartbeat'])
+        self.assertTrue(parameters['serial_sender_node_v2']['require_controller_heartbeat'])
 
     def test_profile_and_fallback(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -94,13 +99,17 @@ class CanonicalSafetyTests(unittest.TestCase):
             self.assertEqual(context.launch_configurations['camera_device'], '/dev/override')
             if 'auto_calibrate' in context.launch_configurations:
                 self.assertEqual(context.launch_configurations['auto_calibrate'], 'false')
+            if path.name == 'track_drive_tuning.launch.py':
+                self.assertEqual(context.launch_configurations['command_timeout'], '0.0')
 
     def test_gate_and_calibration_heartbeat(self):
         node = object.__new__(SerialSenderNode)
         node.ser = Mock(is_open=True)
+        node.ser.write.side_effect = len
         node.calibration_state = 'READY'
         node.calibration_ready = True
         node.armed = False
+        node._stop_logged = True
         command = MotionCommand(steering=3, left_speed=80, right_speed=80)
         node.write_gated_command(command)
         node.ser.write.assert_called_with(b'X\n')
@@ -191,7 +200,7 @@ class CanonicalSafetyTests(unittest.TestCase):
         self.assertFalse(result.successful)
         self.assertEqual(result.reason, 'speed is fixed for this launch')
 
-    def test_perception_failure_holds_steering_and_speed(self):
+    def test_perception_failure_publishes_zero_command(self):
         node = object.__new__(TrackControllerNode)
         node.enabled = True
         node.speed = 250
@@ -199,9 +208,9 @@ class CanonicalSafetyTests(unittest.TestCase):
         node.cmd_pub = Mock()
         TrackControllerNode.publish_perception_fallback(node)
         command = node.cmd_pub.publish.call_args.args[0]
-        self.assertEqual(command.steering, -5)
-        self.assertEqual(command.left_speed, 250)
-        self.assertEqual(command.right_speed, 250)
+        self.assertEqual(command.steering, 0)
+        self.assertEqual(command.left_speed, 0)
+        self.assertEqual(command.right_speed, 0)
 
     def test_camera_requests_configured_transport_and_single_buffer(self):
         capture = Mock()

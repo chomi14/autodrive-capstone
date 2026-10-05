@@ -1,0 +1,134 @@
+{
+  "track": {
+    "replay": {
+      "results": 97,
+      "pipeline": {
+        "count": 87,
+        "median_ms": 23.119719000533223,
+        "p95_ms": 36.66200279985787,
+        "max_ms": 48.50363799778279
+      },
+      "inference": {
+        "count": 87,
+        "median_ms": 16.61579599021934,
+        "p95_ms": 28.706849800073545,
+        "max_ms": 41.93247300281655
+      },
+      "analysis_build": {
+        "count": 87,
+        "median_ms": 0.11438199726399034,
+        "p95_ms": 0.19215759966755294,
+        "max_ms": 0.3175730089424178
+      },
+      "serial_or_gate_started": false,
+      "csv_rows": 97,
+      "bag_frames": 99,
+      "source_stamp_joined_rows": 97,
+      "initial_speed": 250,
+      "comparison": {
+        "original_frames": 99,
+        "replayed_frames": 97,
+        "joined_frames": 97,
+        "frames_with_any_difference": 0
+      }
+    },
+    "matched": {
+      "results": 99,
+      "pipeline": {
+        "count": 89,
+        "median_ms": 22.394761006580666,
+        "p95_ms": 33.054491394432254,
+        "max_ms": 47.43578399938997
+      },
+      "inference": {
+        "count": 89,
+        "median_ms": 16.8225759989582,
+        "p95_ms": 25.83545460365712,
+        "max_ms": 32.67292300006375
+      },
+      "analysis_build": {
+        "count": 89,
+        "median_ms": 0.11501200788188726,
+        "p95_ms": 0.14237699797376988,
+        "max_ms": 0.28131098952144384
+      },
+      "serial_or_gate_started": false,
+      "csv_rows": 99,
+      "bag_frames": 99,
+      "source_stamp_joined_rows": 99,
+      "initial_speed": 250,
+      "comparison": {
+        "original_frames": 99,
+        "replayed_frames": 99,
+        "joined_frames": 99,
+        "frames_with_any_difference": 0
+      }
+    }
+  },
+  "mission": {
+    "replay": {
+      "results": 97,
+      "pipeline": {
+        "count": 87,
+        "median_ms": 21.500589995412156,
+        "p95_ms": 34.230819894582964,
+        "max_ms": 48.57185400032904
+      },
+      "inference": {
+        "count": 87,
+        "median_ms": 14.962317000026815,
+        "p95_ms": 26.75803720048862,
+        "max_ms": 37.46953999507241
+      },
+      "analysis_build": {
+        "count": 87,
+        "median_ms": 0.1319330040132627,
+        "p95_ms": 0.17610169743420556,
+        "max_ms": 0.2535210078349337
+      },
+      "serial_or_gate_started": false,
+      "csv_rows": 97,
+      "bag_frames": 99,
+      "source_stamp_joined_rows": 97,
+      "initial_speed": 80,
+      "comparison": {
+        "original_frames": 99,
+        "replayed_frames": 97,
+        "joined_frames": 96,
+        "frames_with_any_difference": 3
+      }
+    },
+    "matched": {
+      "results": 99,
+      "pipeline": {
+        "count": 89,
+        "median_ms": 21.464879988343455,
+        "p95_ms": 33.67688099970109,
+        "max_ms": 46.02671800239477
+      },
+      "inference": {
+        "count": 89,
+        "median_ms": 15.098471994861029,
+        "p95_ms": 26.07993320270907,
+        "max_ms": 35.912313003791496
+      },
+      "analysis_build": {
+        "count": 89,
+        "median_ms": 0.13331200170796365,
+        "p95_ms": 0.16474080039188266,
+        "max_ms": 0.3085679927607998
+      },
+      "serial_or_gate_started": false,
+      "csv_rows": 99,
+      "bag_frames": 99,
+      "source_stamp_joined_rows": 99,
+      "initial_speed": 80,
+      "comparison": {
+        "original_frames": 99,
+        "replayed_frames": 99,
+        "joined_frames": 99,
+        "frames_with_any_difference": 0
+      }
+    }
+  }
+}

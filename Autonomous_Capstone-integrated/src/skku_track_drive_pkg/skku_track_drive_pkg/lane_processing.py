@@ -27,6 +27,7 @@ class LaneInfoExtractor:
                  max_center_jump_px: float = 80.0, max_missed_frames: int = 12,
                  min_component_area: int = 250):
         self.show_image = show_image
+        self.lane_class_name = 'lane2'
         self.capture_debug = capture_debug
         self.last_debug = None
         self.bev_top_shift = bev_top_shift
@@ -64,7 +65,7 @@ class LaneInfoExtractor:
         if len(detections.detections) == 0:
             return self._held_lane_info()
 
-        lane2_mask = CPFL.draw_edges(detections, cls_name="lane2", color=255)
+        lane2_mask = CPFL.draw_edges(detections, cls_name=self.lane_class_name, color=255)
         h, w = lane2_mask.shape[:2]
 
         # 계산은 원래 640 캔버스에서 수행한다. 그래야 경계(x=0, x=w-1) 접촉 판정이

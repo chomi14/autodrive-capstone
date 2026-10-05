@@ -1,0 +1,80 @@
+{
+  "track": {
+    "short": {
+      "one_frame_delay_s": 2.0,
+      "short_camera_pause_s": 1.0,
+      "no_slowdown_or_stop": true,
+      "max_serial_gap_s": 0.0508
+    },
+    "worker_hang": {
+      "stop_after_s": 5.9353,
+      "pwm_levels": [
+        100,
+        0
+      ],
+      "steering_preserved": true,
+      "controller_still_alive": true,
+      "reason": "perception stale: inference worker/result stopped",
+      "recovery_needs_new_w": true
+    },
+    "camera_stop": {
+      "stop_after_s": 5.9825,
+      "pwm_levels": [
+        100,
+        0
+      ],
+      "steering_preserved": true,
+      "controller_still_alive": true,
+      "reason": "perception stale: camera input stopped",
+      "recovery_needs_new_w": true
+    },
+    "process_exit": {
+      "controller_ctrl_c_stop_s": 0.0412,
+      "immediate_x_path": true
+    }
+  },
+  "mission": {
+    "short": {
+      "one_frame_delay_s": 2.0,
+      "short_camera_pause_s": 1.0,
+      "no_slowdown_or_stop": true,
+      "max_serial_gap_s": 0.051
+    },
+    "worker_hang": {
+      "stop_after_s": 5.9399,
+      "pwm_levels": [
+        100,
+        0
+      ],
+      "steering_preserved": true,
+      "controller_still_alive": true,
+      "reason": "perception stale: inference worker/result stopped",
+      "recovery_needs_new_w": true
+    },
+    "camera_stop": {
+      "stop_after_s": 5.9735,
+      "pwm_levels": [
+        100,
+        0
+      ],
+      "steering_preserved": true,
+      "controller_still_alive": true,
+      "reason": "perception stale: camera input stopped",
+      "recovery_needs_new_w": true
+    },
+    "process_exit": {
+      "controller_ctrl_c_stop_s": 0.0345,
+      "immediate_x_path": true
+    },
+    "intentional_zero": {
+      "stop_after_s": 5.9363,
+      "pwm_levels": [
+        0
+      ],
+      "steering_preserved": true,
+      "controller_still_alive": true,
+      "reason": "perception stale: inference worker/result stopped",
+      "recovery_needs_new_w": true
+    }
+  }
+}

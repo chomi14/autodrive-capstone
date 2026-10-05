@@ -8,16 +8,15 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 from vehicle_bringup_pkg.configuration import config_argument, VehicleDefault
+from vehicle_bringup_pkg.perception_policy import perception_arguments
+from vehicle_bringup_pkg.mode_launch import camera_node, lidar_node, vehicle_io_nodes, hardware_enabled, motor_enabled, preview_remappings, command_topic
 from vehicle_bringup_pkg.tuning_configuration import (
     resolve_tuning,
     tuning_launch_arguments,
 )
 
 
-# Track driving intentionally has no longitudinal-speed tuning.  While armed,
-# both drive motors receive this same PWM command (safety stops still send 0).
-FIXED_TRACK_SPEED = 250
-
+from vehicle_bringup_pkg.recording import recording_arguments, recording_nodes, analysis_enabled
 
 def _as_bool(context, name):
     value = LaunchConfiguration(name).perform(context).strip().lower()
@@ -48,17 +47,17 @@ def _launch_nodes(context):
         # Keep the real-time track stream isolated from legacy /image_raw
         # publishers, some of which label OpenCV frames as generic 8UC3.
         'image_topic': '/track/image_raw',
-        'cmd_topic': 'topic_control_signal',
+        'cmd_topic': command_topic(context),
         'device': device,
         'start_enabled': True,
-        'speed': FIXED_TRACK_SPEED,
-        'allow_speed_tuning': False,
+        'allow_speed_tuning': True,
         'steering_sign': ParameterValue(steering_sign, value_type=float),
         'max_steering': 7.0,
         'publish_debug': enable_visualization,
         'publish_bev_debug': show_bev,
         'debug_log': debug_log,
         'profile': profile,
+        'publish_analysis': analysis_enabled(context),
         'profile_input_fps': 30.0,
         'profile_report_interval': 100,
         # 640x480 BGR8 is about 0.92 MB per frame.  With BEST_EFFORT, losing
@@ -69,105 +68,53 @@ def _launch_nodes(context):
 
     return [
         LogInfo(msg=f'Using {config_source} tuning config: {selected_config}'),
-        Node(
-            package='sensor_bringup_pkg',
-            executable='camera_publisher_node',
-            name='camera_publisher_node',
-            output='screen',
-            parameters=[{
-                'device': camera_device,
-                'topic': '/track/image_raw',
-                'width': 640,
-                'height': 480,
-                'fps': 30.0,
-                # Keep USB 2.0 transport compressed.  ROS still publishes BGR8,
-                # so DDS reliability below remains necessary.
-                'fourcc': 'MJPG',
-                'buffer_size': 1,
-                'reopen_after_failures': 2,
-                'disable_dynamic_framerate': True,
-                # Match the controller subscription.  Depth remains 1 in the
-                # camera node so retransmission cannot build a frame backlog.
-                'reliability': 'reliable',
-                'show': False,
-            }],
-        ),
-        Node(
-            condition=IfCondition(use_lidar),
-            package='sensor_bringup_pkg',
-            executable='lidar_publisher_node_v2',
-            name='lidar_publisher_node_v2',
-            output='screen',
-            parameters=[{
-                'port': lidar_port,
-                'topic': 'lidar_raw',
-                'rotation_offset_deg': ParameterValue(lidar_rotation, value_type=float),
-            }],
-        ),
+        *([camera_node('/track/image_raw')] if hardware_enabled(context) else []),
+        *([lidar_node('lidar_raw')] if hardware_enabled(context) and _as_bool(context, 'use_lidar') else []),
         Node(
             package='skku_track_drive_pkg',
             executable='track_controller_node',
             name='track_controller_node',
             output='screen',
             parameters=[controller_parameters],
+            remappings=preview_remappings(context),
         ),
         Node(
             package='skku_track_drive_pkg',
+            condition=IfCondition(LaunchConfiguration('gui')),
             executable='track_tuner_node',
             name='track_tuner_node',
             output='screen',
             parameters=[{
                 'target_node': '/track_controller_node',
-                'cmd_topic': '/topic_control_signal',
+                'cmd_topic': command_topic(context),
                 'debug_topic': '/track_debug_image',
                 'save_path': str(save_path),
                 'loaded_config_path': str(selected_config),
-                'allow_speed_tuning': False,
-                'fixed_speed': FIXED_TRACK_SPEED,
+                'allow_speed_tuning': True,
             }],
+            remappings=preview_remappings(context),
         ),
-        # This is the unchanged actuator safety chain. TrackTunerNode has no
-        # serial/arm publisher and cannot bypass calibration_ready + armed.
-        Node(
-            package='vehicle_io_pkg',
-            executable='serial_sender_node_v2',
-            name='serial_sender_node_v2',
-            output='screen',
-            parameters=[{
-                'port': arduino_port,
-                'baud': ParameterValue(
-                    LaunchConfiguration('arduino_baud'), value_type=int
-                ),
-                'topic': 'topic_control_signal',
-                'arm_topic': 'vehicle/armed',
-                'ready_topic': 'vehicle/calibration_ready',
-                'auto_calibrate': ParameterValue(
-                    LaunchConfiguration('auto_calibrate'), value_type=bool
-                ),
-                'calibration_tolerance': ParameterValue(
-                    cal_tolerance, value_type=int
-                ),
-            }],
-        ),
-        Node(
-            package='vehicle_io_pkg',
-            executable='drive_arm_node',
-            name='drive_arm_node',
-            output='screen',
-            emulate_tty=True,
-            parameters=[{
-                'arm_topic': 'vehicle/armed',
-                'ready_topic': 'vehicle/calibration_ready',
-                'status_topic': 'vehicle/calibration_status',
-                'show_window': True,
-            }],
-        ),
+        # Tuner keys go through DriveArmNode. Both UI event loops must remain
+        # alive; only fresh W + calibration READY authorize serial motion.
+        *(vehicle_io_nodes(perception_mode='track') if motor_enabled(context) else []),
+        *recording_nodes(context, 'track'),
     ]
 
 
 def generate_launch_description():
     return LaunchDescription([
         config_argument(),
+        DeclareLaunchArgument('dry_run', default_value='false'),
+        DeclareLaunchArgument('sensors_only', default_value='false', description='Keep real sensors/GUI; omit vehicle serial and arm gate'),
+        DeclareLaunchArgument('gui', default_value='true'),
+        *perception_arguments('track'),
+        *recording_arguments(),
+        # No inference-age stop. Reuse ui_timeout for finite controller health
+        # when command_timeout is zero; serial itself still runs at 20 Hz.
+        DeclareLaunchArgument('command_timeout', default_value='0.0',
+                              description='Controller health lease; 0 disables inference age checking and uses ui_timeout for health'),
+        DeclareLaunchArgument('ui_timeout', default_value='0.75',
+                              description='Arm gate/tuner heartbeat timeout in seconds; disarms until fresh W'),
         DeclareLaunchArgument(
             'auto_calibrate',
             default_value=VehicleDefault('steering.auto_calibrate', False),
@@ -188,17 +135,18 @@ def generate_launch_description():
             'lidar_rotation',
             default_value=VehicleDefault('lidar.rotation_offset_deg', '180.0'),
         ),
-        DeclareLaunchArgument('use_lidar', default_value='true'),
+        DeclareLaunchArgument('use_lidar', default_value='false'),
         DeclareLaunchArgument(
             'arduino_port',
             default_value=VehicleDefault('arduino.port', '/dev/arduino'),
         ),
         DeclareLaunchArgument('device', default_value='cuda:0'),
         DeclareLaunchArgument(
-            'enable_visualization',
-            default_value='false',
+            'visualize',
+            default_value='True',
             description='Publish/display debug images; disabled for minimum control latency',
         ),
+        DeclareLaunchArgument('enable_visualization', default_value=LaunchConfiguration('visualize')),
         DeclareLaunchArgument('show_bev', default_value='true'),
         DeclareLaunchArgument(
             'profile',

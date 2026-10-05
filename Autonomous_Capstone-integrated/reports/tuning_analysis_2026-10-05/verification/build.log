@@ -1,0 +1,28 @@
+[0.292s] WARNING:colcon.colcon_core.package_selection:Some selected packages are already built in one or more underlay workspaces:
+	'sensor_bringup_pkg' is in: /home/autolab/autodrive_ws/Autonomous_Capstone-integrated/install/sensor_bringup_pkg
+	'vehicle_bringup_pkg' is in: /home/autolab/autodrive_ws/Autonomous_Capstone-integrated/install/vehicle_bringup_pkg
+	'vehicle_io_pkg' is in: /home/autolab/autodrive_ws/Autonomous_Capstone-integrated/install/vehicle_io_pkg
+	'lidar_perception_pkg' is in: /home/autolab/autodrive_ws/Autonomous_Capstone-integrated/install/lidar_perception_pkg
+If a package in a merged underlay workspace is overridden and it installs headers, then all packages in the overlay must sort their include directories by workspace order. Failure to do so may result in build failures or undefined behavior at run time.
+If the overridden package is used by another package in any underlay, then the overriding package in the overlay must be API and ABI compatible or undefined behavior at run time may occur.
+
+If you understand the risks and want to override a package anyways, add the following to the command line:
+	--allow-overriding lidar_perception_pkg sensor_bringup_pkg vehicle_bringup_pkg vehicle_io_pkg
+
+This may be promoted to an error in a future release of colcon-override-check.
+Starting >>> interfaces_pkg
+Starting >>> lidar_perception_pkg
+Starting >>> sensor_bringup_pkg
+Finished <<< interfaces_pkg [0.56s]
+Starting >>> manual_drive_pkg
+Starting >>> vehicle_io_pkg
+Finished <<< sensor_bringup_pkg [1.60s]
+Finished <<< lidar_perception_pkg [1.61s]
+Starting >>> skku_track_drive_pkg
+Finished <<< manual_drive_pkg [1.32s]
+Finished <<< vehicle_io_pkg [1.36s]
+Finished <<< skku_track_drive_pkg [1.05s]
+Starting >>> vehicle_bringup_pkg
+Finished <<< vehicle_bringup_pkg [1.06s]
+
+Summary: 7 packages finished [3.95s]

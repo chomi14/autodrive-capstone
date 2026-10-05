@@ -1,0 +1,586 @@
+{
+  "track": {
+    "parameter": "speed",
+    "accepted": 37,
+    "yaml": "/tmp/codex_four_modes_validation/track.saved.yaml",
+    "ros_readback": 37,
+    "status": {},
+    "command_speed": 37,
+    "windows": [
+      "Track Tuner"
+    ]
+  },
+  "mission": {
+    "parameter": "traffic_min_width",
+    "accepted": 42,
+    "yaml": "/tmp/codex_four_modes_validation/mission.saved.yaml",
+    "ros_readback": 42,
+    "status": {
+      "state": "NORMAL",
+      "target_lane": 2,
+      "traffic_color": "Green",
+      "color_ratio": 1.0,
+      "selected_color_ratio": 1.0,
+      "red_count": 0,
+      "green_count": 3,
+      "path_blocked": false,
+      "alternate_visible": true,
+      "alternate_blocked": false,
+      "stop": false,
+      "path_lane": 2,
+      "path_valid": true,
+      "camera_path": [
+        [
+          498.6878662109375,
+          402.42156982421875
+        ],
+        [
+          498.8522033691406,
+          402.8826904296875
+        ],
+        [
+          499.01715087890625,
+          403.3454895019531
+        ],
+        [
+          499.18267822265625,
+          403.80999755859375
+        ],
+        [
+          499.348876953125,
+          404.2762145996094
+        ],
+        [
+          499.515625,
+          404.744140625
+        ],
+        [
+          499.6830139160156,
+          405.21380615234375
+        ],
+        [
+          499.85101318359375,
+          405.6852111816406
+        ],
+        [
+          500.0196228027344,
+          406.1583557128906
+        ],
+        [
+          500.1888732910156,
+          406.63323974609375
+        ],
+        [
+          500.3587646484375,
+          407.1098937988281
+        ],
+        [
+          500.5292663574219,
+          407.5883483886719
+        ],
+        [
+          500.7004089355469,
+          408.0685729980469
+        ],
+        [
+          500.8721923828125,
+          408.55059814453125
+        ],
+        [
+          501.04461669921875,
+          409.034423828125
+        ],
+        [
+          501.2176818847656,
+          409.5200500488281
+        ],
+        [
+          501.3914489746094,
+          410.0075378417969
+        ],
+        [
+          501.5658264160156,
+          410.496826171875
+        ],
+        [
+          501.7408752441406,
+          410.98797607421875
+        ],
+        [
+          501.91656494140625,
+          411.4809875488281
+        ],
+        [
+          502.0929260253906,
+          411.9758605957031
+        ],
+        [
+          502.26995849609375,
+          412.4726257324219
+        ],
+        [
+          502.44769287109375,
+          412.9712829589844
+        ],
+        [
+          502.6260681152344,
+          413.4718017578125
+        ],
+        [
+          502.8051452636719,
+          413.9742736816406
+        ],
+        [
+          502.9848937988281,
+          414.4786376953125
+        ],
+        [
+          503.16534423828125,
+          414.9849548339844
+        ],
+        [
+          503.3464660644531,
+          415.4931945800781
+        ],
+        [
+          503.5283203125,
+          416.00341796875
+        ],
+        [
+          503.7108459472656,
+          416.5155944824219
+        ],
+        [
+          503.8940734863281,
+          417.0297546386719
+        ],
+        [
+          504.0780334472656,
+          417.5458984375
+        ],
+        [
+          504.2626953125,
+          418.06402587890625
+        ],
+        [
+          504.44805908203125,
+          418.5841979980469
+        ],
+        [
+          504.6341552734375,
+          419.10638427734375
+        ],
+        [
+          504.8210144042969,
+          419.6305847167969
+        ],
+        [
+          505.008544921875,
+          420.1568603515625
+        ],
+        [
+          505.19683837890625,
+          420.6851806640625
+        ],
+        [
+          505.3858642578125,
+          421.215576171875
+        ],
+        [
+          505.57562255859375,
+          421.7480773925781
+        ],
+        [
+          505.7661437988281,
+          422.28265380859375
+        ],
+        [
+          505.9574279785156,
+          422.8193359375
+        ],
+        [
+          506.14947509765625,
+          423.358154296875
+        ],
+        [
+          506.3422546386719,
+          423.89910888671875
+        ],
+        [
+          506.5357971191406,
+          424.44219970703125
+        ],
+        [
+          506.7301025390625,
+          424.9874572753906
+        ],
+        [
+          506.9252014160156,
+          425.5348815917969
+        ],
+        [
+          507.12109375,
+          426.08447265625
+        ],
+        [
+          507.3177490234375,
+          426.63629150390625
+        ],
+        [
+          507.51519775390625,
+          427.1903076171875
+        ],
+        [
+          507.7134094238281,
+          427.7465515136719
+        ],
+        [
+          507.9124450683594,
+          428.3050231933594
+        ],
+        [
+          508.1123046875,
+          428.86578369140625
+        ],
+        [
+          508.31298828125,
+          429.42877197265625
+        ],
+        [
+          508.5144348144531,
+          429.99407958984375
+        ],
+        [
+          508.7167053222656,
+          430.5616455078125
+        ],
+        [
+          508.9197998046875,
+          431.13153076171875
+        ],
+        [
+          509.12371826171875,
+          431.7037353515625
+        ],
+        [
+          509.3284912109375,
+          432.2782897949219
+        ],
+        [
+          509.53411865234375,
+          432.8551940917969
+        ],
+        [
+          509.74053955078125,
+          433.4344482421875
+        ],
+        [
+          509.94781494140625,
+          434.0160827636719
+        ],
+        [
+          510.1559753417969,
+          434.6001281738281
+        ],
+        [
+          510.3649597167969,
+          435.1865539550781
+        ],
+        [
+          510.5748291015625,
+          435.7754211425781
+        ],
+        [
+          510.78558349609375,
+          436.3667297363281
+        ],
+        [
+          510.9971923828125,
+          436.96051025390625
+        ],
+        [
+          511.2096862792969,
+          437.5567321777344
+        ],
+        [
+          511.42303466796875,
+          438.15545654296875
+        ],
+        [
+          511.6372985839844,
+          438.75665283203125
+        ],
+        [
+          511.85247802734375,
+          439.3603820800781
+        ],
+        [
+          512.0685424804688,
+          439.9666442871094
+        ],
+        [
+          512.2855224609375,
+          440.5754699707031
+        ],
+        [
+          512.50341796875,
+          441.1868591308594
+        ],
+        [
+          512.7222290039062,
+          441.8008117675781
+        ],
+        [
+          512.9419555664062,
+          442.4173583984375
+        ],
+        [
+          513.16259765625,
+          443.0365295410156
+        ],
+        [
+          513.3842163085938,
+          443.6583251953125
+        ],
+        [
+          513.6067504882812,
+          444.28277587890625
+        ],
+        [
+          513.8302612304688,
+          444.9098815917969
+        ],
+        [
+          514.0546875,
+          445.5396423339844
+        ],
+        [
+          514.2800903320312,
+          446.1721496582031
+        ],
+        [
+          514.5064697265625,
+          446.8073425292969
+        ],
+        [
+          514.7338256835938,
+          447.4452819824219
+        ],
+        [
+          514.9622192382812,
+          448.0859680175781
+        ],
+        [
+          515.1915283203125,
+          448.7294006347656
+        ],
+        [
+          515.4218139648438,
+          449.3756408691406
+        ],
+        [
+          515.6531372070312,
+          450.0246887207031
+        ],
+        [
+          515.8854370117188,
+          450.6765441894531
+        ],
+        [
+          516.1187744140625,
+          451.3312683105469
+        ],
+        [
+          516.3531494140625,
+          451.98883056640625
+        ],
+        [
+          516.5885009765625,
+          452.6492614746094
+        ],
+        [
+          516.8248901367188,
+          453.3126220703125
+        ],
+        [
+          517.0623779296875,
+          453.9788818359375
+        ],
+        [
+          517.3008422851562,
+          454.6480712890625
+        ],
+        [
+          517.5404052734375,
+          455.3202209472656
+        ],
+        [
+          517.781005859375,
+          455.9953308105469
+        ],
+        [
+          518.022705078125,
+          456.6734619140625
+        ],
+        [
+          518.2654418945312,
+          457.3545837402344
+        ],
+        [
+          518.50927734375,
+          458.03875732421875
+        ]
+      ],
+      "alternate_lane": 1,
+      "alternate_mask_area_px": 24915,
+      "alternate_valid": true,
+      "alternate_valid_basis": "visible_mask_area_and_obstacle_overlap_not_planned_path",
+      "obstacle_confirm_count": 0,
+      "clear_count": 9,
+      "obstacle_confirm_required": 3,
+      "red_confirm_required": 3,
+      "green_confirm_required": 3,
+      "red_latched": false,
+      "lane_switch_requested": false,
+      "reasons": [
+        "NORMAL"
+      ],
+      "reason": "NORMAL",
+      "obstacles": [],
+      "traffic_boxes": [
+        {
+          "box": [
+            290.0,
+            170.0,
+            350.0,
+            230.0
+          ],
+          "eligible": true,
+          "color": "Green",
+          "strength": 1.0,
+          "ratios": {
+            "Red": 0.0,
+            "Green": 1.0,
+            "Yellow": 0.0
+          },
+          "used_for_color": true
+        }
+      ]
+    },
+    "command_speed": 0,
+    "windows": [
+      "Mission Tuner",
+      "Mission Tuner Controls 1",
+      "Mission Tuner Controls 2",
+      "Mission Tuner Controls 3"
+    ]
+  },
+  "perpendicular": {
+    "parameter": "side_detect_m",
+    "accepted": 1.4,
+    "yaml": "/tmp/codex_four_modes_validation/perpendicular.saved.yaml",
+    "ros_readback": 1.4,
+    "status": {
+      "mode": "perpendicular",
+      "state": "SEARCH",
+      "waiting": "MEASURE_GEOMETRY_AND_SET_geometry_confirmed",
+      "side_m": null,
+      "opposite_m": null,
+      "elapsed_s": 0.0,
+      "distance_case": 1,
+      "gap_m": null,
+      "pose_estimate": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entry_x_estimate_m": null,
+      "exit_supported": true,
+      "pose_source": "calibrated_PWM_estimate_not_odometry",
+      "steering": 0,
+      "speed": 0,
+      "armed": false,
+      "valid_points": 0,
+      "frame_stamp_ns": null,
+      "processing_ros_ns": 1791134797454551589,
+      "pipeline_duration_s": 0.0007294009992619976,
+      "geometry_confirmed": false,
+      "geometry_display_status": "UNCONFIRMED_CONFIGURED_VALUES"
+    },
+    "command_speed": 0,
+    "windows": [
+      "Perpendicular Tuner",
+      "Perpendicular Tuner Controls 1",
+      "Perpendicular Tuner Controls 2",
+      "Perpendicular Tuner Controls 3",
+      "Perpendicular Tuner Controls 4",
+      "Perpendicular Tuner Controls 5"
+    ]
+  },
+  "parallel": {
+    "parameter": "gap_margin_m",
+    "accepted": 0.35,
+    "yaml": "/tmp/codex_four_modes_validation/parallel.saved.yaml",
+    "ros_readback": 0.35,
+    "status": {
+      "mode": "parallel",
+      "state": "SEARCH_FIRST_CAR",
+      "waiting": "MEASURE_GEOMETRY_AND_SET_geometry_confirmed",
+      "side_m": null,
+      "opposite_m": null,
+      "elapsed_s": 0.0,
+      "distance_case": 1,
+      "gap_m": null,
+      "pose_estimate": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entry_x_estimate_m": null,
+      "exit_supported": false,
+      "pose_source": "calibrated_PWM_estimate_not_odometry",
+      "steering": 0,
+      "speed": 0,
+      "armed": false,
+      "valid_points": 0,
+      "frame_stamp_ns": null,
+      "processing_ros_ns": 1791134798559573736,
+      "pipeline_duration_s": 0.0004687489999923855,
+      "geometry_confirmed": false,
+      "geometry_display_status": "UNCONFIRMED_CONFIGURED_VALUES"
+    },
+    "command_speed": 0,
+    "windows": [
+      "Parallel Tuner",
+      "Parallel Tuner Controls 1",
+      "Parallel Tuner Controls 2",
+      "Parallel Tuner Controls 3",
+      "Parallel Tuner Controls 4"
+    ]
+  },
+  "calibration": {
+    "parameter": "pwm",
+    "accepted": -60,
+    "yaml": "/tmp/codex_four_modes_validation/calibration.saved.yaml",
+    "ros_readback": -60,
+    "status": {
+      "state": "DISARMED",
+      "processing_ros_ns": 1791134799733522287,
+      "frame_stamp_ns": null,
+      "steering": 0,
+      "left_pwm": 0,
+      "right_pwm": 0,
+      "pipeline_duration_s": 9.661300282459706e-05,
+      "pwm": -60,
+      "steering_step": 0,
+      "armed": false,
+      "elapsed_s": 0.0,
+      "note": "Time is arm-state duration; measure actual travel/time independently."
+    },
+    "command_speed": 0,
+    "windows": [
+      "Calibration Tuner",
+      "Calibration Tuner Controls 1"
+    ]
+  }
+}

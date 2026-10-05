@@ -2,6 +2,7 @@
 """OpenCV tuning panel backed by the ROS 2 parameter services."""
 
 import os
+import json
 import tempfile
 import time
 from pathlib import Path
@@ -12,7 +13,7 @@ import rclpy
 import yaml
 from cv_bridge import CvBridge
 from rcl_interfaces.msg import ParameterEvent
-from rcl_interfaces.srv import GetParameters, SetParameters
+from rcl_interfaces.srv import GetParameters, SetParametersAtomically
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.parameter import Parameter, parameter_value_to_python
@@ -20,9 +21,11 @@ from rclpy.qos import (
     HistoryPolicy,
     QoSProfile,
     ReliabilityPolicy,
+    DurabilityPolicy,
     qos_profile_parameter_events,
 )
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 
 from interfaces_pkg.msg import MotionCommand
 
@@ -81,8 +84,21 @@ DISPLAY_PARAMETERS = ('publish_debug', 'publish_bev_debug')
 class TrackTunerNode(Node):
     """Change TrackController parameters; never publishes actuator commands."""
 
-    def __init__(self):
-        super().__init__('track_tuner_node')
+    tuner_window = TUNER_WINDOW_NAME
+    debug_window = DEBUG_WINDOW_NAME
+    control_windows = ()
+    parking = False
+
+    def __init__(self, node_name='track_tuner_node', extra_trackbars=None, parameter_root='track_controller_node', window_prefix='Track', parking=False, only_extra_controls=False):
+        super().__init__(node_name)
+        self.parameter_root = parameter_root
+        self.tuner_window = window_prefix + ' Tuner'
+        self.debug_window = window_prefix + ' Debug View'
+        self.control_windows = []
+        self.parameter_windows = {}
+        self.mode_status = {}
+        self.parking = parking
+        self.mode_controls_separate = window_prefix != 'Track'
         self.declare_parameter('target_node', '/track_controller_node')
         self.declare_parameter('cmd_topic', '/topic_control_signal')
         self.declare_parameter('debug_topic', '/track_debug_image')
@@ -92,6 +108,7 @@ class TrackTunerNode(Node):
         self.declare_parameter('loaded_config_path', '')
         self.declare_parameter('allow_speed_tuning', True)
         self.declare_parameter('fixed_speed', 250)
+        self.declare_parameter('status_topic', '')
 
         self.target_node = str(self.get_parameter('target_node').value).rstrip('/')
         self.save_path = Path(str(self.get_parameter('save_path').value)).expanduser()
@@ -100,16 +117,38 @@ class TrackTunerNode(Node):
             self.get_parameter('allow_speed_tuning').value
         )
         self.fixed_speed = int(self.get_parameter('fixed_speed').value)
-        self.trackbars = dict(TRACKBARS)
+        # All HighGUI windows in this process share waitKey. Forward W/S from
+        # either tuner or debug view to the single calibration/arm gate. Never
+        # publish actuator commands here. A token tags W at key-receipt time,
+        # so queued keys from before a stop cannot become a fresh start event.
+        key_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE)
+        state_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                               durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.drive_key_pub = self.create_publisher(String, 'vehicle/drive_key', key_qos)
+        self.ui_heartbeat_pub = self.create_publisher(String, 'vehicle/tuner_heartbeat', key_qos)
+        self._arm_challenge = ''
+        self._last_ui_heartbeat = 0.0
+        self.create_subscription(String, 'vehicle/arm_challenge', self.on_arm_challenge, state_qos)
+        self.command_status = {}
+        self.create_subscription(String, 'vehicle/command_status', self.on_serial_status, key_qos)
+        self.trackbars = {} if parking or only_extra_controls else dict(TRACKBARS)
+        self.trackbars.update(extra_trackbars or {})
         if not self.allow_speed_tuning:
-            self.trackbars.pop('speed')
-        self.managed_parameters = tuple(self.trackbars) + DISPLAY_PARAMETERS
+            self.trackbars.pop('speed', None)
+        persisted = {}
+        if self.loaded_config_path and Path(self.loaded_config_path).is_file():
+            with Path(self.loaded_config_path).open() as stream:
+                persisted = (yaml.safe_load(stream) or {}).get(self.parameter_root, {}).get('ros__parameters', {})
+        self.managed_parameters = tuple(dict.fromkeys([*self.trackbars, *persisted, *DISPLAY_PARAMETERS]))
+        status_topic = str(self.get_parameter('status_topic').value)
+        if status_topic:
+            self.create_subscription(String, status_topic, self.on_mode_status, 1)
 
         self.get_client = self.create_client(
             GetParameters, f'{self.target_node}/get_parameters'
         )
         self.set_client = self.create_client(
-            SetParameters, f'{self.target_node}/set_parameters'
+            SetParametersAtomically, f'{self.target_node}/set_parameters_atomically'
         )
         self.parameter_event_sub = self.create_subscription(
             ParameterEvent,
@@ -157,6 +196,18 @@ class TrackTunerNode(Node):
         self.get_logger().info(f'Loaded tuning config: {shown_config}')
         self.get_logger().info(f'Tuning save path: {self.save_path}')
         self.get_logger().info('Waiting for TrackController parameter services')
+
+    def on_mode_status(self, message):
+        try:
+            self.mode_status = json.loads(message.data)
+        except (ValueError, TypeError):
+            self.mode_status = {'status': message.data}
+
+    def on_serial_status(self, message):
+        try:
+            self.command_status = json.loads(message.data)
+        except (ValueError, TypeError):
+            self.command_status = {}
 
     def on_debug_image(self, message):
         try:
@@ -225,14 +276,22 @@ class TrackTunerNode(Node):
 
     def _create_ui(self):
         try:
-            cv2.namedWindow(TUNER_WINDOW_NAME, cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(TUNER_WINDOW_NAME, 900, 720)
+            cv2.namedWindow(self.tuner_window, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(self.tuner_window, 900, 720)
             self._initializing_ui = True
-            for name, (label, maximum, _decode, _encode) in self.trackbars.items():
+            for index, (name, (label, maximum, _decode, _encode)) in enumerate(self.trackbars.items()):
+                window = self.tuner_window
+                if extra := (index // 12 + int(self.mode_controls_separate)):
+                    window = f'{self.tuner_window} Controls {extra}'
+                    if window not in self.control_windows:
+                        cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+                        cv2.resizeWindow(window, 620, 650)
+                        self.control_windows.append(window)
+                self.parameter_windows[name] = window
                 position = self._position_for(name, self.current_values[name])
                 cv2.createTrackbar(
                     label,
-                    TUNER_WINDOW_NAME,
+                    window,
                     position,
                     maximum,
                     lambda pos, parameter_name=name: self._on_trackbar(
@@ -259,7 +318,7 @@ class TrackTunerNode(Node):
             value = self.desired_values[name]
             cv2.setTrackbarPos(
                 self.trackbars[name][0],
-                TUNER_WINDOW_NAME,
+                self.parameter_windows[name],
                 self._position_for(name, value),
             )
         self._initializing_ui = False
@@ -275,7 +334,7 @@ class TrackTunerNode(Node):
         if not updates:
             return
 
-        request = SetParameters.Request()
+        request = SetParametersAtomically.Request()
         request.parameters = [
             Parameter(name=name, value=value).to_parameter_msg()
             for name, value in updates.items()
@@ -290,7 +349,7 @@ class TrackTunerNode(Node):
         self._set_values = None
         try:
             response = future.result()
-            failures = [result.reason for result in response.results if not result.successful]
+            failures = [] if response.result.successful else [response.result.reason]
         except Exception as exc:
             failures = [str(exc)]
 
@@ -303,10 +362,10 @@ class TrackTunerNode(Node):
         self.current_values.update(updates)
 
     @staticmethod
-    def write_yaml_atomic(path, values):
+    def write_yaml_atomic(path, values, root='track_controller_node'):
         path = Path(path).expanduser()
         path.parent.mkdir(parents=True, exist_ok=True)
-        data = {'track_controller_node': {'ros__parameters': dict(values)}}
+        data = {root: {'ros__parameters': dict(values)}}
         temporary_name = None
         try:
             with tempfile.NamedTemporaryFile(
@@ -336,35 +395,86 @@ class TrackTunerNode(Node):
             raise
 
     def save(self):
-        values = {name: self.desired_values[name] for name in self.trackbars}
-        self.write_yaml_atomic(self.save_path, values)
+        if self._set_future is not None or any(self.current_values.get(k) != self.desired_values.get(k) for k in self.trackbars):
+            self.get_logger().warn('Wait for parameter acceptance before P/save')
+            return
+        values = {name: self.current_values[name] for name in self.managed_parameters if name not in DISPLAY_PARAMETERS}
+        # Preserve advanced values loaded from this mode, never another mode.
+        if self.loaded_config_path and Path(self.loaded_config_path).is_file():
+            with Path(self.loaded_config_path).open() as stream:
+                previous = yaml.safe_load(stream) or {}
+            saved = previous.get(self.parameter_root, {}).get('ros__parameters', {})
+            values = {**saved, **values}
+        if self.save_path.is_file():
+            with self.save_path.open() as stream:
+                document = yaml.safe_load(stream) or {}
+            if self.parameter_root not in document:
+                raise ValueError('Refusing to overwrite another mode configuration')
+        self.write_yaml_atomic(self.save_path, values, root=self.parameter_root)
         self.get_logger().info(f'Saved tuning parameters to:\n{self.save_path}')
         for name, value in values.items():
             self.get_logger().info(f'  {name}: {value}')
 
     def _draw_status(self):
-        canvas = np.zeros((300, 900, 3), dtype=np.uint8)
         lines = [
-            'P: save   D: debug view   B: BEV panel   Q/ESC: close GUI only',
+            'W: start   S: stop   P: save   D: debug   B: BEV   R: parking reset   Q/ESC: close',
             (
                 f'Debug: {"ON" if self.desired_values.get("publish_debug") else "OFF"}   '
                 f'BEV: {"ON" if self.desired_values.get("publish_bev_debug") else "OFF"}'
             ),
             (
+                f'calibration PWM: {self.desired_values["pwm"]:+d}, steering: {self.desired_values.get("steering_step", 0):+d}'
+                if 'pwm' in self.desired_values else
+                f'parking PWM forward/reverse: {self.desired_values.get("forward_pwm")}/{self.desired_values.get("reverse_pwm")}'
+                if self.parking else
                 f'configured speed: {self.desired_values.get("speed", "-")}'
-                if self.allow_speed_tuning
-                else f'fixed speed: {self.fixed_speed} (longitudinal tuning disabled)'
+                if self.allow_speed_tuning else
+                f'fixed speed: {self.fixed_speed} (longitudinal tuning disabled)'
             ),
             (
-                f'command steering: {self.current_steering:+d}   '
+                f'controller request steering: {self.current_steering:+d}   '
                 f'L/R speed: {self.current_left_speed}/{self.current_right_speed}'
             ),
             f'control update rate: {self.processing_fps:.1f} Hz',
             f'loaded: {self.loaded_config_path or "controller defaults"}',
             f'save to: {self.save_path}',
-            'Closing this GUI does not stop TrackController or vehicle control.',
+            f'Focus {self.tuner_window}, its control/debug windows or vehicle_start_gate for W/S.',
         ]
+        if 'traffic_boxes' in self.mode_status:
+            status = self.mode_status
+            lines.extend([
+                f"MISSION {status.get('state')} reason={status.get('reason')} stop={status.get('stop')}",
+                f"path lane={status.get('path_lane')} target(next)={status.get('target_lane')} valid={status.get('path_valid')}",
+                f"path blocked={status.get('path_blocked')} confirm={status.get('obstacle_confirm_count')}/{status.get('obstacle_confirm_required')}",
+                f"alternative lane={status.get('alternate_lane')} visible={status.get('alternate_visible')} blocked={status.get('alternate_blocked')} valid={status.get('alternate_valid')}",
+                f"alternative mask area={status.get('alternate_mask_area_px')}px (mask evidence, not a planned path)",
+                f"LIGHT {status.get('traffic_color')} red_latched={status.get('red_latched')} selected_ratio={status.get('selected_color_ratio')} max_candidate_ratio={status.get('color_ratio')}",
+                f"red={status.get('red_count')}/{status.get('red_confirm_required')} green={status.get('green_count')}/{status.get('green_confirm_required')}",
+                f"system={status.get('system_state', 'NORMAL')} image_age_s={status.get('image_age_s', '-')}",
+            ])
+        else:
+            lines.extend(f'{k}: {v}' for k, v in self.mode_status.items())
+        for index, light in enumerate(self.mode_status.get('traffic_boxes', [])):
+            ratios = light.get('ratios', {})
+            lines.append(f"light#{index} box={light['box']} eligible={light['eligible']} used={light.get('used_for_color')} "
+                         f"color={light.get('color', 'rejected')} R/G/Y=" +
+                         '/'.join(f"{ratios.get(k, 0):.3f}" for k in ('Red', 'Green', 'Yellow')))
+        applied = getattr(self, 'command_status', {})
+        if applied:
+            lines.append(f"SERIAL command PWM L/R={applied.get('left_pwm')}/{applied.get('right_pwm')} "
+                         f"steer={applied.get('steering')} armed={applied.get('armed')}")
+            lines.append(f"PERCEPTION age={applied.get('result_age_s')} "
+                         f"stop={applied.get('stop_reason')}")
+            lines.append('Serial values are software commands; physical motor PWM is unmeasured.')
+        canvas = np.zeros((max(300, 45 + len(lines) * 33), 1100, 3), dtype=np.uint8)
         for index, line in enumerate(lines):
+            # Preserve the filename and latest values when a long path exceeds
+            # the window width. Every mode status field gets its own row.
+            if cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, .62, 1)[0][0] > 1070:
+                tail = line
+                while cv2.getTextSize('... ' + tail, cv2.FONT_HERSHEY_SIMPLEX, .62, 1)[0][0] > 1070:
+                    tail = tail[1:]
+                line = '... ' + tail
             cv2.putText(
                 canvas,
                 line,
@@ -375,41 +485,62 @@ class TrackTunerNode(Node):
                 1,
                 cv2.LINE_AA,
             )
-        cv2.imshow(TUNER_WINDOW_NAME, canvas)
+        cv2.imshow(self.tuner_window, canvas)
 
     def _draw_debug(self):
         enabled = bool(self.desired_values.get('publish_debug', False))
         if not enabled:
             if self._debug_window_open:
-                cv2.destroyWindow(DEBUG_WINDOW_NAME)
+                cv2.destroyWindow(self.debug_window)
                 self._debug_window_open = False
             return
         if self._latest_debug_frame is None:
             return
         if not self._debug_window_open:
-            cv2.namedWindow(DEBUG_WINDOW_NAME, cv2.WINDOW_NORMAL)
+            cv2.namedWindow(self.debug_window, cv2.WINDOW_NORMAL)
             cv2.resizeWindow(
-                DEBUG_WINDOW_NAME,
+                self.debug_window,
                 self._latest_debug_frame.shape[1],
                 self._latest_debug_frame.shape[0],
             )
             self._debug_window_open = True
-        cv2.imshow(DEBUG_WINDOW_NAME, self._latest_debug_frame)
+        cv2.imshow(self.debug_window, self._latest_debug_frame)
 
     def _close_gui_windows(self, log_continues=True):
+        self.forward_drive_key('s')
         if self._debug_window_open:
-            cv2.destroyWindow(DEBUG_WINDOW_NAME)
+            cv2.destroyWindow(self.debug_window)
             self._debug_window_open = False
         if self._ui_ready and not self._window_closed:
-            cv2.destroyWindow(TUNER_WINDOW_NAME)
+            cv2.destroyWindow(self.tuner_window)
+        for window in self.control_windows:
+            cv2.destroyWindow(window)
+        self.control_windows = []
         self._window_closed = True
         if log_continues:
             self.get_logger().info(
-                'GUI windows closed; TrackController and vehicle control '
-                'continue running.'
+                'GUI windows closed; disarm requested. Camera/controller remain running; '
+                'reopen the tuner to restore its heartbeat before starting.'
             )
 
+    def on_arm_challenge(self, msg):
+        self._arm_challenge = msg.data
+
+    def forward_drive_key(self, key):
+        self.get_logger().info(f'KEY received in tuner/debug: {key!r}; forwarding to arm gate')
+        # Stops do not need a token; they are always permitted. W must carry the
+        # challenge known when the physical key was received, never a later one.
+        payload = f'w:{self._arm_challenge}' if key == 'w' else key
+        self.drive_key_pub.publish(String(data=payload))
+
     def on_timer(self):
+        # Keep this independent of controller parameter-service availability.
+        # Stop heartbeat when the user closes the panel, and let the bridge
+        # detect abrupt process death (including SIGKILL) without ROS cleanup.
+        now = time.monotonic()
+        if not self._window_closed and self._arm_challenge and now - self._last_ui_heartbeat >= 0.1:
+            self.ui_heartbeat_pub.publish(String(data=self._arm_challenge))
+            self._last_ui_heartbeat = now
         if self._get_future is None:
             if self.get_client.service_is_ready() and self.set_client.service_is_ready():
                 self._request_initial_values()
@@ -417,11 +548,23 @@ class TrackTunerNode(Node):
         if not self._ui_ready or self._window_closed:
             return
 
+        if any(cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) < 1 for window in [self.tuner_window, *self.control_windows]):
+            self._close_gui_windows()
+            return
+
         self._send_pending_parameters()
         self._draw_status()
         self._draw_debug()
         key = cv2.waitKey(1) & 0xFF
-        if key in (ord('p'), ord('P')):
+        if key in (ord('w'), ord('W'), ord('s'), ord('S'), ord('x'), ord('X'), 32):
+            self.forward_drive_key(chr(key).lower())
+        elif key in (ord('r'), ord('R')) and self.parking:
+            from std_srvs.srv import Trigger
+            if not hasattr(self, 'reset_client'):
+                self.reset_client = self.create_client(Trigger, f'{self.target_node}/reset')
+            if self.reset_client.service_is_ready():
+                self.reset_client.call_async(Trigger.Request())
+        elif key in (ord('p'), ord('P')):
             try:
                 self.save()
             except Exception as exc:
@@ -433,7 +576,7 @@ class TrackTunerNode(Node):
                 f'Debug visualization {"enabled" if enabled else "disabled"}'
             )
             if not enabled and self._debug_window_open:
-                cv2.destroyWindow(DEBUG_WINDOW_NAME)
+                cv2.destroyWindow(self.debug_window)
                 self._debug_window_open = False
         elif key in (ord('b'), ord('B')):
             enabled = not bool(self.desired_values.get('publish_bev_debug', True))
@@ -446,8 +589,16 @@ class TrackTunerNode(Node):
 
     def destroy_node(self):
         try:
+            # ROS might already be shut down. If publish is unavailable the
+            # missing heartbeat still removes authorization at the bridge.
+            if rclpy.ok(context=self.context):
+                self.forward_drive_key('s')
             if self._ui_ready and not self._window_closed:
-                self._close_gui_windows(log_continues=False)
+                if self._debug_window_open:
+                    cv2.destroyWindow(self.debug_window)
+                cv2.destroyWindow(self.tuner_window)
+                for window in self.control_windows:
+                    cv2.destroyWindow(window)
         finally:
             super().destroy_node()
 

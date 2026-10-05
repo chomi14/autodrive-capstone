@@ -1,0 +1,22 @@
+track_controller_node:
+  ros__parameters:
+    bev_pad: 250
+    bev_top_shift: -15
+    car_center_x: 325.0
+    car_center_y: 179.0
+    center_ema_alpha: 0.35
+    confidence: 0.5
+    ema_alpha: 0.6
+    heading_gain: 0.55
+    heading_step: 3
+    look_shift: 0
+    lookahead_index: 30
+    max_center_jump_px: 80.0
+    max_missed_frames: 12
+    max_steering_angle: 50.0
+    min_component_area: 250
+    roi_cut: 300
+    speed: 250
+    stanley_gain: 0.027
+    stanley_softening: 0.001
+    virtual_lane_width: 290

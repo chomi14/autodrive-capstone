@@ -10,11 +10,11 @@ import numpy as np
 import rclpy
 from ament_index_python.packages import get_package_share_directory
 from cv_bridge import CvBridge
-from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from rcl_interfaces.msg import SetParametersResult
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 from std_srvs.srv import SetBool
 
 from interfaces_pkg.msg import MotionCommand as RosMotionCommand
@@ -23,6 +23,10 @@ from .yolo_perception import YoloDetector
 from .lane_processing import LaneInfoExtractor
 from .path_planner import PathPlanner
 from .motion_planner import MotionPlanner
+from .command_lease import CommandLease
+from .controller_liveness import ControllerLiveness, run_controller
+from .perception_progress import PerceptionProgress
+from .tuning_analysis import frame_analysis
 
 
 class TrackControllerNode(Node):
@@ -33,12 +37,11 @@ class TrackControllerNode(Node):
     Safety: starts disabled by default. Enable with the SetBool service.
     """
 
-    def __init__(self):
-        super().__init__('track_controller_node')
+    def __init__(self, node_name='track_controller_node'):
+        super().__init__(node_name)
 
-        # Parameter callbacks and image callbacks are serialized by the default
-        # executor today.  The lock also keeps a future multi-threaded executor
-        # from applying only half of a tuning update to one frame.
+        # Parameter/image callbacks share a group; health uses a separate group
+        # and never takes this inference lock.
         self._parameter_lock = threading.RLock()
 
         default_model = str(
@@ -62,6 +65,9 @@ class TrackControllerNode(Node):
         self.declare_parameter('image_reliability', 'best_effort')
         self.declare_parameter('start_enabled', False)
         self.declare_parameter('loaded_tuning_config', '')
+        self.declare_parameter('publish_analysis', False)
+        self.publish_analysis = bool(self.get_parameter('publish_analysis').value)
+        self._previous_analysis = None
 
         # YOLO
         self.declare_parameter('model_path', default_model)
@@ -93,9 +99,11 @@ class TrackControllerNode(Node):
         self.declare_parameter('max_center_jump_px', 80.0)
         self.declare_parameter('max_missed_frames', 12)
         self.declare_parameter('min_component_area', 250)
+        self.declare_mode_parameters()
 
         image_topic = self.get_parameter('image_topic').value
         cmd_topic = self.get_parameter('cmd_topic').value
+        self.command_lease = CommandLease(cmd_topic, self.get_name())
         debug_topic = self.get_parameter('debug_topic').value
         self.publish_debug = bool(self.get_parameter('publish_debug').value)
         self.publish_bev_debug = bool(self.get_parameter('publish_bev_debug').value)
@@ -183,6 +191,7 @@ class TrackControllerNode(Node):
             steering_sign=int(round(float(self.get_parameter('steering_sign').value))),
             heading_gain=float(self.get_parameter('heading_gain').value),
         )
+        self.initialize_mode()
         self._validate_initial_tuning()
         self._parameter_callback_handle = self.add_on_set_parameters_callback(
             self.on_tuning_parameters
@@ -207,12 +216,21 @@ class TrackControllerNode(Node):
             reliability=ReliabilityPolicy.BEST_EFFORT,
             history=HistoryPolicy.KEEP_LAST,
         )
-        self.sub = self.create_subscription(Image, image_topic, self.on_image, image_qos)
         self.cmd_pub = self.create_publisher(RosMotionCommand, cmd_topic, cmd_qos)
+        self.timing_pub = self.create_publisher(String, '~/perception_timing', cmd_qos)
         # Debug images are large and optional.  Never let a slow GUI apply
         # reliable-DDS backpressure to the control callback.
         self.debug_pub = self.create_publisher(Image, debug_topic, debug_qos)
         self.enable_srv = self.create_service(SetBool, '~/set_enabled', self.on_set_enabled)
+        self.progress = PerceptionProgress()
+        self._image_lock = threading.Lock()
+        self._latest_image = None
+        self.liveness = ControllerLiveness(self, self.progress.snapshot)
+        self.image_guard = self.create_guard_condition(self.process_latest_image)
+        # Receive promptly even while YOLO is waiting; keep only the latest
+        # image. Receipt/health share a short callback group, inference does not.
+        self.sub = self.create_subscription(Image, image_topic, self.receive_image, image_qos,
+                                            callback_group=self.liveness.group)
 
         self.get_logger().info(
             f'Track controller ready. enabled={self.enabled}. '
@@ -220,6 +238,18 @@ class TrackControllerNode(Node):
         )
         if self.loaded_tuning_config:
             self.get_logger().info(f'Loaded tuning config: {self.loaded_tuning_config}')
+
+    def declare_mode_parameters(self):
+        """Extension point; the track mode declares no mission parameters."""
+
+    def initialize_mode(self):
+        pass
+
+    def prepare_lane(self, detections, frame):
+        pass
+
+    def adjust_command(self, command, detections, path, frame):
+        return command
 
     @staticmethod
     def _tuning_limits():
@@ -527,21 +557,8 @@ class TrackControllerNode(Node):
         self.cmd_pub.publish(msg)
 
     def publish_perception_fallback(self):
-        """Keep driving through a transient perception/pipeline failure.
-
-        A broken lane mask must not inject a zero-speed command between valid
-        frames.  Hold the most recent valid steering command and keep the
-        configured, equal motor command.  Explicit disable/arm safety paths
-        still use ``publish_stop`` and remain unchanged.
-        """
-        if not self.enabled:
-            self.publish_stop()
-            return
-        msg = RosMotionCommand()
-        msg.steering = int(max(-7, min(7, self.motion.last_target_steer)))
-        msg.left_speed = int(max(-255, min(255, self.speed)))
-        msg.right_speed = int(max(-255, min(255, self.speed)))
-        self.cmd_pub.publish(msg)
+        """An exception is not a newly observed driving command."""
+        self.publish_stop()
 
     @staticmethod
     def _draw_detection(frame, detections):
@@ -556,11 +573,10 @@ class TrackControllerNode(Node):
             cv2.putText(frame, f'{det.class_name}:{det.score:.2f}', (x1, max(15, y1 - 3)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 1)
 
-    @staticmethod
-    def _lane_polygons(detections, width, height):
+    def _lane_polygons(self, detections, width, height):
         polygons = []
         for detection in detections.detections:
-            if detection.class_name != 'lane2' or len(detection.mask.data) < 3:
+            if detection.class_name != self.lane.lane_class_name or len(detection.mask.data) < 3:
                 continue
             points = np.array(
                 [[point.x, point.y] for point in detection.mask.data],
@@ -811,19 +827,47 @@ class TrackControllerNode(Node):
             raise ValueError(f'Expected a 3-channel image, got shape={frame.shape}')
         return np.ascontiguousarray(frame)
 
-    def on_image(self, image_msg: Image):
+    def receive_image(self, image_msg):
+        now = time.monotonic()
+        self.progress.receive(now)
+        with self._image_lock:
+            self._latest_image = (image_msg, now)
+        self.image_guard.trigger()
+
+    def process_latest_image(self):
+        with self._image_lock:
+            item, self._latest_image = self._latest_image, None
+        if item is not None and not self.liveness.closed:
+            self.on_image(item[0], frame_received_at=item[1])
+        if not self.liveness.closed:
+            with self._image_lock:
+                if self._latest_image is not None:
+                    self.image_guard.trigger()
+
+    def on_image(self, image_msg: Image, frame_received_at=None):
+        failed = False
         try:
+            processing_started = time.monotonic()
+            frame_received_at = processing_started if frame_received_at is None else frame_received_at
+            if hasattr(self, 'progress'):
+                self.progress.start()
             callback_start = time.perf_counter() if self.profile else None
             frame = self._image_to_bgr(image_msg)
             conversion_end = time.perf_counter() if self.profile else None
             with self._parameter_lock:
+                inference_started = time.monotonic()
                 detections = self.yolo.detect(frame)
+                inference_finished = time.monotonic()
+                if hasattr(self, 'liveness') and self.liveness.closed:
+                    return
                 yolo_end = time.perf_counter() if self.profile else None
+                self.prepare_lane(detections, frame)
                 lane_info = self.lane.process(detections, frame)
                 lane_end = time.perf_counter() if self.profile else None
                 path_result = self.path_planner.plan(lane_info)
                 path_end = time.perf_counter() if self.profile else None
                 internal_cmd = self.motion.plan(detections, path_result, 'None', False)
+                internal_cmd = self.adjust_command(internal_cmd, detections, path_result, frame)
                 motion_end = time.perf_counter() if self.profile else None
                 tuning_snapshot = (
                     self.motion.stanley_gain,
@@ -831,6 +875,8 @@ class TrackControllerNode(Node):
                     self.motion.lookahead_steps,
                 )
 
+            if hasattr(self, 'liveness') and self.liveness.closed:
+                return
             ros_cmd = RosMotionCommand()
             ros_cmd.steering = int(max(-7, min(7, internal_cmd.steering)))
             if self.enabled:
@@ -840,6 +886,33 @@ class TrackControllerNode(Node):
                 ros_cmd.left_speed = 0
                 ros_cmd.right_speed = 0
             self.cmd_pub.publish(ros_cmd)
+            completed = time.monotonic()
+            if hasattr(self, 'progress'):
+                self.progress.complete(completed, frame_received_at)
+            if hasattr(self, 'timing_pub'):
+                telemetry = {
+                    'completed_at_s': completed,
+                    'processing_started_at_s': processing_started,
+                    'inference_duration_s': inference_finished - inference_started,
+                    'inference_completed_at_s': inference_finished,
+                    'pipeline_duration_s': completed - processing_started,
+                    'result_frame_age_s': completed - frame_received_at,
+                    'frame_stamp_ns': image_msg.header.stamp.sec * 1000000000 + image_msg.header.stamp.nanosec,
+                }
+                if getattr(self, 'publish_analysis', False):
+                    analysis_start = time.monotonic()
+                    try:
+                        record = frame_analysis(self, path_result, ros_cmd, self._previous_analysis)
+                        record['frame_stamp_ns'] = telemetry['frame_stamp_ns']
+                        self._previous_analysis = record
+                        telemetry.update(record)
+                    except Exception as error:
+                        # Optional evidence must not change a successfully
+                        # calculated motion command into a perception fault.
+                        telemetry['analysis_error'] = str(error)
+                        self.get_logger().error(f'Analysis evidence unavailable: {error}')
+                    telemetry['analysis_build_ms'] = (time.monotonic() - analysis_start) * 1000
+                self.timing_pub.publish(String(data=json.dumps(telemetry)))
 
             now = time.monotonic()
             fps = 0.0 if self.last_t is None else 1.0 / max(1e-6, now - self.last_t)
@@ -891,14 +964,22 @@ class TrackControllerNode(Node):
                 })
 
         except Exception as exc:
+            failed = True
+            if hasattr(self, 'liveness') and self.liveness.closed:
+                return
             self.get_logger().error(
                 f'Track pipeline error: {type(exc).__name__}: {exc}; '
-                'holding last steering and configured speed'
+                'publishing zero motion after perception failure'
             )
             self.publish_perception_fallback()
+        finally:
+            if hasattr(self, 'progress'):
+                self.progress.finish(failed)
 
     def destroy_node(self):
         try:
+            if hasattr(self, 'liveness'):
+                self.liveness.close()
             if self.profile:
                 self._report_profile()
             # SIGINT may already have invalidated the ROS context (for example
@@ -907,22 +988,13 @@ class TrackControllerNode(Node):
             if rclpy.ok():
                 self.publish_stop()
         finally:
+            if hasattr(self, 'command_lease'):
+                self.command_lease.close()
             super().destroy_node()
 
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = None
-    try:
-        node = TrackControllerNode()
-        rclpy.spin(node)
-    except (KeyboardInterrupt, ExternalShutdownException):
-        pass
-    finally:
-        if node is not None:
-            node.destroy_node()
-        if rclpy.ok():
-            rclpy.shutdown()
+    run_controller(TrackControllerNode, args)
 
 
 if __name__ == '__main__':

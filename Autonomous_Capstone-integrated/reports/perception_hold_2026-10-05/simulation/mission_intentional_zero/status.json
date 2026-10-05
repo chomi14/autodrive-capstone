@@ -1,0 +1,1792 @@
+[
+  {
+    "at_s": 115862.127224935,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.177268737,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.22739329,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.277460719,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.327328759,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.377490761,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.427365828,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.477584319,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.527377301,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.577425161,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.627560708,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.677572331,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.727477087,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.77750612,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.827437303,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.877494708,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.92754652,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115862.977488217,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.027435888,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.077775585,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.127840245,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.177703962,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.227479313,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.277602937,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.327742013,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.377703315,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.427291032,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.477638664,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.527505714,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.577464905,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.627385968,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.67737242,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.727434058,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.777421501,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.827356609,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.877435256,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.927450857,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115863.977659269,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.027386294,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.077757415,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.127642501,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.179639019,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.228790859,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "startup",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.286656224,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.11454951498308219,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.328899235,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.16384516298421659,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.378867733,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.08305151101376396,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.428284542,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.1328033870086074,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.482493735,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.0588616709865164,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.529402578,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.107867399987299,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.578529833,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.1575743019930087,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.628095934,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.20728424299159087,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.679354007,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.2578390919807134,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.728913428,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.30735977498989087,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.779185237,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.35778640798525885,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.828457393,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.4073278789874166,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.879754461,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.4578028839896433,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.928857479,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.5075628299819073,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115864.98014233,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.5576546429801965,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.031747941,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.6078520759911044,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.078816757,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.6575549819826847,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.128423486,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.7072608589805895,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.178955343,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.7574020689935423,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.229614113,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.807985972991446,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.278985459,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.8578316639905097,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.329303825,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.9075919989845715,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.377925767,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 0.9572435879817931,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.429356138,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.0076450189808384,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.478738229,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.0575183789915172,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.528521637,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.107513045979431,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.578340391,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.1572975829913048,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.62888528,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.2075646229932318,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.678573163,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.2575294229900464,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.728938894,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.3076686289859936,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.779102509,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.3575164759822655,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.828753315,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.4074091789807426,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.878873589,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.457547527985298,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.929104645,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.5074382359889569,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115865.981772768,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.5578845859854482,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.029398026,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.6078322589892196,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.084317385,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.6582834619912319,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.13102508,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.7085931339825038,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.178753949,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.7574935219890904,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.2292122,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.8076815379899926,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.278786863,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.8577626509795664,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.329872637,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.9076843459915835,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.378887509,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 1.9575429999822518,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.427908038,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.0072653729876038,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.479265725,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.057999923985335,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.52951484,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.1079569079884095,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.579356016,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.157885587992496,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.629551932,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.207856703986181,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.679082521,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.2578278849832714,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.731622346,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.307789440979832,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.778906828,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.3574002019886393,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.828551542,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.407357501986553,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.884695399,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.458895402989583,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.929203052,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.507589944987558,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115866.978448735,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.5573656839842442,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.030760892,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.6082717899844283,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.078920498,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.6576243689924013,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.129291668,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.707730720983818,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.178844415,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.75763233298494,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.228879845,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.807375111980946,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.279741956,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.857709719988634,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.328700969,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.907700303985621,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.378396273,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 2.9572769309888827,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.428265752,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.0073649139812915,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.479749026,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.058004049991723,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.528164469,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.1072240979847265,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.578666774,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.157350323992432,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.628869053,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.207457890981459,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.679032841,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.2576724309910787,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.728346832,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.3073895019915653,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.778396837,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.3574599539861083,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.828345596,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.407264558991301,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.878431979,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.4573626709898235,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.928738291,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.5075624129822245,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115867.978343898,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.557403285987675,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.028753179,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.6074474409833783,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.079612979,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.657934597984422,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.12937973,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.707804887992097,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.178302874,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.75756113899115,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.22822113,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.8072957289841725,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.278579716,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.8574391109868884,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.328525134,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.9073013449815335,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.378330719,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 3.957401725987438,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.428622525,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.007340788986767,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.478598843,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.057530178979505,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.52968896,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.107868690989562,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.57735892,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.157066554980702,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.627523905,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.2071166719833855,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.67831294,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.257389194986899,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.727583822,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.30715399098699,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.77814968,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.357252576985047,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.83316146,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.411076871983823,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.879120575,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.457748110988177,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.929529118,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.507698213987169,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115868.979816868,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.557912989985198,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.029150002,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.607427475988516,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.082023577,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.65804306899372,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.129297791,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.7078547649871325,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.179696326,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.757765363989165,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.228494911,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.807349229988176,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.278358531,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.857480283986661,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.328142704,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.907243186986307,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.379429768,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 4.957785565988161,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.430458189,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.007536055985838,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.479635594,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.057855972991092,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.529118703,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.1075068679929245,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.579481518,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.157697877992177,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.634876045,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.210351824993268,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.678738442,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.257533510986832,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.729592294,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.3076806719909655,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.777793108,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.357191243980196,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.82850182,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.407378402989707,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.888141524,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.459014455991564,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.931181656,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.508250076993136,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115869.978463669,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.557359403988812,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.02956189,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.6078520299925,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.079424364,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.657717253983719,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.129373077,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.707750502988347,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.178095317,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.757379774979199,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.228421091,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.807284035981866,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.278770997,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.857660454988945,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.328905712,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.907540403990424,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.377859473,
+    "armed": true,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "",
+    "result_age_s": 5.957249964980292,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.430241018,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.479577833,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.52934861,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.582673497,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.62851337,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": null,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.679033544,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": 0.10861203199601732,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.729520019,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": 0.15878181900188792,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.778833195,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": 0.08072556799743325,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.830736396,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": 0.1323362689872738,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.878291015,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": 0.046600631991168484,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.928064883,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": 0.09661586898437236,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115870.977908264,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": 0.08246869801951107,
+    "perception_stop_s": 6.0
+  },
+  {
+    "at_s": 115871.029471646,
+    "armed": false,
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "stop_reason": "perception stale: inference worker/result stopped",
+    "result_age_s": 0.1328869210119592,
+    "perception_stop_s": 6.0
+  }
+]

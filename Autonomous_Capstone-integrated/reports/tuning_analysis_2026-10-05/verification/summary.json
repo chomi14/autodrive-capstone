@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-05",
+  "regression_tests_passed": 142,
+  "regression_warnings": [
+    "Existing system SciPy / NumPy version warning"
+  ],
+  "packages_built": 7,
+  "gui_modes_verified": 5,
+  "model_comparison_frames": 2949,
+  "video_provenance": "existing example clip; current vehicle and camera unverified",
+  "source_stamp_replay": {
+    "track": {
+      "frames": 98,
+      "differences": 0
+    },
+    "mission": {
+      "frames": 99,
+      "differences": 0
+    }
+  },
+  "mission_actual_saved_and_loaded_speed": 80,
+  "model_or_operator_config_automatically_changed": false,
+  "safety_policy": "unchanged 20Hz serial / 10Hz independent liveness / hold then 6s stale X-disarm; S/Ctrl+C immediate stop; new W required",
+  "motors_run": false,
+  "firmware_uploaded": false,
+  "physical_vehicle_serial_opened": false,
+  "geometry_confirmed_automatically_enabled": false,
+  "physical_vehicle_performance_verified": false,
+  "latest_source_stamp_replay": {
+    "track": {
+      "original_frames": 99,
+      "replayed_frames": 99,
+      "joined_frames": 99,
+      "frames_with_any_difference": 0
+    },
+    "mission": {
+      "original_frames": 99,
+      "replayed_frames": 99,
+      "joined_frames": 99,
+      "frames_with_any_difference": 0
+    }
+  },
+  "replay_recording_input_join_verified": true
+}

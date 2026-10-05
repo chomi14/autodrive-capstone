@@ -1,0 +1,67 @@
+{
+  "mode": "mission",
+  "camera_device": "/dev/video2",
+  "device": "cuda:0",
+  "duration_s": 60.0,
+  "warmup_s": 5,
+  "camera_identity": "See /dev/v4l/by-id; this measurement is not automatically a vehicle-camera calibration",
+  "frames": 888,
+  "successful_results": 888,
+  "frame_arrival_interval": {
+    "count": 887,
+    "min_ms": 32.462,
+    "median_ms": 67.854,
+    "p95_ms": 81.398,
+    "p99_ms": 86.339,
+    "max_ms": 93.483
+  },
+  "camera_publish_stamp_interval": {
+    "count": 887,
+    "min_ms": 34.104,
+    "median_ms": 67.976,
+    "p95_ms": 75.343,
+    "p99_ms": 78.168,
+    "max_ms": 81.977
+  },
+  "completion_interval": {
+    "count": 887,
+    "min_ms": 14.193,
+    "median_ms": 68.724,
+    "p95_ms": 91.637,
+    "p99_ms": 105.453,
+    "max_ms": 115.677
+  },
+  "inference_duration": {
+    "count": 888,
+    "min_ms": 6.013,
+    "median_ms": 16.314,
+    "p95_ms": 29.046,
+    "p99_ms": 39.048,
+    "max_ms": 58.748
+  },
+  "pipeline_duration": {
+    "count": 888,
+    "min_ms": 6.887,
+    "median_ms": 18.212,
+    "p95_ms": 31.88,
+    "p99_ms": 42.481,
+    "max_ms": 61.992
+  },
+  "startup_completion_interval": {
+    "count": 9,
+    "min_ms": 11.329,
+    "median_ms": 70.98,
+    "p95_ms": 117.906,
+    "p99_ms": 130.651,
+    "max_ms": 133.837
+  },
+  "frame_tail_age_s": 0.011676965994411148,
+  "result_tail_age_s": 0.05228735398850404,
+  "serial_sender_started": false,
+  "arm_gate_started": false,
+  "ingress_to_result_age": {
+    "count": 0,
+    "reason": "The first instrumentation recorded callback duration only; independent reception was added afterward."
+  },
+  "actual_frame_rate_hz": 14.8
+}

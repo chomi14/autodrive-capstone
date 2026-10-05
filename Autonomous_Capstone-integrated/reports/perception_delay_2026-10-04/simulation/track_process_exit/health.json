@@ -1,0 +1,47 @@
+[
+  {
+    "at_s": 101464.548332755,
+    "challenge": "3308a3cc0584462a8589d431248d1aba",
+    "instance": "09e8de4239914befa8dda78a081a676e",
+    "active": true,
+    "perception": {
+      "camera_sequence": 2,
+      "result_sequence": 2,
+      "camera_age_s": 0.0460321419959655,
+      "result_age_s": 0.04291662899777293,
+      "result_frame_age_s": 0.0460321419959655,
+      "worker_busy": false,
+      "errors": 0
+    }
+  },
+  {
+    "at_s": 101464.652852206,
+    "challenge": "3308a3cc0584462a8589d431248d1aba",
+    "instance": "09e8de4239914befa8dda78a081a676e",
+    "active": true,
+    "perception": {
+      "camera_sequence": 4,
+      "result_sequence": 4,
+      "camera_age_s": 0.015482173999771476,
+      "result_age_s": 0.011315145005937666,
+      "result_frame_age_s": 0.015482173999771476,
+      "worker_busy": false,
+      "errors": 0
+    }
+  },
+  {
+    "at_s": 101464.747166783,
+    "challenge": "3308a3cc0584462a8589d431248d1aba",
+    "instance": "09e8de4239914befa8dda78a081a676e",
+    "active": true,
+    "perception": {
+      "camera_sequence": 5,
+      "result_sequence": 5,
+      "camera_age_s": 0.0601310540077975,
+      "result_age_s": 0.055805762007366866,
+      "result_frame_age_s": 0.0601310540077975,
+      "worker_busy": false,
+      "errors": 0
+    }
+  }
+]

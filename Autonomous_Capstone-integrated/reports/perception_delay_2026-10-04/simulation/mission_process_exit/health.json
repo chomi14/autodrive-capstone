@@ -1,0 +1,62 @@
+[
+  {
+    "at_s": 101491.555824133,
+    "challenge": "73bca94501b44accb024f8ca134b8587",
+    "instance": "64f9668d6427449ab9b986debebfc11d",
+    "active": true,
+    "perception": {
+      "camera_sequence": 2,
+      "result_sequence": 2,
+      "camera_age_s": 0.02524920299765654,
+      "result_age_s": 0.02162281000346411,
+      "result_frame_age_s": 0.02524920299765654,
+      "worker_busy": false,
+      "errors": 0
+    }
+  },
+  {
+    "at_s": 101491.653914603,
+    "challenge": "73bca94501b44accb024f8ca134b8587",
+    "instance": "64f9668d6427449ab9b986debebfc11d",
+    "active": true,
+    "perception": {
+      "camera_sequence": 4,
+      "result_sequence": 3,
+      "camera_age_s": 0.0033046770113287494,
+      "result_age_s": 0.0653154280007584,
+      "result_frame_age_s": 0.07001718100218568,
+      "worker_busy": true,
+      "errors": 0
+    }
+  },
+  {
+    "at_s": 101491.753903171,
+    "challenge": "73bca94501b44accb024f8ca134b8587",
+    "instance": "64f9668d6427449ab9b986debebfc11d",
+    "active": true,
+    "perception": {
+      "camera_sequence": 5,
+      "result_sequence": 5,
+      "camera_age_s": 0.036840050990576856,
+      "result_age_s": 0.032189941994147375,
+      "result_frame_age_s": 0.036840050990576856,
+      "worker_busy": false,
+      "errors": 0
+    }
+  },
+  {
+    "at_s": 101491.848558101,
+    "challenge": "73bca94501b44accb024f8ca134b8587",
+    "instance": "64f9668d6427449ab9b986debebfc11d",
+    "active": false,
+    "perception": {
+      "camera_sequence": 6,
+      "result_sequence": 5,
+      "camera_age_s": 0.0631241529918043,
+      "result_age_s": 0.12664492399198934,
+      "result_frame_age_s": 0.13129503298841882,
+      "worker_busy": true,
+      "errors": 0
+    }
+  }
+]

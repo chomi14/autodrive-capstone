@@ -1,0 +1,5 @@
+2026-10-05: 125 regression tests passed, 7 packages built.
+Native ROS: track/mission hold unchanged then existing 6s X/disarm; worker-only stall, camera stop, short delay, controller exit, S, SIGSTOP, SIGKILL, mission zero and fresh-W recovery passed.
+5 GUI parameter services and temporary P saves passed; track/mission render cached 100/100 PWM and age at 4.5s, no slowdown/factor labels.
+Production serial was replaced by FakeSerial. No physical sensors, serial, motors or firmware upload used in this revision.
+Historical camera timing data retained in ../perception_delay_2026-10-04/.

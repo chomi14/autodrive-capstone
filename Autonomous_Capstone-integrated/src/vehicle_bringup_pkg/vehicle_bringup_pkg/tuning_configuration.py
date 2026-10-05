@@ -33,9 +33,27 @@ ADVANCED_TUNING_PARAMETERS = {
     'min_component_area',
 }
 ALLOWED_TUNING_PARAMETERS = set(TUNING_TYPES) | ADVANCED_TUNING_PARAMETERS
+COMMON_TRACK_PARAMETERS = ALLOWED_TUNING_PARAMETERS - {'speed'}
 
 
-def tuning_launch_arguments():
+def _profile(mode):
+    if mode == 'track':
+        return 'track_controller_node', 'track_tuning.yaml', TUNING_TYPES, ALLOWED_TUNING_PARAMETERS
+    from skku_track_drive_pkg.mode_parameters import MISSION, PERPENDICULAR, PARALLEL
+    if mode == 'mission':
+        types = {**TUNING_TYPES, **{key: type(spec[0]) for key, spec in MISSION.items()}}
+        return 'mission_controller_node', 'mission_tuning.yaml', types, ALLOWED_TUNING_PARAMETERS | set(MISSION)
+    if mode == 'calibration':
+        from skku_track_drive_pkg.calibration_controller_node import CALIBRATION
+        types = {key: type(spec[0]) for key, spec in CALIBRATION.items()}
+        return 'parking_calibration_controller_node', 'parking_calibration.yaml', types, set(types)
+    specs = {'perpendicular': PERPENDICULAR, 'parallel': PARALLEL}[mode]
+    types = {key: type(spec[0]) for key, spec in specs.items()}
+    return f'{mode}_parking_controller_node', f'{mode}_parking.yaml', types, set(specs)
+
+
+def tuning_launch_arguments(mode='track'):
+    _root, filename, types, _allowed = _profile(mode)
     arguments = [
         DeclareLaunchArgument(
             'tuning_config',
@@ -47,7 +65,7 @@ def tuning_launch_arguments():
         ),
         DeclareLaunchArgument(
             'saved_tuning_path',
-            default_value=str(Path('~/.config/autodrive/track_tuning.yaml').expanduser()),
+            default_value=str(Path('~/.config/autodrive', filename).expanduser()),
             description='P-key save path and automatically loaded user tuning YAML',
         ),
     ]
@@ -57,23 +75,23 @@ def tuning_launch_arguments():
             default_value='',
             description=f'Optional explicit override for tuning parameter {name}',
         )
-        for name in TUNING_TYPES
+        for name in types
     )
     return arguments
 
 
-def _validate_parameter_file(path):
+def _validate_parameter_file(path, root='track_controller_node', allowed=None):
     with path.open(encoding='utf-8') as stream:
         data = yaml.safe_load(stream)
     try:
-        parameters = data['track_controller_node']['ros__parameters']
+        parameters = data[root]['ros__parameters']
     except (KeyError, TypeError) as exc:
         raise ValueError(
-            f'{path}: expected track_controller_node.ros__parameters mapping'
+            f'{path}: expected {root}.ros__parameters mapping; another mode cannot be loaded/overwritten'
         ) from exc
     if not isinstance(parameters, dict):
         raise ValueError(f'{path}: ros__parameters must be a mapping')
-    unknown = sorted(set(parameters) - ALLOWED_TUNING_PARAMETERS)
+    unknown = sorted(set(parameters) - (ALLOWED_TUNING_PARAMETERS if allowed is None else allowed))
     if unknown:
         raise ValueError(
             f'{path}: non-tuning parameters are not allowed: {", ".join(unknown)}'
@@ -81,11 +99,12 @@ def _validate_parameter_file(path):
     return parameters
 
 
-def resolve_tuning(context):
+def resolve_tuning(context, mode='track'):
+    root, filename, types, allowed = _profile(mode)
     default_path = Path(
         get_package_share_directory('vehicle_bringup_pkg'),
         'config',
-        'track_tuning.yaml',
+        filename,
     )
     saved_path = Path(
         LaunchConfiguration('saved_tuning_path').perform(context)
@@ -94,7 +113,9 @@ def resolve_tuning(context):
 
     if not default_path.is_file():
         raise RuntimeError(f'Package default tuning config not found: {default_path}')
-    default_parameters = _validate_parameter_file(default_path)
+    default_parameters = _validate_parameter_file(default_path, root, allowed)
+    if saved_path.is_file():
+        _validate_parameter_file(saved_path, root, allowed)
 
     if explicit_text:
         selected_path = Path(explicit_text).expanduser()
@@ -108,11 +129,11 @@ def resolve_tuning(context):
         selected_path = default_path
         source = 'package default'
 
-    selected_parameters = _validate_parameter_file(selected_path)
+    selected_parameters = _validate_parameter_file(selected_path, root, allowed)
     parameters = dict(default_parameters)
     parameters.update(selected_parameters)
     parameters['loaded_tuning_config'] = str(selected_path)
-    for name, value_type in TUNING_TYPES.items():
+    for name, value_type in types.items():
         raw_value = LaunchConfiguration(name).perform(context).strip()
         if not raw_value:
             continue

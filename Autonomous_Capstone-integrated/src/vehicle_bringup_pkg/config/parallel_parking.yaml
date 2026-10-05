@@ -1,0 +1,40 @@
+# Mode-specific settings. Zero parking dimensions/speeds mean UNMEASURED.
+parallel_parking_controller_node:
+  ros__parameters:
+    geometry_confirmed: 0
+    lidar_x_m: 0.0
+    lidar_y_m: 0.0
+    lidar_yaw_deg: 0.0
+    scan_angle_sign: 1
+    visible_min_deg: -135.0
+    visible_max_deg: 135.0
+    range_min_m: 0.15
+    range_max_m: 5.0
+    scan_timeout_s: 0.5
+    forward_pwm: 85
+    reverse_pwm: 60
+    steer_step: 7
+    steering_sign: 1
+    side: -1
+    side_center_deg: 90.0
+    side_half_width_deg: 10.0
+    side_detect_m: 1.5
+    confirm_scans: 3
+    pause_s: 5.0
+    settle_s: 0.5
+    search_timeout_s: 60.0
+    maneuver_timeout_s: 30.0
+    collision_margin_m: 0.15
+    wheelbase_m: 0.0
+    front_overhang_m: 0.0
+    rear_overhang_m: 0.0
+    vehicle_width_m: 0.0
+    forward_mps: 0.0
+    reverse_mps: 0.0
+    max_wheel_angle_deg: 0.0
+    gap_margin_m: 0.3
+    slot_depth_m: 0.0
+    entry_advance_m: 0.0
+    entry_lateral_m: 0.0
+    align_tolerance_deg: 3.0
+    center_tolerance_m: 0.08

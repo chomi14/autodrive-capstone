@@ -1,5 +1,17 @@
 # Canonical Workspace 운영 안내
 
+모델 비교, 미션 판단 근거, ROSbag/제어 CSV 기록·격리 재생과 빈 주차 측정 양식은
+[TUNING_RECORD_ANALYSIS_KR.md](TUNING_RECORD_ANALYSIS_KR.md)를 참고한다.
+
+트랙·장애물/신호등 미션·수직주차·평행주차의 새 단독 실행 구성, 모델/노드 표,
+실측값 및 실행 명령은 [FOUR_DRIVING_MODES_KR.md](FOUR_DRIVING_MODES_KR.md)를 참고한다.
+실차 튜닝 전 속도·정지·센서 전용·수동 보정 수정은
+[REAL_VEHICLE_TUNING_PREP_KR.md](REAL_VEHICLE_TUNING_PREP_KR.md)를 참고한다.
+추론 지연과 시리얼 주기 분리, 생존 신호/timeout 감사 및 모의 종료 검증은
+[INFERENCE_SERIAL_LIVENESS_KR.md](INFERENCE_SERIAL_LIVENESS_KR.md)를 참고한다.
+카메라·추론 worker 중단의 실측 분포, 6초간 마지막 명령 유지 후 X/disarm 및 새 W 조건은
+[PERCEPTION_DELAY_SAFETY_KR.md](PERCEPTION_DELAY_SAFETY_KR.md)를 참고한다.
+
 기준 workspace: `/home/autolab/autodrive_ws/Autonomous_Capstone-integrated`.
 CANONICAL - USE THIS: `vehicle_bringup_pkg` + `vehicle_io_pkg` + `driving_user_pins.ino`.
 
@@ -344,6 +356,9 @@ D → +1
 
 ## 7. 트랙주행: launch → 자동 보정 → W 시작
 
+`track_drive_tuning.launch.py`의 W/S 처리, 통신/UI timeout, 펌웨어 업로드 및
+바퀴를 띄운 검증 절차는 [시작·정지 수정 보고](TRACK_START_STOP_SAFETY_KR.md)를 참고한다.
+
 ```bash
 ros2 launch vehicle_bringup_pkg track_drive.launch.py \
   camera_device:=/dev/video0 \
@@ -379,7 +394,8 @@ READY - PRESS W TO START
 
 ```text
 W       실제 자율주행 시작(ARM)
-X/SPACE 즉시 정지(DISARM)
+S       정지 요청(DISARM, 구동·조향 PWM 0)
+X/SPACE S와 동일한 정지 요청
 ```
 
 보정 중 W를 눌러도 무시한다. READY가 된 뒤 다시 W를 눌러야 한다.

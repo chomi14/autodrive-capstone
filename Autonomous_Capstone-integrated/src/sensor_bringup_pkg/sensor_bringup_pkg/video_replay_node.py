@@ -2,6 +2,7 @@
 """Publish a video file as a live-camera-compatible ROS image stream."""
 
 import math
+import json
 import time
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.task import Future
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 
 
 class VideoReplayNode(Node):
@@ -29,6 +31,8 @@ class VideoReplayNode(Node):
         self.declare_parameter('width', 640)
         self.declare_parameter('height', 480)
         self.declare_parameter('wait_for_subscriber', False)
+        self.declare_parameter('required_subscriber_node', '')
+        self.declare_parameter('wait_for_recorder', False)
         self.declare_parameter('max_frames', 0)
         self.declare_parameter('reliability', 'reliable')
 
@@ -41,6 +45,8 @@ class VideoReplayNode(Node):
         self.width = int(self.get_parameter('width').value)
         self.height = int(self.get_parameter('height').value)
         self.wait_for_subscriber = bool(self.get_parameter('wait_for_subscriber').value)
+        self.required_subscriber_node = str(self.get_parameter('required_subscriber_node').value)
+        self.wait_for_recorder = bool(self.get_parameter('wait_for_recorder').value)
         self.max_frames = max(0, int(self.get_parameter('max_frames').value))
         reliability_name = str(self.get_parameter('reliability').value).lower()
 
@@ -64,6 +70,7 @@ class VideoReplayNode(Node):
             source_fps = 30.0
             self.get_logger().warn('Video has no valid FPS metadata; using 30.0 FPS')
         self.playback_fps = requested_fps if requested_fps > 0.0 else source_fps
+        self.source_fps = source_fps
 
         qos = QoSProfile(
             depth=1,
@@ -75,6 +82,7 @@ class VideoReplayNode(Node):
             history=HistoryPolicy.KEEP_LAST,
         )
         self.publisher = self.create_publisher(Image, self.topic, qos)
+        self.source_pub = self.create_publisher(String, '~/frame_source', 10)
         self.bridge = CvBridge()
         self.timer = self.create_timer(1.0 / self.playback_fps, self.on_timer)
         self.frame_count = 0
@@ -119,10 +127,11 @@ class VideoReplayNode(Node):
                 )
             return
 
-        if (
-            self.wait_for_subscriber
-            and not self._started
-            and self.publisher.get_subscription_count() == 0
+        subscribers = {s.node_name for s in self.get_subscriptions_info_by_topic(self.topic)} if not self._started else set()
+        if not self._started and (
+            (self.wait_for_subscriber and (self.publisher.get_subscription_count() == 0 or
+                (self.required_subscriber_node and self.required_subscriber_node not in subscribers))) or
+            (self.wait_for_recorder and 'rosbag2_recorder' not in subscribers)
         ):
             if not self._waiting_logged:
                 self.get_logger().info('Waiting for an image subscriber before starting replay')
@@ -157,6 +166,10 @@ class VideoReplayNode(Node):
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = self.frame_id
         self.publisher.publish(msg)
+        source_index = max(0, int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))-1)
+        self.source_pub.publish(String(data=json.dumps({'frame_stamp_ns': msg.header.stamp.sec*1000000000+msg.header.stamp.nanosec,
+            'video_path': str(self.video_path), 'source_frame_index': source_index,
+            'source_time_s': source_index/self.source_fps})))
         self.frame_count += 1
         publish_time = time.monotonic()
         if self._first_publish_time is None:

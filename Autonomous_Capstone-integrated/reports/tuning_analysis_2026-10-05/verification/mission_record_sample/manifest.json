@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "mode": "mission",
+  "controller": "mission_controller_node",
+  "topics": [
+    "/dry_run/topic_control_signal",
+    "/parameter_events",
+    "/video_replay_node/frame_source",
+    "/mission/image_raw",
+    "/mission_controller_node/perception_timing",
+    "/mission/status",
+    "/dry_run/vehicle/command_status",
+    "/dry_run/vehicle/drive_state",
+    "/dry_run/vehicle/drive_key",
+    "/dry_run/vehicle/controller_heartbeat",
+    "/dry_run/vehicle/arm_challenge",
+    "/dry_run/vehicle/calibration_status"
+  ],
+  "started_ros_ns": 1791133346750822561,
+  "timestamp_basis": "frame_stamp_ns joins original Image/LaserScan header; received_ros_ns matches rosbag receipt clock",
+  "physical_pwm_measured": false,
+  "rows": 99,
+  "parameter_dump_error": "",
+  "model": {
+    "path": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/install/skku_track_drive_pkg/share/skku_track_drive_pkg/models/mission/best.pt",
+    "sha256": "377b6a225e05ce3da6209b2dfdf0e129df034e8837d12861511e54267d258f15"
+  },
+  "tuning": {
+    "path": "/home/autolab/.config/autodrive/mission_tuning.yaml",
+    "sha256": "7846b329ec15c53fd0c34ffbe119f91367f53e230a97a9ac1e848706e6ae59d0"
+  },
+  "initial_speed": 80,
+  "parameter_snapshot_done": true,
+  "closed_ros_ns": null
+}

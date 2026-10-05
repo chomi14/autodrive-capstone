@@ -54,6 +54,9 @@ const int DEFAULT_LEFT = 440;
 const int DEFAULT_RIGHT = 270;
 // Vehicle-specific straight-wheel ADC: preserved old midpoint until measured.
 const int DEFAULT_CENTER = 355;
+// About 15 nominal 30 Hz command periods: allows ordinary transport jitter,
+// but stops PWM after 500 ms without a fully valid motion frame. This clock
+// is separate from lastControlTime; status queries never renew it.
 const unsigned long COMMAND_TIMEOUT_MS = 500;
 unsigned long last_command_time = 0;
 bool command_active = false;
@@ -247,7 +250,8 @@ void stopDriveMotors() {
 
 void emergencyStop() {
   command_active = false;
-  target_angle = 0;
+  // Preserve the target for diagnostics, but disable the steering loop. Do not
+  // drive toward center during X/watchdog stops: every PWM output is zero.
   stopDriveMotors();
   maintainSteering();
 }
@@ -539,9 +543,13 @@ void processData(const char *data) {
   if (!parseValue(cursor, 'l', -MAX_STEERING_STEP, MAX_STEERING_STEP, steering) ||
       !parseValue(cursor, 'r', -255, 255, left) ||
       !parseValue(cursor, '\0', -255, 255, right)) return;
+  // Only zero frames are the heartbeat for explicit calibration. A normal
+  // drive frame is blocked here and must not keep calibration steering alive.
+  if (calibration_running || calibration_waiting_apply) {
+    if (steering == 0 && left == 0 && right == 0) last_command_time = millis();
+    return;
+  }
   last_command_time = millis();
-  // Zero frames from the bridge are the heartbeat during explicit calibration.
-  if (calibration_running || calibration_waiting_apply) return;
   target_angle = steering;
   left_speed = left;
   right_speed = right;

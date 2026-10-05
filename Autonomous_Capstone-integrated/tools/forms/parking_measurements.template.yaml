@@ -1,0 +1,66 @@
+worksheet_only_not_ros_parameter_file: true
+geometry_confirmed: 0
+geometry:
+  wheelbase_m:
+    measured_value: null
+    unit: m
+    reference: 뒤 차축 중심선에서 앞 차축 중심선까지
+  front_overhang_m:
+    measured_value: null
+    unit: m
+    reference: 앞 차축 중심선에서 최전방 외곽까지
+  rear_overhang_m:
+    measured_value: null
+    unit: m
+    reference: 뒤 차축 중심선에서 최후방 외곽까지
+  vehicle_width_m:
+    measured_value: null
+    unit: m
+    reference: 타이어 포함 실제 최대 좌우 폭
+  lidar_x_m:
+    measured_value: null
+    unit: m
+    reference: 뒤 차축 중앙에서 LiDAR 스캔 중심까지 +앞 방향
+  lidar_y_m:
+    measured_value: null
+    unit: m
+    reference: 뒤 차축 중앙에서 LiDAR 스캔 중심까지 +왼쪽 방향
+  lidar_yaw_deg:
+    measured_value: null
+    unit: deg
+    reference: 드라이버 회전 적용 후 0도 광선과 차량 +X의 차이
+  scan_angle_sign:
+    measured_value: null
+    unit: +1/-1
+    reference: 각도 증가가 왼쪽이면 +1; 알려진 위치 표적으로 확인
+  visible_min_deg:
+    measured_value: null
+    unit: deg
+    reference: 차체 가림을 제외한 최우측 유효 방향, 차량 +X=0
+  visible_max_deg:
+    measured_value: null
+    unit: deg
+    reference: 차체 가림을 제외한 최좌측 유효 방향, 차량 +X=0
+  slot_depth_m:
+    measured_value: null
+    unit: m
+    reference: 평행주차 경계에서 통행 측 경계까지 유효 폭
+  entry_lateral_m:
+    measured_value: null
+    unit: m
+    reference: 진입 시작 뒤차축에서 주차 목표 뒤차축까지 횡방향 거리
+  entry_advance_m:
+    measured_value: null
+    unit: m
+    reference: 공간 끝 검출 후 진입 시작 뒤차축 위치까지 전진거리
+speed_samples: []
+steering_samples: []
+derived_values_to_review:
+  forward_mps: null
+  reverse_mps: null
+  max_wheel_angle_deg: null
+apply_manually_to:
+- ~/.config/autodrive/perpendicular_parking.yaml
+- ~/.config/autodrive/parallel_parking.yaml
+note: Fill actual measurements; never pass this worksheet directly as tuning_config
+  or auto-enable geometry_confirmed.

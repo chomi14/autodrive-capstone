@@ -1,0 +1,92 @@
+[
+  {
+    "case": "normal_valid_lane2",
+    "steering": 6,
+    "left_pwm": 250,
+    "right_pwm": 250,
+    "state": "NORMAL",
+    "path_valid": true,
+    "reason": "NORMAL"
+  },
+  {
+    "case": "current_path_obstacle",
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "state": "NORMAL",
+    "path_valid": true,
+    "reason": "CURRENT_PATH_OBSTACLE"
+  },
+  {
+    "case": "current_path_obstacle",
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "state": "NORMAL",
+    "path_valid": true,
+    "reason": "CURRENT_PATH_OBSTACLE"
+  },
+  {
+    "case": "current_path_obstacle",
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "state": "AVOIDING",
+    "path_valid": true,
+    "reason": "LANE_SWITCH_PAUSE"
+  },
+  {
+    "case": "valid_avoidance_lane",
+    "steering": -7,
+    "left_pwm": 80,
+    "right_pwm": 80,
+    "state": "AVOIDING",
+    "path_valid": true,
+    "reason": "AVOIDING"
+  },
+  {
+    "case": "yellow",
+    "steering": 6,
+    "left_pwm": 60,
+    "right_pwm": 60,
+    "state": "NORMAL",
+    "path_valid": true,
+    "reason": "NORMAL|YELLOW_SPEED_LIMIT"
+  },
+  {
+    "case": "red",
+    "steering": 6,
+    "left_pwm": 250,
+    "right_pwm": 250,
+    "state": "NORMAL",
+    "path_valid": true,
+    "reason": "NORMAL"
+  },
+  {
+    "case": "red",
+    "steering": 6,
+    "left_pwm": 250,
+    "right_pwm": 250,
+    "state": "NORMAL",
+    "path_valid": true,
+    "reason": "NORMAL"
+  },
+  {
+    "case": "red",
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "state": "RED_STOP",
+    "path_valid": true,
+    "reason": "RED_LATCH_OR_WAIT_FOR_GREEN"
+  },
+  {
+    "case": "unknown_after_red",
+    "steering": 0,
+    "left_pwm": 0,
+    "right_pwm": 0,
+    "state": "RED_STOP",
+    "path_valid": true,
+    "reason": "RED_LATCH_OR_WAIT_FOR_GREEN"
+  }
+]

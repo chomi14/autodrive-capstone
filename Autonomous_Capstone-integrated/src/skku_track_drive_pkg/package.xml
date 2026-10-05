@@ -7,7 +7,11 @@
   <depend>rclpy</depend><depend>sensor_msgs</depend><depend>cv_bridge</depend>
   <depend>std_srvs</depend><depend>interfaces_pkg</depend><depend>ament_index_python</depend>
   <depend>rcl_interfaces</depend>
+  <depend>std_msgs</depend>
+  <exec_depend>lidar_perception_pkg</exec_depend>
   <exec_depend>python3-scipy</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>ros2bag</exec_depend>
+  <exec_depend>rosbag2_py</exec_depend>
   <export><build_type>ament_python</build_type></export>
 </package>

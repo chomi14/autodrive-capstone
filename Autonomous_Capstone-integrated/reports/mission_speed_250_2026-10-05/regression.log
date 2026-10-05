@@ -1,0 +1,8 @@
+........................................................................ [ 50%]
+......................................................................   [100%]
+=============================== warnings summary ===============================
+../../../../usr/lib/python3/dist-packages/scipy/__init__.py:146
+  Warning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+
+-- Docs: https://docs.pytest.org/en/stable/warnings.html
+142 passed, 1 warning in 3.62s

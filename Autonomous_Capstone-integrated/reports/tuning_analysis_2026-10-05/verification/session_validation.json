@@ -1,0 +1,190 @@
+{
+  "track": {
+    "off": {
+      "results": 99,
+      "pipeline": {
+        "count": 89,
+        "median_ms": 23.23075600725133,
+        "p95_ms": 32.61449259589426,
+        "max_ms": 47.034500996232964
+      },
+      "inference": {
+        "count": 89,
+        "median_ms": 17.05103600397706,
+        "p95_ms": 25.399073801236224,
+        "max_ms": 38.08676800690591
+      },
+      "analysis_build": null,
+      "serial_or_gate_started": false
+    },
+    "on": {
+      "results": 98,
+      "pipeline": {
+        "count": 88,
+        "median_ms": 21.957543009193614,
+        "p95_ms": 33.527768099884256,
+        "max_ms": 59.17459800548386
+      },
+      "inference": {
+        "count": 88,
+        "median_ms": 15.574433498841245,
+        "p95_ms": 27.019812955404618,
+        "max_ms": 46.258247006335296
+      },
+      "analysis_build": {
+        "count": 88,
+        "median_ms": 0.11337250180076808,
+        "p95_ms": 0.16466984889120795,
+        "max_ms": 0.20657699496950954
+      },
+      "serial_or_gate_started": false,
+      "csv_rows": 98,
+      "bag_frames": 100,
+      "source_stamp_joined_rows": 98,
+      "initial_speed": 250
+    },
+    "replay": {
+      "results": 98,
+      "pipeline": {
+        "count": 88,
+        "median_ms": 21.810367499710992,
+        "p95_ms": 32.82220574328676,
+        "max_ms": 47.46108400286175
+      },
+      "inference": {
+        "count": 88,
+        "median_ms": 15.620830999978352,
+        "p95_ms": 25.90571920372895,
+        "max_ms": 40.89905699947849
+      },
+      "analysis_build": {
+        "count": 88,
+        "median_ms": 0.11192200327059254,
+        "p95_ms": 0.13126549602020532,
+        "max_ms": 1.8410640041111037
+      },
+      "serial_or_gate_started": false,
+      "csv_rows": 98,
+      "bag_frames": 100,
+      "source_stamp_joined_rows": 98,
+      "initial_speed": 250
+    },
+    "replay_comparison": {
+      "joined_frames": 96,
+      "frames_with_any_difference": 0,
+      "note": "compare only source-stamp matched frames; frame loss or changed initial EMA history can cause differences"
+    },
+    "matched_comparison": {
+      "original_frames": 98,
+      "replayed_frames": 98,
+      "frames_with_any_difference": 0
+    }
+  },
+  "mission": {
+    "off": {
+      "results": 99,
+      "pipeline": {
+        "count": 89,
+        "median_ms": 22.21694099716842,
+        "p95_ms": 33.920404996024445,
+        "max_ms": 44.363267996232025
+      },
+      "inference": {
+        "count": 89,
+        "median_ms": 15.163534990279004,
+        "p95_ms": 27.12225299619604,
+        "max_ms": 32.367188003263436
+      },
+      "analysis_build": null,
+      "serial_or_gate_started": false
+    },
+    "on": {
+      "results": 99,
+      "pipeline": {
+        "count": 89,
+        "median_ms": 22.527549997903407,
+        "p95_ms": 39.84012940200041,
+        "max_ms": 69.37663099961355
+      },
+      "inference": {
+        "count": 89,
+        "median_ms": 16.037076988141052,
+        "p95_ms": 28.63055940251796,
+        "max_ms": 52.9189360095188
+      },
+      "analysis_build": {
+        "count": 89,
+        "median_ms": 0.14278999879024923,
+        "p95_ms": 0.18019719864241776,
+        "max_ms": 0.23984700965229422
+      },
+      "serial_or_gate_started": false,
+      "csv_rows": 99,
+      "bag_frames": 100,
+      "source_stamp_joined_rows": 99,
+      "initial_speed": 80
+    },
+    "replay": {
+      "results": 97,
+      "pipeline": {
+        "count": 87,
+        "median_ms": 22.019985990482382,
+        "p95_ms": 33.22233460494317,
+        "max_ms": 37.7839760039933
+      },
+      "inference": {
+        "count": 87,
+        "median_ms": 15.535302998614497,
+        "p95_ms": 26.198956300504506,
+        "max_ms": 29.031922997091897
+      },
+      "analysis_build": {
+        "count": 87,
+        "median_ms": 0.13325100007932633,
+        "p95_ms": 0.1803682913305238,
+        "max_ms": 0.2562589943408966
+      },
+      "serial_or_gate_started": false,
+      "csv_rows": 97,
+      "bag_frames": 99,
+      "source_stamp_joined_rows": 97,
+      "initial_speed": 80
+    },
+    "replay_comparison": {
+      "joined_frames": 96,
+      "frames_with_any_difference": 3,
+      "note": "compare only source-stamp matched frames; frame loss or changed initial EMA history can cause differences"
+    },
+    "matched": {
+      "results": 99,
+      "pipeline": {
+        "count": 89,
+        "median_ms": 21.08875800331589,
+        "p95_ms": 34.483765801996924,
+        "max_ms": 41.793605996645056
+      },
+      "inference": {
+        "count": 89,
+        "median_ms": 14.551872998708859,
+        "p95_ms": 26.606226991862048,
+        "max_ms": 33.1052060064394
+      },
+      "analysis_build": {
+        "count": 89,
+        "median_ms": 0.13199300155974925,
+        "p95_ms": 0.1672501995926723,
+        "max_ms": 0.34596699697431177
+      },
+      "serial_or_gate_started": false,
+      "csv_rows": 99,
+      "bag_frames": 99,
+      "source_stamp_joined_rows": 99,
+      "initial_speed": 80
+    },
+    "matched_comparison": {
+      "original_frames": 99,
+      "replayed_frames": 99,
+      "frames_with_any_difference": 0
+    }
+  }
+}

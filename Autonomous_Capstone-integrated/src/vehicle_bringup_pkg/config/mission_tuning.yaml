@@ -1,0 +1,41 @@
+# Mission settings; isolated from track and parking tuning files.
+mission_controller_node:
+  ros__parameters:
+    speed: 250
+    stanley_gain: 0.027
+    heading_gain: 0.55
+    lookahead_index: 30
+    car_center_x: 325.0
+    confidence: 0.5
+    bev_top_shift: -15
+    look_shift: 0
+    ema_alpha: 0.6
+    virtual_lane_width: 290
+    center_ema_alpha: 0.35
+    max_center_jump_px: 80.0
+    max_missed_frames: 12
+    min_component_area: 250
+    max_steering_angle: 50.0
+    obstacle_confirm_frames: 3
+    obstacle_clear_frames: 5
+    obstacle_near_y: 300
+    path_margin_px: 35
+    avoid_hold_s: 2.0
+    avoid_speed: 80
+    yellow_speed: 60
+    red_confirm_frames: 3
+    green_confirm_frames: 3
+    wait_for_green: 0
+    traffic_min_width: 20
+    traffic_min_bottom_y: 80
+    traffic_min_color_ratio: 0.02
+    hsv_s_min: 100
+    hsv_v_min: 95
+    red_h_low_max: 10
+    red_h_high_min: 160
+    green_h_min: 40
+    green_h_max: 90
+    yellow_h_min: 20
+    yellow_h_max: 30
+    alternate_min_area_px: 250
+    image_timeout_s: 0.75

@@ -20,6 +20,7 @@ from vehicle_bringup_pkg.tuning_configuration import (
     resolve_tuning,
     tuning_launch_arguments,
 )
+from vehicle_bringup_pkg.mode_launch import vehicle_remappings
 
 
 def _as_bool(context, name):
@@ -67,7 +68,7 @@ def _launch_nodes(context):
     controller_parameters.update({
         'image_topic': '/camera/front/image_raw',
         'image_reliability': 'reliable',
-        'cmd_topic': '/topic_control_signal',
+        'cmd_topic': '/dry_run/topic_control_signal',
         'device': LaunchConfiguration('device'),
         'start_enabled': True,
         'publish_debug': enable_visualization,
@@ -90,6 +91,7 @@ def _launch_nodes(context):
         name='track_controller_node',
         output='screen',
         parameters=[controller_parameters],
+        remappings=vehicle_remappings('/dry_run'),
     )
     nodes = [
         LogInfo(msg=f'Using {config_source} tuning config: {selected_config}'),
@@ -105,11 +107,12 @@ def _launch_nodes(context):
             output='screen',
             parameters=[{
                 'target_node': '/track_controller_node',
-                'cmd_topic': '/topic_control_signal',
+                'cmd_topic': '/dry_run/topic_control_signal',
                 'debug_topic': '/track_debug_image',
                 'save_path': str(save_path),
                 'loaded_config_path': str(selected_config),
             }],
+            remappings=vehicle_remappings('/dry_run'),
         ))
     stop_when_replay_exits = RegisterEventHandler(
         OnProcessExit(

@@ -1,0 +1,78 @@
+{
+  "mode": "mission",
+  "camera_device": "/dev/video2",
+  "device": "cuda:0",
+  "duration_s": 60.0,
+  "warmup_s": 5,
+  "camera_identity": "See /dev/v4l/by-id; this measurement is not automatically a vehicle-camera calibration",
+  "frames": 887,
+  "successful_results": 888,
+  "frame_arrival_interval": {
+    "count": 886,
+    "min_ms": 22.225,
+    "median_ms": 67.825,
+    "p95_ms": 82.667,
+    "p99_ms": 87.773,
+    "max_ms": 95.663
+  },
+  "camera_publish_stamp_interval": {
+    "count": 886,
+    "min_ms": 34.75,
+    "median_ms": 67.822,
+    "p95_ms": 75.112,
+    "p99_ms": 78.272,
+    "max_ms": 85.198
+  },
+  "completion_interval": {
+    "count": 887,
+    "min_ms": 12.99,
+    "median_ms": 68.54,
+    "p95_ms": 92.078,
+    "p99_ms": 101.902,
+    "max_ms": 140.114
+  },
+  "inference_duration": {
+    "count": 888,
+    "min_ms": 5.627,
+    "median_ms": 16.189,
+    "p95_ms": 29.424,
+    "p99_ms": 36.978,
+    "max_ms": 66.86
+  },
+  "pipeline_duration": {
+    "count": 888,
+    "min_ms": 6.146,
+    "median_ms": 18.001,
+    "p95_ms": 31.703,
+    "p99_ms": 39.865,
+    "max_ms": 70.071
+  },
+  "ingress_to_result_age": {
+    "count": 888,
+    "min_ms": 6.471,
+    "median_ms": 19.826,
+    "p95_ms": 34.174,
+    "p99_ms": 42.084,
+    "max_ms": 73.022
+  },
+  "startup_frame_arrival_interval": {
+    "count": 9,
+    "min_ms": 66.049,
+    "median_ms": 67.545,
+    "p95_ms": 68.675,
+    "p99_ms": 68.708,
+    "max_ms": 68.717
+  },
+  "startup_completion_interval": {
+    "count": 9,
+    "min_ms": 12.822,
+    "median_ms": 64.114,
+    "p95_ms": 85.085,
+    "p99_ms": 89.213,
+    "max_ms": 90.245
+  },
+  "frame_tail_age_s": 0.05745705199660733,
+  "result_tail_age_s": 0.022137638996355236,
+  "serial_sender_started": false,
+  "arm_gate_started": false
+}

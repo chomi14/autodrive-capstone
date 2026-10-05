@@ -1,0 +1,4 @@
+parking_calibration_controller_node:
+  ros__parameters:
+    pwm: 0
+    steering_step: 0

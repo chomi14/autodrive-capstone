@@ -1,0 +1,44 @@
+/track_controller_node:
+  ros__parameters:
+    allow_speed_tuning: true
+    bev_pad: 250
+    bev_top_shift: -15
+    car_center_x: 325.0
+    car_center_y: 179.0
+    center_ema_alpha: 0.35
+    cmd_topic: /dry_run/topic_control_signal
+    confidence: 0.5
+    debug_log: false
+    debug_log_interval: 10
+    debug_topic: track_debug_image
+    device: cuda:0
+    ema_alpha: 0.6
+    heading_gain: 0.55
+    heading_step: 3
+    image_reliability: reliable
+    image_topic: /track/image_raw
+    loaded_tuning_config: /home/autolab/.config/autodrive/track_tuning.yaml
+    look_shift: 0
+    lookahead_index: 30
+    max_center_jump_px: 80.0
+    max_missed_frames: 12
+    max_steering: 7.0
+    max_steering_angle: 50.0
+    min_component_area: 250
+    model_path: /home/autolab/autodrive_ws/Autonomous_Capstone-integrated/install/skku_track_drive_pkg/share/skku_track_drive_pkg/models/best.pt
+    profile: false
+    profile_input_fps: 30.0
+    profile_report_interval: 100
+    profile_warmup_frames: 10
+    publish_analysis: true
+    publish_bev_debug: true
+    publish_debug: true
+    roi_cut: 300
+    speed: 250
+    stanley_gain: 0.027
+    stanley_softening: 0.001
+    start_enabled: true
+    steering_sign: 1.0
+    use_sim_time: false
+    virtual_lane_width: 290
+

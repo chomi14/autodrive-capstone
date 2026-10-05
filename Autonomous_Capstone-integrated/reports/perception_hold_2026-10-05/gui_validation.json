@@ -1,0 +1,122 @@
+{
+  "track": {
+    "parameter": "speed",
+    "accepted": 37,
+    "yaml": "/tmp/codex_four_modes_validation/track.saved.yaml",
+    "ros_readback": 37,
+    "status": {},
+    "command_speed": 37,
+    "windows": [
+      "Track Tuner"
+    ]
+  },
+  "mission": {
+    "parameter": "traffic_min_width",
+    "accepted": 42,
+    "yaml": "/tmp/codex_four_modes_validation/mission.saved.yaml",
+    "ros_readback": 42,
+    "status": {
+      "system_state": "IMAGE_DELAY_HOLD",
+      "image_age_s": 0.808
+    },
+    "command_speed": 0,
+    "windows": [
+      "Mission Tuner",
+      "Mission Tuner Controls 1",
+      "Mission Tuner Controls 2",
+      "Mission Tuner Controls 3"
+    ]
+  },
+  "perpendicular": {
+    "parameter": "side_detect_m",
+    "accepted": 1.4,
+    "yaml": "/tmp/codex_four_modes_validation/perpendicular.saved.yaml",
+    "ros_readback": 1.4,
+    "status": {
+      "mode": "perpendicular",
+      "state": "SEARCH",
+      "waiting": "MEASURE_GEOMETRY_AND_SET_geometry_confirmed",
+      "side_m": null,
+      "opposite_m": null,
+      "elapsed_s": 0.0,
+      "distance_case": 1,
+      "gap_m": null,
+      "pose_estimate": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entry_x_estimate_m": null,
+      "exit_supported": true,
+      "pose_source": "calibrated_PWM_estimate_not_odometry",
+      "steering": 0,
+      "speed": 0,
+      "armed": false,
+      "valid_points": 0
+    },
+    "command_speed": 0,
+    "windows": [
+      "Perpendicular Tuner",
+      "Perpendicular Tuner Controls 1",
+      "Perpendicular Tuner Controls 2",
+      "Perpendicular Tuner Controls 3",
+      "Perpendicular Tuner Controls 4",
+      "Perpendicular Tuner Controls 5"
+    ]
+  },
+  "parallel": {
+    "parameter": "gap_margin_m",
+    "accepted": 0.35,
+    "yaml": "/tmp/codex_four_modes_validation/parallel.saved.yaml",
+    "ros_readback": 0.35,
+    "status": {
+      "mode": "parallel",
+      "state": "SEARCH_FIRST_CAR",
+      "waiting": "MEASURE_GEOMETRY_AND_SET_geometry_confirmed",
+      "side_m": null,
+      "opposite_m": null,
+      "elapsed_s": 0.0,
+      "distance_case": 1,
+      "gap_m": null,
+      "pose_estimate": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "entry_x_estimate_m": null,
+      "exit_supported": false,
+      "pose_source": "calibrated_PWM_estimate_not_odometry",
+      "steering": 0,
+      "speed": 0,
+      "armed": false,
+      "valid_points": 0
+    },
+    "command_speed": 0,
+    "windows": [
+      "Parallel Tuner",
+      "Parallel Tuner Controls 1",
+      "Parallel Tuner Controls 2",
+      "Parallel Tuner Controls 3",
+      "Parallel Tuner Controls 4"
+    ]
+  },
+  "calibration": {
+    "parameter": "pwm",
+    "accepted": -60,
+    "yaml": "/tmp/codex_four_modes_validation/calibration.saved.yaml",
+    "ros_readback": -60,
+    "status": {
+      "state": "DISARMED",
+      "pwm": -60,
+      "steering_step": 0,
+      "armed": false,
+      "elapsed_s": 0.0,
+      "note": "Time is arm-state duration; measure actual travel/time independently."
+    },
+    "command_speed": 0,
+    "windows": [
+      "Calibration Tuner",
+      "Calibration Tuner Controls 1"
+    ]
+  }
+}

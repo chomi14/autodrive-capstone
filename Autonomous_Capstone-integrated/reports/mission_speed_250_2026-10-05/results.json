@@ -1,0 +1,91 @@
+{
+  "launch_without_speed_argument": {
+    "command": [
+      "ros2",
+      "launch",
+      "vehicle_bringup_pkg",
+      "mission_drive_tuning.launch.py",
+      "dry_run:=true",
+      "gui:=false",
+      "device:=cpu"
+    ],
+    "ros_speed": 250,
+    "gui_speed": 250,
+    "slider_position": 250,
+    "avoid_speed": 80,
+    "yellow_speed": 60,
+    "loaded_tuning_config": "/home/autolab/.config/autodrive/mission_tuning.yaml",
+    "serial_or_gate_started": false
+  },
+  "normal_published_command": {
+    "case": "normal_valid_lane2",
+    "steering": 6,
+    "left_pwm": 250,
+    "right_pwm": 250,
+    "state": "NORMAL",
+    "path_valid": true,
+    "reason": "NORMAL"
+  },
+  "normal_gui_command": {
+    "configured_speed": 250,
+    "left_pwm": 250,
+    "right_pwm": 250
+  },
+  "mission_limits_and_stops": {
+    "avoid": {
+      "case": "valid_avoidance_lane",
+      "steering": -7,
+      "left_pwm": 80,
+      "right_pwm": 80,
+      "state": "AVOIDING",
+      "path_valid": true,
+      "reason": "AVOIDING"
+    },
+    "yellow": {
+      "case": "yellow",
+      "steering": 6,
+      "left_pwm": 60,
+      "right_pwm": 60,
+      "state": "NORMAL",
+      "path_valid": true,
+      "reason": "NORMAL|YELLOW_SPEED_LIMIT"
+    },
+    "obstacle": {
+      "case": "current_path_obstacle",
+      "steering": 0,
+      "left_pwm": 0,
+      "right_pwm": 0,
+      "state": "AVOIDING",
+      "path_valid": true,
+      "reason": "LANE_SWITCH_PAUSE"
+    },
+    "red": {
+      "case": "red",
+      "steering": 0,
+      "left_pwm": 0,
+      "right_pwm": 0,
+      "state": "RED_STOP",
+      "path_valid": true,
+      "reason": "RED_LATCH_OR_WAIT_FOR_GREEN"
+    },
+    "unknown_after_red": {
+      "case": "unknown_after_red",
+      "steering": 0,
+      "left_pwm": 0,
+      "right_pwm": 0,
+      "state": "RED_STOP",
+      "path_valid": true,
+      "reason": "RED_LATCH_OR_WAIT_FOR_GREEN"
+    }
+  },
+  "only_speed_changed_in_both_configs": true,
+  "unchanged_models_record_yaml_and_safety_logic": true,
+  "record_yaml_files_unchanged": 5,
+  "motors_run": false,
+  "firmware_uploaded": false,
+  "package_default_without_user_file": {
+    "speed": 250,
+    "source": "package default",
+    "selected": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/install/vehicle_bringup_pkg/share/vehicle_bringup_pkg/config/mission_tuning.yaml"
+  }
+}

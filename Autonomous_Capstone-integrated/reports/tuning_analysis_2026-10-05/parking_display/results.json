@@ -1,0 +1,58 @@
+{
+  "perpendicular": {
+    "synthetic_fixture_only": true,
+    "geometry_confirmed": false,
+    "body_point": [
+      2.5320508075688775,
+      1.0199999999999998,
+      29.999999999999996
+    ],
+    "rotation_applied_once": true,
+    "labels": [
+      "UNCONFIRMED pose model",
+      "+X forward   +Y left   rear axle=(0,0)   red=grille LiDAR",
+      "PERPENDICULAR SEARCH  MEASURE_GEOMETRY_AND_SET_geometry_confirmed",
+      "steering=+0 PWM=0 armed=False",
+      "side/opposite(m)=None/None gap=None",
+      "visible=-135.0..135.0deg  sign=1 yaw=30.0",
+      "pose estimate=[0.0, 0.0, 0.0] case=1",
+      "GEOMETRY UNCONFIRMED / configured examples, not measurements",
+      "LiDAR x/y=0.8/0.02m range=0.15..5.0m",
+      "upstream rotation=180.0deg (display only); red arrow=processed scan zero",
+      "inspection center=+/-90.0 half=10.0deg radius=1.5m",
+      "perpendicular start threshold=2.5m (blue arc); dark gray=FOV, inner black=minimum range",
+      "pose inset: PWM bicycle estimate, not odometry; missing dimensions are not drawn",
+      "W=start/resume S=stop P=save R=reset while disarmed",
+      "Rear/body occlusion is UNKNOWN, not a clear rear corridor."
+    ],
+    "motor_command_zero": true
+  },
+  "parallel": {
+    "synthetic_fixture_only": true,
+    "geometry_confirmed": false,
+    "body_point": [
+      2.5320508075688775,
+      1.0199999999999998,
+      29.999999999999996
+    ],
+    "rotation_applied_once": true,
+    "labels": [
+      "UNCONFIRMED pose model",
+      "+X forward   +Y left   rear axle=(0,0)   red=grille LiDAR",
+      "PARALLEL SEARCH_FIRST_CAR  MEASURE_GEOMETRY_AND_SET_geometry_confirmed",
+      "steering=+0 PWM=0 armed=False",
+      "side/opposite(m)=None/None gap=None",
+      "visible=-135.0..135.0deg  sign=1 yaw=30.0",
+      "pose estimate=[0.0, 0.0, 0.0] case=1",
+      "GEOMETRY UNCONFIRMED / configured examples, not measurements",
+      "LiDAR x/y=0.8/0.02m range=0.15..5.0m",
+      "upstream rotation=180.0deg (display only); red arrow=processed scan zero",
+      "inspection center=+/-90.0 half=10.0deg radius=1.5m",
+      "perpendicular start threshold=N/Am (blue arc); dark gray=FOV, inner black=minimum range",
+      "pose inset: PWM bicycle estimate, not odometry; missing dimensions are not drawn",
+      "W=start/resume S=stop P=save R=reset while disarmed",
+      "Rear/body occlusion is UNKNOWN, not a clear rear corridor."
+    ],
+    "motor_command_zero": true
+  }
+}

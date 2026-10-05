@@ -1,0 +1,31 @@
+{
+  "scenarios_passed": [
+    "outside_path",
+    "current_path",
+    "alternate_missing",
+    "alternate_blocked",
+    "Red->Unknown->Green"
+  ],
+  "synthetic_only": true,
+  "frame_count": 21,
+  "lane_switch_request_delta": {
+    "previous_frame_stamp_ns": 3000000,
+    "previous_path_lane": 2,
+    "previous_steering": 0,
+    "steering_delta_steps": 0,
+    "cte_delta_px": 0.0,
+    "heading_delta_deg": 0.0,
+    "path_delta_mean_px": 0.0,
+    "path_delta_max_px": 0.0
+  },
+  "lane_switch_applied_delta": {
+    "previous_frame_stamp_ns": 4000000,
+    "previous_path_lane": 2,
+    "previous_steering": 0,
+    "steering_delta_steps": -7,
+    "cte_delta_px": 286.453243010674,
+    "heading_delta_deg": -29.687210146906494,
+    "path_delta_mean_px": 339.1954977121644,
+    "path_delta_max_px": 367.0
+  }
+}

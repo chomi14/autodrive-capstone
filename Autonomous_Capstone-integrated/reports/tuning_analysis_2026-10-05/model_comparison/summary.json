@@ -1,0 +1,160 @@
+{
+  "common_tuning": {
+    "speed": 250,
+    "stanley_gain": 0.027,
+    "heading_gain": 0.55,
+    "lookahead_index": 30,
+    "car_center_x": 325.0,
+    "confidence": 0.5,
+    "bev_top_shift": -15,
+    "look_shift": 0,
+    "ema_alpha": 0.6,
+    "virtual_lane_width": 290,
+    "center_ema_alpha": 0.35,
+    "max_center_jump_px": 80.0,
+    "max_missed_frames": 12,
+    "min_component_area": 250,
+    "max_steering_angle": 50.0,
+    "loaded_tuning_config": "/home/autolab/.config/autodrive/track_tuning.yaml"
+  },
+  "common_source": "saved user",
+  "common_selected": "/home/autolab/.config/autodrive/track_tuning.yaml",
+  "mission_selected": "/home/autolab/.config/autodrive/mission_tuning.yaml",
+  "mission_source": "saved user",
+  "mission_resolved_speed": 80,
+  "parameters_changed": false,
+  "serial_sender_started": false,
+  "meaning": "model agreement on the same input, no ground truth or physical steering validation",
+  "models": {
+    "track": {
+      "path": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/src/skku_track_drive_pkg/models/best.pt",
+      "sha256": "27d7fedda0946ded2f03f9c7ff47023b3a1f859b08574ee1c323baee9ee25e03",
+      "classes": {
+        "0": "lane2",
+        "1": "traffic_light"
+      },
+      "task": "segment"
+    },
+    "mission": {
+      "path": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/src/skku_track_drive_pkg/models/mission/best.pt",
+      "sha256": "377b6a225e05ce3da6209b2dfdf0e129df034e8837d12861511e54267d258f15",
+      "classes": {
+        "0": "lane1",
+        "1": "lane2",
+        "2": "obstacle",
+        "3": "traffic_light"
+      },
+      "task": "segment"
+    },
+    "root": {
+      "path": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/best.pt",
+      "sha256": "377b6a225e05ce3da6209b2dfdf0e129df034e8837d12861511e54267d258f15",
+      "classes": {
+        "0": "lane1",
+        "1": "lane2",
+        "2": "obstacle",
+        "3": "traffic_light"
+      },
+      "task": "segment"
+    }
+  },
+  "mission_equals_root": true,
+  "video": {
+    "path": "/home/autolab/autodrive_ws/h-mobility-class/src/camera_perception_pkg/camera_perception_pkg/lib/Collected_Datasets/driving_simulation.mp4",
+    "sha256": "cec954a516545fb21bfc2d6f010d258137e7cb7314744bfbaba831d8e654ecf1",
+    "fps": 30.0,
+    "frames_available": 2949,
+    "resize_to": [
+      640,
+      480
+    ]
+  },
+  "frames_compared": 2949,
+  "agreement": {
+    "lane2_mask_iou_agreement": {
+      "count": 2949,
+      "median": 0.8860408786249917,
+      "p95": 0.9115186853464042,
+      "max": 0.9257822968392843
+    },
+    "steering_delta_steps": {
+      "count": 2949,
+      "median": 0.0,
+      "p95": 2.0,
+      "max": 5.0
+    },
+    "cte_delta_px": {
+      "count": 2949,
+      "median": 5.2671422104407455,
+      "p95": 23.062811504330703,
+      "max": 57.99719423617392
+    },
+    "heading_delta_deg": {
+      "count": 2949,
+      "median": 1.110442927036189,
+      "p95": 9.293447082449672,
+      "max": 30.562724245380025
+    },
+    "path_delta_mean_px": {
+      "count": 2949,
+      "median": 6.172986272986288,
+      "p95": 14.358589866073794,
+      "max": 52.323461106794454
+    },
+    "path_delta_max_px": {
+      "count": 2949,
+      "median": 10.0,
+      "p95": 28.0,
+      "max": 82.0
+    }
+  },
+  "model_results": {
+    "track": {
+      "current_lane_visible_frames": 2949,
+      "valid_path_frames": 2949,
+      "valid_error_reference_frames": 2949,
+      "inference_ms": {
+        "count": 2949,
+        "median": 10.815836998517625,
+        "p95": 11.546226000064053,
+        "max": 79.40752399736084
+      },
+      "pipeline_ms": {
+        "count": 2949,
+        "median": 15.456189008546062,
+        "p95": 16.21788239281159,
+        "max": 85.09635399968829
+      },
+      "callback_ms": {
+        "count": 2949,
+        "median": 15.846617010538466,
+        "p95": 16.617192002013326,
+        "max": 85.50192099937703
+      }
+    },
+    "mission_model_normal": {
+      "current_lane_visible_frames": 2949,
+      "valid_path_frames": 2949,
+      "valid_error_reference_frames": 2949,
+      "inference_ms": {
+        "count": 2949,
+        "median": 7.358312999713235,
+        "p95": 8.011239796178415,
+        "max": 77.18279700202402
+      },
+      "pipeline_ms": {
+        "count": 2949,
+        "median": 11.98883399774786,
+        "p95": 12.756391605944373,
+        "max": 82.55441101209726
+      },
+      "callback_ms": {
+        "count": 2949,
+        "median": 12.380681000649929,
+        "p95": 13.165982201462612,
+        "max": 83.04006900289096
+      }
+    }
+  },
+  "frame_records": "frames.jsonl.gz"
+}

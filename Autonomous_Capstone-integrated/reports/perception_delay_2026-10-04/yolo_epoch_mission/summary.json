@@ -1,0 +1,87 @@
+{
+  "mode": "mission",
+  "camera_device": "/dev/video2",
+  "device": "cuda:0",
+  "duration_s": 30.0,
+  "warmup_s": 5,
+  "camera_identity": "See /dev/v4l/by-id; this measurement is not automatically a vehicle-camera calibration",
+  "frames": 445,
+  "successful_results": 446,
+  "frame_arrival_interval": {
+    "count": 444,
+    "min_ms": 28.58,
+    "median_ms": 67.597,
+    "p95_ms": 82.313,
+    "p99_ms": 87.487,
+    "max_ms": 95.467
+  },
+  "camera_publish_stamp_interval": {
+    "count": 444,
+    "min_ms": 34.545,
+    "median_ms": 67.884,
+    "p95_ms": 75.213,
+    "p99_ms": 80.004,
+    "max_ms": 85.79
+  },
+  "completion_interval": {
+    "count": 445,
+    "min_ms": 12.952,
+    "median_ms": 68.412,
+    "p95_ms": 89.443,
+    "p99_ms": 95.607,
+    "max_ms": 111.359
+  },
+  "completion_basis": "Successful YOLO + lane/path/mission/control command completion",
+  "yolo_completion_interval": {
+    "count": 445,
+    "min_ms": 13.245,
+    "median_ms": 68.424,
+    "p95_ms": 89.387,
+    "p99_ms": 95.461,
+    "max_ms": 110.869
+  },
+  "inference_duration": {
+    "count": 446,
+    "min_ms": 5.752,
+    "median_ms": 15.137,
+    "p95_ms": 25.571,
+    "p99_ms": 32.617,
+    "max_ms": 39.108
+  },
+  "pipeline_duration": {
+    "count": 446,
+    "min_ms": 6.271,
+    "median_ms": 16.747,
+    "p95_ms": 28.616,
+    "p99_ms": 34.223,
+    "max_ms": 42.66
+  },
+  "ingress_to_result_age": {
+    "count": 446,
+    "min_ms": 6.648,
+    "median_ms": 18.162,
+    "p95_ms": 30.738,
+    "p99_ms": 37.19,
+    "max_ms": 45.24
+  },
+  "startup_frame_arrival_interval": {
+    "count": 9,
+    "min_ms": 36.71,
+    "median_ms": 67.816,
+    "p95_ms": 73.743,
+    "p99_ms": 75.753,
+    "max_ms": 76.256
+  },
+  "startup_completion_interval": {
+    "count": 9,
+    "min_ms": 10.05,
+    "median_ms": 67.434,
+    "p95_ms": 82.349,
+    "p99_ms": 84.861,
+    "max_ms": 85.489
+  },
+  "frame_tail_age_s": 0.06396608900104184,
+  "result_tail_age_s": 0.06187994200445246,
+  "serial_sender_started": false,
+  "arm_gate_started": false
+}
