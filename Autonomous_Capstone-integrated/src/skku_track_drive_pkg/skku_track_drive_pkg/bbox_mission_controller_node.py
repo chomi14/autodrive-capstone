@@ -4,14 +4,11 @@ The inherited MissionCore selects only obstacle boxes that overlap the current
 projected path.  Nearness is determined from the bottom edge of each bbox.
 No LaserScan subscription or LiDAR correction is used by this executable.
 """
-import json
-import cv2
-import numpy as np
-
 from .controller_liveness import run_controller
 from .mission_controller_node import MissionControllerNode
 
-# 사용자 조정값은 기존 mission_tuning.yaml 및 Mission Tuner GUI에서 관리합니다.
+# 사용자 조정값은 mission_bbox_only.launch.py 상단 및 Mission Tuner GUI에서 관리합니다.
+# 1009의 live bev_src_* / ROI 튜닝은 부모 TrackController가 그대로 관리합니다.
 # 자주 조정하는 bbox 파라미터:
 # obstacle_near_y       : 640x480 영상 기준 가까운 장애물의 bbox 하단 y
 # path_margin_px        : bbox와 주행 경로를 비교할 때 좌우 여유 픽셀
@@ -26,16 +23,7 @@ class BboxMissionControllerNode(MissionControllerNode):
 
     def initialize_mode(self):
         super().initialize_mode()
-        self.declare_parameter('bev_source_points', '')
         self.declare_parameter('initial_target_lane', 2)
-        source = self.get_parameter('bev_source_points').value
-        if source:
-            points = np.asarray(json.loads(source), dtype=np.float32)
-            if points.shape != (4, 2) or not np.all(np.isfinite(points)):
-                raise ValueError('BEV source must contain four finite [x, y] points')
-            if not cv2.isContourConvex(points) or abs(cv2.contourArea(points)) < 1:
-                raise ValueError('BEV source must be a non-degenerate convex quadrilateral')
-            self.lane.BASE_SRC = points.tolist()
         lane = self.get_parameter('initial_target_lane').value
         if lane not in (1, 2):
             raise ValueError('initial_target_lane must be 1 or 2')

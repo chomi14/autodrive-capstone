@@ -1,5 +1,4 @@
 """Camera-only bbox mission: edit the parameter blocks at the top."""
-import json
 from pathlib import Path
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -12,7 +11,7 @@ from vehicle_bringup_pkg.mode_launch import common_arguments, command_topic, pre
 from vehicle_bringup_pkg.recording import analysis_enabled
 from vehicle_bringup_pkg.perception_policy import perception_arguments
 from vehicle_bringup_pkg.tuned_modes import assemble
-from vehicle_bringup_pkg.tuning_configuration import tuning_launch_arguments, resolve_tuning, _profile
+from vehicle_bringup_pkg.tuning_configuration import tuning_launch_arguments, resolve_tuning, _profile, _validate_parameter_file, ALLOWED_TUNING_PARAMETERS
 
 # =========================
 # EDIT HERE: 실행 / 장치 / 저장
@@ -33,6 +32,8 @@ LOAD_SAVED_TUNING = False            # True: 이전 GUI P 저장값 자동 적�
 BBOX_TUNING_PATH = str(Path.home() / '.config/autodrive/mission_bbox_only_tuning.yaml')
 DEFAULT_TUNING_CONFIG = ''           # 명시 YAML 경로: 코드 상단값보다 우선
 DEFAULT_RECORD_DIR = ''              # 빈 값: rosbag 기록 안 함
+LOAD_SAVED_TRACK_TUNING = True       # 현재 트랙 GUI 저장값을 기본 주행에 사용
+TRACK_TUNING_PATH = str(Path.home() / '.config/autodrive/track_tuning.yaml')
 DEFAULT_ANALYSIS = False             # 주행 분석 토픽 발행
 
 # =========================
@@ -51,11 +52,11 @@ CAMERA_DEFAULTS = {
 }
 VISION_DEFAULTS = {
     'confidence': 0.5,              # YOLO 최소 검출 확률
-    'bev_top_shift': -15,           # BEV 상단 두 점 y 이동(px)
+    'bev_top_shift': -8,           # BEV 상단 두 점 y 이동(px)
     'roi_cut': 300,                 # BEV 상단 잘라낼 높이(px)
-    'look_shift': 0,                # 중심점 샘플 높이 이동(px)
+    'look_shift': 50,                # 중심점 샘플 높이 이동(px)
     'ema_alpha': 0.6,               # 기울기 현재 관측 가중치(0~1)
-    'virtual_lane_width': 290,      # 가려진 차선 복원용 가상 폭(px)
+    'virtual_lane_width': 300,      # 가려진 차선 복원용 가상 폭(px)
     'bev_pad': 250,                 # BEV 시각화 좌우 padding(px)
     'center_ema_alpha': 0.35,       # 중심점 현재 관측 가중치(0~1)
     'max_center_jump_px': 80.0,     # 프레임 간 중심점 최대 이동(px)
@@ -69,11 +70,11 @@ SRC_MAT_BASE = [[238, 316], [402, 313], [501, 476], [155, 476]]
 # EDIT HERE: 기본 주행 / Stanley 조향
 # =========================
 DRIVING_DEFAULTS = {
-    'speed': 30,                    # 기본 좌우 모터 PWM(0~255)
-    'stanley_gain': 0.027,          # 횡방향 오차 gain
-    'heading_gain': 0.55,           # 방향 오차 gain
+    'speed': 250,                    # 기본 좌우 모터 PWM(0~255)
+    'stanley_gain': 0.020,          # 횡방향 오차 gain
+    'heading_gain': 0.60,           # 방향 오차 gain
     'stanley_softening': 0.001,     # Stanley 분모 안정화 값
-    'lookahead_index': 30,          # 경로 목표점 인덱스
+    'lookahead_index': 10,          # 경로 목표점 인덱스
     'heading_step': 3,             # 방향 계산 점 간격
     'car_center_x': 325.0,          # 차량 기준점 x(px)
     'car_center_y': 179.0,          # 차량 기준점 y(px)
@@ -121,7 +122,7 @@ TRAFFIC_DEFAULTS = {
 # =========================
 # EDIT HERE: 상태 / 지연 / 디버그
 # =========================
-DEFAULT_COMMAND_TIMEOUT = 0.75      # controller 생존 lease(s)
+DEFAULT_COMMAND_TIMEOUT = 0.0      # controller 생존 lease(s)
 DEFAULT_UI_TIMEOUT = 0.75           # GUI heartbeat 제한(s)
 DEFAULT_PERCEPTION_STOP = 6.0       # 인지 결과 무응답 X/disarm 기준(s)
 NODE_DEFAULTS = {
@@ -136,7 +137,12 @@ NODE_DEFAULTS = {
 }
 
 # 아래는 실행 연결 코드입니다.
-TUNING_DEFAULTS = {**VISION_DEFAULTS, **DRIVING_DEFAULTS, **BBOX_DEFAULTS, **TRAFFIC_DEFAULTS}
+BEV_DEFAULTS = {
+    f'bev_src_{corner}_{axis}': point[index]
+    for corner, point in zip(('tl', 'tr', 'br', 'bl'), SRC_MAT_BASE)
+    for index, axis in enumerate(('x', 'y'))
+}
+TUNING_DEFAULTS = {**VISION_DEFAULTS, **DRIVING_DEFAULTS, **BBOX_DEFAULTS, **TRAFFIC_DEFAULTS, **BEV_DEFAULTS}
 
 
 def resolve_bbox_settings(context):
@@ -144,6 +150,11 @@ def resolve_bbox_settings(context):
     use_saved = LaunchConfiguration('load_saved_tuning').perform(context).lower() in ('true', '1')
     if source == 'package default' or (source == 'saved user' and not use_saved):
         settings.update(TUNING_DEFAULTS)
+        use_track = LaunchConfiguration('load_saved_track_tuning').perform(context).lower() in ('true', '1')
+        track_path = Path(LaunchConfiguration('track_tuning_path').perform(context)).expanduser()
+        if use_track and track_path.is_file():
+            # Read only: do not overwrite the current track calibration file.
+            settings.update(_validate_parameter_file(track_path, 'track_controller_node', ALLOWED_TUNING_PARAMETERS))
     _, _, types, _ = _profile('mission')
     for name, default in TUNING_DEFAULTS.items():
         raw = LaunchConfiguration(name).perform(context).strip()
@@ -157,7 +168,14 @@ def bbox_assemble(context):
     index = next(i for i, a in enumerate(actions)
                  if isinstance(a, Node) and a.node_executable == 'mission_controller_node')
     settings = resolve_bbox_settings(context)
-    settings.update(NODE_DEFAULTS)
+    for name, default in NODE_DEFAULTS.items():
+        raw = LaunchConfiguration(name).perform(context)
+        if isinstance(default, bool):
+            if raw.lower() not in ('true', 'false', '1', '0'):
+                raise ValueError(f'{name}: expected true or false')
+            settings[name] = raw.lower() in ('true', '1')
+        else:
+            settings[name] = type(default)(raw)
     settings.update({
         'model_path': LaunchConfiguration('model_path'), 'device': LaunchConfiguration('device'),
         'image_topic': '/mission/image_raw', 'debug_topic': '/mission/debug_image',
@@ -166,7 +184,7 @@ def bbox_assemble(context):
         'max_steering': MAX_STEERING_COMMAND, 'allow_speed_tuning': ALLOW_SPEED_TUNING,
         'cmd_topic': command_topic(context),
         'steering_sign': ParameterValue(LaunchConfiguration('steering_sign'), value_type=float),
-        'bev_source_points': json.dumps(SRC_MAT_BASE), 'initial_target_lane': DEFAULT_INITIAL_LANE,
+        'initial_target_lane': DEFAULT_INITIAL_LANE,
     })
     actions[index] = Node(
         package='skku_track_drive_pkg', executable='bbox_mission_controller_node',
@@ -206,9 +224,13 @@ def generate_launch_description():
         arguments.append(a)
     for name in sorted(TUNING_DEFAULTS.keys() - declared):
         arguments.append(DeclareLaunchArgument(name, default_value=''))
+    for name, value in NODE_DEFAULTS.items():
+        arguments.append(DeclareLaunchArgument(name, default_value=str(value).lower() if isinstance(value, bool) else str(value)))
     return LaunchDescription([
         config_argument(), *arguments,
         DeclareLaunchArgument('load_saved_tuning', default_value=str(LOAD_SAVED_TUNING).lower()),
+        DeclareLaunchArgument('load_saved_track_tuning', default_value=str(LOAD_SAVED_TRACK_TUNING).lower()),
+        DeclareLaunchArgument('track_tuning_path', default_value=TRACK_TUNING_PATH),
         DeclareLaunchArgument('model_path', default_value=model),
         DeclareLaunchArgument('steering_sign', default_value=str(DEFAULT_STEERING_SIGN)),
         OpaqueFunction(function=bbox_assemble),
