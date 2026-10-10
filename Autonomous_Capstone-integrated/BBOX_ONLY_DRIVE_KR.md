@@ -8,7 +8,11 @@
 - Autonomous_Capstone-integrated/src/vehicle_bringup_pkg/launch/mission_bbox_only.launch.py
 - 실행 등록: skku_track_drive_pkg/setup.py에 bbox_mission_controller_node 항목 추가
 
-launch 상단 TEST_SPEED와 BBOX_DEFAULTS에 초기 속도 및 bbox 회피 조정값을 모았습니다. obstacle_near_y=300, path_margin_px=35, obstacle_confirm_frames=3, obstacle_clear_frames=5, alternate_min_area_px=250, avoid_hold_s=2.0, avoid_speed=80입니다. saved/explicit YAML 및 명시 launch 인자가 BBOX_DEFAULTS보다 우선합니다. speed의 기본 launch 인자는 30입니다.
+launch 상단 EDIT HERE 구역에 모델/장치/저장, 카메라/차선 인식, 기본 주행/Stanley, bbox 회피, 신호등/HSV, 상태/지연/디버그 값을 모두 모았습니다. 기본 PWM은 DRIVING_DEFAULTS['speed']=30입니다. obstacle_near_y=300, path_margin_px=35, obstacle_confirm_frames=3, obstacle_clear_frames=5, alternate_min_area_px=250, avoid_hold_s=2.0, avoid_speed=80입니다.
+
+기본 LOAD_SAVED_TUNING=False이므로 이전 P 저장값이 코드 상단 변경을 덮어쓰지 않습니다. P 저장은 계속 사용 가능하며 저장값을 다시 쓰려면 load_saved_tuning:=true로 실행하거나 상단 LOAD_SAVED_TUNING=True로 바꿉니다. 명시 tuning_config YAML은 저장값 선택과 관계없이 적용합니다. 우선순위: 코드 상단 → 선택한 저장/명시 YAML → 실행 인자 → 실행 중 승인된 GUI 값.
+
+SRC_MAT_BASE에서 BEV 사다리꼴 4점을 보정할 수 있습니다. DEFAULT_INITIAL_LANE으로 시작 차선을 선택합니다. 원래 영상 기준 좌표이므로 카메라 해상도를 바꾸면 BEV 점과 차선 관련 픽셀 값도 함께 보정해야 합니다. 참고한 0708_250.py의 slope gain, 9600 baud, 좌표값을 복사하지 않고 이 프로젝트의 기존 Stanley/115200 baud/보정값을 유지했습니다.
 
 ## 판단 흐름
 
@@ -50,7 +54,7 @@ ros2 launch vehicle_bringup_pkg mission_bbox_only.launch.py \\
 ```bash
 ros2 launch vehicle_bringup_pkg mission_bbox_only.launch.py \\
   camera_device:=/dev/video2 arduino_port:=/dev/arduino \\
-  device:=cuda:0 speed:=30 auto_calibrate:=false
+  device:=cuda:0 auto_calibrate:=false
 ```
 
 /dev/video2, /dev/arduino는 실제 장치명으로 바꿉니다. CUDA가 없는 경우 device:=cpu를 사용합니다.
@@ -58,6 +62,8 @@ ros2 launch vehicle_bringup_pkg mission_bbox_only.launch.py \\
 Mission Tuner에서 W=출발 요청, S/X/Space=정지, P=승인된 튜닝값 저장, D=영상, B=BEV 표시 전환입니다. GUI 승인 로그 이후 P로 저장합니다. GUI의 bbox 하단 y, 경로 여유, 확인/해제 프레임, 회피 유지시간·속도를 조정할 수 있습니다. 기본 주행·신호등 파라미터도 같은 GUI에서 조정합니다.
 
 전용 저장 파일: ~/.config/autodrive/mission_bbox_only_tuning.yaml
+
+상단 speed 변경을 사용할 때 명령에 speed:=30을 넣지 마세요. 명시 speed 인자는 코드 상단 speed보다 우선합니다.
 
 예: 근접 기준선을 바꿔 시작하려면 실행 명령에 obstacle_near_y:=330 path_margin_px:=40을 추가합니다.
 

@@ -48,7 +48,29 @@ class LaunchTests(unittest.TestCase):
                     self.assertNotIn('mission_controller_node', names)
                     self.assertNotIn('lidar_publisher_node_v2', names)
                     self.assertEqual(names.count('serial_sender_node_v2'), 1 if dry == sensors == 'false' else 0)
-                    self.assertEqual(context.launch_configurations['speed'], '30')
+                    self.assertEqual(module.resolve_bbox_settings(context)['speed'], 30)
+                    # EDIT HERE must reach effective controller settings, not just comments.
+                    with patch.dict(module.DRIVING_DEFAULTS, {'speed': 47}), patch.dict(module.TUNING_DEFAULTS, {'speed': 47}):
+                        self.assertEqual(module.resolve_bbox_settings(context)['speed'], 47)
+                    context.launch_configurations.update(speed='23', roi_cut='280')
+                    self.assertEqual(module.resolve_bbox_settings(context)['speed'], 23)
+                    self.assertEqual(module.resolve_bbox_settings(context)['roi_cut'], 280)
+                    context.launch_configurations.update(speed='', roi_cut='')
+                # An existing P-save must not silently defeat edits at the top.
+                import json
+                saved = Path(tmp)/'mission.yaml'
+                saved.write_text(json.dumps({'mission_controller_node': {'ros__parameters': {'speed': 55, 'obstacle_near_y': 350}}}))
+                context.launch_configurations['load_saved_tuning'] = 'false'
+                self.assertEqual(module.resolve_bbox_settings(context)['speed'], 30)
+                self.assertEqual(module.resolve_bbox_settings(context)['obstacle_near_y'], 300)
+                context.launch_configurations['load_saved_tuning'] = 'true'
+                self.assertEqual(module.resolve_bbox_settings(context)['speed'], 55)
+                self.assertEqual(module.resolve_bbox_settings(context)['obstacle_near_y'], 350)
+                context.launch_configurations['speed'] = '21'
+                self.assertEqual(module.resolve_bbox_settings(context)['speed'], 21)
+                context.launch_configurations.update(speed='', tuning_config=str(saved), load_saved_tuning='false')
+                self.assertEqual(module.resolve_bbox_settings(context)['speed'], 55)
+                self.assertEqual(set(module.TUNING_DEFAULTS), tuning._profile('mission')[3])
 
 
 if __name__ == '__main__':
