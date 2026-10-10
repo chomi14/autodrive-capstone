@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from .messages import LaneInfo, TargetPoint
 from . import camera_perception_core as CPFL
+from .bev_geometry import BEV_DEFAULT_POINTS
 
 
 class LaneInfoExtractor:
@@ -11,26 +12,35 @@ class LaneInfoExtractor:
     실시간 튜닝을 위해 아래 값들을 인스턴스 속성으로 노출한다(드라이버가 매 프레임 갱신 가능):
       - bev_top_shift : BEV 원근 변환 상단 기준선의 수직 이동량(px).
                         음수면 더 먼 곳(지평선 쪽)을 포함 → 더 위에서 내려다보는 느낌.
+      - bev_source_points : 원본 카메라의 사다리꼴 꼭짓점. 좌상/우상/우하/좌하 순서의 [x, y].
+                            GUI의 BEV Source Points에서 조절하며 상단 y에는 bev_top_shift를 더한다.
       - roi_cut       : BEV 영상에서 잘라낼 상단 경계(px). 클수록 더 아래(가까운 곳)만 본다.
+                        런치의 Track Tuner GUI에서 ROI Cut (px) 슬라이더로 실시간 조절한다.
       - look_shift    : 차선 중심 샘플링 높이 범위의 이동량(px). 음수=더 위(먼 곳), 양수=더 아래(가까운 곳).
       - virtual_lane_width : 코너링 시 한쪽 차선이 창 경계에서 잘릴 때, 보이는 차선으로부터
                         이 폭(px)만큼 떨어진 곳에 반대쪽 차선이 있다고 가정해 중심을 복원한다.
     """
 
     # 원본 영상 기준으로 보정된 BEV 소스 사다리꼴(기본값)
-    BASE_SRC = [[238, 316], [402, 313], [501, 476], [155, 476]]
+    BASE_SRC = [list(point) for point in BEV_DEFAULT_POINTS]
 
     def __init__(self, show_image: bool = True, bev_top_shift: int = 0,
                  roi_cut: int = 300, look_shift: int = 0, slope_ema_alpha: float = 0.3,
                  virtual_lane_width: int = 300, bev_pad: int = 0,
                  capture_debug: bool = False, center_ema_alpha: float = 0.35,
                  max_center_jump_px: float = 80.0, max_missed_frames: int = 12,
-                 min_component_area: int = 250):
+                 min_component_area: int = 250, bev_source_points=None):
         self.show_image = show_image
         self.lane_class_name = 'lane2'
         self.capture_debug = capture_debug
         self.last_debug = None
         self.bev_top_shift = bev_top_shift
+        self.bev_source_points = [
+            list(point) for point in (
+                self.BASE_SRC if bev_source_points is None else bev_source_points
+            )
+        ]
+        self._last_geometry = None
         self.roi_cut = roi_cut
         self.look_shift = look_shift
         # 현재 관측의 가중치. 작을수록 평활화가 강하고 1이면 즉시 반영한다.
@@ -53,13 +63,21 @@ class LaneInfoExtractor:
         self.last_confidence = 0.0
 
     def _src_mat(self):
-        s = [list(p) for p in self.BASE_SRC]
+        s = [list(p) for p in self.bev_source_points]
         # 상단 두 점(인덱스 0,1)의 y를 bev_top_shift만큼 이동 → 내려다보는 정도 조절
         s[0][1] += self.bev_top_shift
         s[1][1] += self.bev_top_shift
         return s
 
     def process(self, detections, frame=None) -> LaneInfo:
+        geometry = (tuple(tuple(point) for point in self._src_mat()), int(self.roi_cut))
+        if self._last_geometry is not None and geometry != self._last_geometry:
+            # Old BEV coordinates cannot be held or smoothed into a new transform.
+            self.smoothed_targets = self.smoothed_target_ys = self.smoothed_fit = None
+            self.smoothed_slope = None
+            self.missed_frames = 0
+            self.last_confidence = 0.0
+        self._last_geometry = geometry
         if self.capture_debug:
             self.last_debug = None
         if len(detections.detections) == 0:
@@ -410,6 +428,7 @@ class LaneInfoExtractor:
         self.last_debug = {
             'bev_mask': cleaned_full,
             'inverse_transform': cv2.getPerspectiveTransform(dst_mat, src_mat),
+            'source_points': src_mat.copy(),
             'roi_cut': roi_cut,
             'samples': samples,
             'confidence': confidence,
