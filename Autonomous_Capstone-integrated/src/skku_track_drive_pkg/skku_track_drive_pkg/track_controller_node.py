@@ -21,6 +21,7 @@ from interfaces_pkg.msg import MotionCommand as RosMotionCommand
 
 from .yolo_perception import YoloDetector
 from .lane_processing import LaneInfoExtractor
+from .bev_geometry import BEV_CORNERS, BEV_SOURCE_DEFAULTS, source_points, validate_source_points
 from .path_planner import PathPlanner
 from .motion_planner import MotionPlanner
 from .command_lease import CommandLease
@@ -90,6 +91,8 @@ class TrackControllerNode(Node):
 
         # Lane/BEV values copied from the summer track-driving config.
         self.declare_parameter('bev_top_shift', -8)
+        for name, value in BEV_SOURCE_DEFAULTS.items():
+            self.declare_parameter(name, value)
         self.declare_parameter('roi_cut', 300)
         self.declare_parameter('look_shift', 50)
         self.declare_parameter('ema_alpha', 0.3)
@@ -158,6 +161,9 @@ class TrackControllerNode(Node):
             self._log_profile_device(device)
         self.lane = LaneInfoExtractor(
             show_image=False,
+            bev_source_points=source_points({
+                name: self.get_parameter(name).value for name in BEV_SOURCE_DEFAULTS
+            }),
             bev_top_shift=int(self.get_parameter('bev_top_shift').value),
             roi_cut=int(self.get_parameter('roi_cut').value),
             look_shift=int(self.get_parameter('look_shift').value),
@@ -255,6 +261,10 @@ class TrackControllerNode(Node):
     def _tuning_limits():
         """Runtime-safe numeric limits; the GUI may intentionally be narrower."""
         return {
+            **{
+                name: (int, 0, 639 if name.endswith('_x') else 479)
+                for name in BEV_SOURCE_DEFAULTS
+            },
             # Arduino motor commands use signed 8-bit PWM (-255..255).
             'speed': (int, 0, 255),
             'stanley_gain': (float, 0.0, 0.2),
@@ -262,6 +272,7 @@ class TrackControllerNode(Node):
             'lookahead_index': (int, 1, 99),
             'confidence': (float, 0.0, 1.0),
             'bev_top_shift': (int, -100, 100),
+            'roi_cut': (int, 0, 470),
             'look_shift': (int, -150, 150),
             'ema_alpha': (float, 0.0, 1.0),
             'virtual_lane_width': (int, 1, 1000),
@@ -269,7 +280,6 @@ class TrackControllerNode(Node):
             # Advanced parameters are dynamic but intentionally absent from the GUI.
             'stanley_softening': (float, 0.0, 10.0),
             'heading_step': (int, 1, 99),
-            'roi_cut': (int, 0, 470),
             'bev_pad': (int, 0, 1000),
             'car_center_x': (float, -2000.0, 2000.0),
             'car_center_y': (float, -2000.0, 2000.0),
@@ -301,9 +311,19 @@ class TrackControllerNode(Node):
                 errors.append(reason)
         if errors:
             raise RuntimeError('Invalid tuning parameters: ' + '; '.join(errors))
+        reason = validate_source_points(self.lane.bev_source_points, self.lane.bev_top_shift)
+        if reason:
+            raise RuntimeError('Invalid BEV source: ' + reason)
 
     def _apply_tuning_values(self, updates):
         """Apply validated values to the objects used by the image callback."""
+        if any(name in updates for name in BEV_SOURCE_DEFAULTS):
+            current = {
+                f'bev_src_{corner}_{axis}': point[axis_index]
+                for corner, point in zip(BEV_CORNERS, self.lane.bev_source_points)
+                for axis_index, axis in enumerate(('x', 'y'))
+            }
+            self.lane.bev_source_points = source_points({**current, **updates})
         if 'speed' in updates:
             self.speed = updates['speed']
             self.motion.default_left_speed = updates['speed']
@@ -393,6 +413,20 @@ class TrackControllerNode(Node):
 
         if tuning_updates or display_updates:
             with self._parameter_lock:
+                if 'bev_top_shift' in tuning_updates or any(
+                    name in tuning_updates for name in BEV_SOURCE_DEFAULTS
+                ):
+                    points = [list(point) for point in self.lane.bev_source_points]
+                    for index, corner in enumerate(BEV_CORNERS):
+                        for axis_index, axis in enumerate(('x', 'y')):
+                            name = f'bev_src_{corner}_{axis}'
+                            if name in tuning_updates:
+                                points[index][axis_index] = tuning_updates[name]
+                    reason = validate_source_points(
+                        points, tuning_updates.get('bev_top_shift', self.lane.bev_top_shift)
+                    )
+                    if reason:
+                        return SetParametersResult(successful=False, reason=reason)
                 self._apply_tuning_values(tuning_updates)
                 if 'publish_debug' in display_updates:
                     self.publish_debug = display_updates['publish_debug']
@@ -638,7 +672,11 @@ class TrackControllerNode(Node):
         cv2.drawContours(panel, contours, -1, (255, 255, 0), 1, cv2.LINE_AA)
 
         roi_cut = int(debug['roi_cut'])
-        cv2.line(panel, (0, roi_cut), (panel.shape[1] - 1, roi_cut), (90, 90, 90), 1)
+        # Show the exact boundary used by extraction; the mask above it is empty.
+        cv2.line(
+            panel, (0, roi_cut), (panel.shape[1] - 1, roi_cut),
+            (255, 0, 255), 2, cv2.LINE_AA,
+        )
         for target_y, lane_center in debug['samples']:
             y = int(target_y) + roi_cut
             for edge_x in lane_center.edges:
@@ -698,7 +736,43 @@ class TrackControllerNode(Node):
             1,
             cv2.LINE_AA,
         )
+        cv2.putText(
+            panel,
+            f'ROI Cut={roi_cut}px  use rows {roi_cut}..{mask.shape[0] - 1}',
+            (8, 60),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.50,
+            (255, 0, 255),
+            1,
+            cv2.LINE_AA,
+        )
         return panel
+
+    def _draw_bev_source(self, frame):
+        """Draw the actual homography source on the camera view, even without detections."""
+        points = np.rint(self.lane._src_mat()).astype(np.int32)
+        color = (0, 165, 255)
+        cv2.polylines(frame, [points], True, color, 2, cv2.LINE_AA)
+        for index, ((x, y), corner) in enumerate(zip(points, ('TL', 'TR', 'BR', 'BL')), 1):
+            cv2.circle(frame, (int(x), int(y)), 7, (0, 0, 0), -1)
+            cv2.circle(frame, (int(x), int(y)), 5, color, -1)
+            label = f'P{index} {corner} ({x},{y})'
+            text_width = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, .43, 1)[0][0]
+            location = (
+                max(2, min(int(x) + 10, frame.shape[1] - text_width - 2)),
+                max(15, min(int(y) - 10, frame.shape[0] - 5)),
+            )
+            cv2.putText(frame, label, location, cv2.FONT_HERSHEY_SIMPLEX, .43,
+                        (0, 0, 0), 3, cv2.LINE_AA)
+            cv2.putText(frame, label, location, cv2.FONT_HERSHEY_SIMPLEX, .43,
+                        color, 1, cv2.LINE_AA)
+        top_width = int(points[1, 0] - points[0, 0])
+        bottom_width = int(points[2, 0] - points[3, 0])
+        tilt = np.degrees(np.arctan2(points[1, 1] - points[0, 1], top_width))
+        cv2.putText(frame, f'BEV source: top={top_width}px bottom={bottom_width}px tilt={tilt:+.1f}deg',
+                    (10, 95), cv2.FONT_HERSHEY_SIMPLEX, .48, (0, 0, 0), 3, cv2.LINE_AA)
+        cv2.putText(frame, f'BEV source: top={top_width}px bottom={bottom_width}px tilt={tilt:+.1f}deg',
+                    (10, 95), cv2.FONT_HERSHEY_SIMPLEX, .48, color, 1, cv2.LINE_AA)
 
     def _make_debug(
         self,
@@ -795,6 +869,7 @@ class TrackControllerNode(Node):
             cv2.LINE_AA,
         )
 
+        self._draw_bev_source(out)
         if self.publish_bev_debug:
             bev_panel = self._make_bev_debug(frame.shape, path_result)
             return np.hstack((out, bev_panel))
