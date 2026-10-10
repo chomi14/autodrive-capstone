@@ -10,6 +10,16 @@ track_controller_node:
     # Perception and lane extraction
     confidence: 0.50
     bev_top_shift: -8
+    # Camera-space BEV source points (TL/TR/BR/BL). Top Y adds bev_top_shift.
+    bev_src_tl_x: 238
+    bev_src_tl_y: 316
+    bev_src_tr_x: 402
+    bev_src_tr_y: 313
+    bev_src_br_x: 501
+    bev_src_br_y: 476
+    bev_src_bl_x: 155
+    bev_src_bl_y: 476
+    roi_cut: 300
     look_shift: 50
     ema_alpha: 0.60
     virtual_lane_width: 300

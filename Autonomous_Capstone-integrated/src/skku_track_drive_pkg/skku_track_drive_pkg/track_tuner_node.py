@@ -28,6 +28,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
 from interfaces_pkg.msg import MotionCommand
+from .bev_geometry import BEV_SOURCE_DEFAULTS
 
 
 TUNER_WINDOW_NAME = 'Track Tuner'
@@ -61,6 +62,7 @@ TRACKBARS = {
         lambda p: int(p - 40),
         lambda v: int(v) + 40,
     ),
+    'roi_cut': ('ROI Cut (px)', 470, lambda p: int(p), lambda v: int(v)),
     'look_shift': ('Look Shift', 120, lambda p: int(p), lambda v: int(v)),
     'ema_alpha': (
         'EMA Alpha x100', 100,
@@ -78,6 +80,15 @@ TRACKBARS = {
         lambda v: round(float(v)) - 30,
     ),
 }
+TRACKBARS.update({
+    name: (
+        f'P{index // 2 + 1} {name.split("_")[2].upper()} {name[-1].upper()}'
+        + (' (base)' if name.endswith('_y') and index < 4 else ''),
+        639 if name.endswith('_x') else 479,
+        lambda p: int(p), lambda v: int(v),
+    )
+    for index, name in enumerate(BEV_SOURCE_DEFAULTS)
+})
 DISPLAY_PARAMETERS = ('publish_debug', 'publish_bev_debug')
 
 
@@ -279,10 +290,16 @@ class TrackTunerNode(Node):
             cv2.namedWindow(self.tuner_window, cv2.WINDOW_NORMAL)
             cv2.resizeWindow(self.tuner_window, 900, 720)
             self._initializing_ui = True
-            for index, (name, (label, maximum, _decode, _encode)) in enumerate(self.trackbars.items()):
+            regular_index = 0
+            for name, (label, maximum, _decode, _encode) in self.trackbars.items():
                 window = self.tuner_window
-                if extra := (index // 12 + int(self.mode_controls_separate)):
+                if name in BEV_SOURCE_DEFAULTS:
+                    window = f'{self.tuner_window} BEV Source Points'
+                elif extra := (regular_index // 12 + int(self.mode_controls_separate)):
                     window = f'{self.tuner_window} Controls {extra}'
+                if name not in BEV_SOURCE_DEFAULTS:
+                    regular_index += 1
+                if window != self.tuner_window:
                     if window not in self.control_windows:
                         cv2.namedWindow(window, cv2.WINDOW_NORMAL)
                         cv2.resizeWindow(window, 620, 650)
@@ -486,6 +503,19 @@ class TrackTunerNode(Node):
                 cv2.LINE_AA,
             )
         cv2.imshow(self.tuner_window, canvas)
+        source_window = f'{self.tuner_window} BEV Source Points'
+        if source_window in self.control_windows:
+            point_canvas = np.zeros((150, 620, 3), dtype=np.uint8)
+            for index, line in enumerate((
+                'Camera points: P1 TL, P2 TR, P3 BR, P4 BL',
+                'X: left/right. Y: up/down. Change pairs for width/tilt.',
+                'Top Y is base Y + BEV Top Shift.',
+                'Orange outline/coordinates on camera show applied points.',
+                'P: save accepted points. Invalid shapes are rejected.',
+            )):
+                cv2.putText(point_canvas, line, (10, 24 + index * 26),
+                            cv2.FONT_HERSHEY_SIMPLEX, .48, (220, 220, 220), 1, cv2.LINE_AA)
+            cv2.imshow(source_window, point_canvas)
 
     def _draw_debug(self):
         enabled = bool(self.desired_values.get('publish_debug', False))
