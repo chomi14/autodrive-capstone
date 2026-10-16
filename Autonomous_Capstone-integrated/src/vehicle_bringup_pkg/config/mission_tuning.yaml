@@ -1,24 +1,37 @@
-# Mission settings; isolated from track and parking tuning files.
+# Common driving defaults match track_tuning.yaml; mission controls stay separate.
 mission_controller_node:
   ros__parameters:
     speed: 250
-    stanley_gain: 0.027
-    heading_gain: 0.55
-    lookahead_index: 30
+    stanley_gain: 0.020
+    heading_gain: 0.60
+    lookahead_index: 10
     car_center_x: 325.0
     confidence: 0.5
-    bev_top_shift: -15
-    look_shift: 0
+    bev_top_shift: -8
+    # Same camera-space BEV source points and ROI as basic track driving.
+    bev_src_tl_x: 238
+    bev_src_tl_y: 316
+    bev_src_tr_x: 402
+    bev_src_tr_y: 313
+    bev_src_br_x: 501
+    bev_src_br_y: 476
+    bev_src_bl_x: 155
+    bev_src_bl_y: 476
+    roi_cut: 300
+    look_shift: 50
     ema_alpha: 0.6
-    virtual_lane_width: 290
+    virtual_lane_width: 300
     center_ema_alpha: 0.35
     max_center_jump_px: 80.0
     max_missed_frames: 12
     min_component_area: 250
     max_steering_angle: 50.0
-    obstacle_confirm_frames: 3
+    # bbox 하단이 obstacle_near_y 이상일 때 첫 프레임부터 회피 시도.
+    # 1: 전체 차선 마스크 비교 + 즉시 확인. 0: 경로 비교 + confirm_frames 확인.
+    immediate_obstacle_avoid: 1
+    obstacle_confirm_frames: 1
     obstacle_clear_frames: 5
-    obstacle_near_y: 300
+    obstacle_near_y: 300  # 480px 높이 기준 근접선. 해상도에 비례 적용.
     path_margin_px: 35
     avoid_hold_s: 2.0
     avoid_speed: 80

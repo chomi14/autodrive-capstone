@@ -88,9 +88,10 @@ START_ENABLED = True               # 계산 활성화; 실제 출발은 기존 W
 # EDIT HERE: bbox 장애물 회피
 # =========================
 BBOX_DEFAULTS = {
+    'immediate_obstacle_avoid': 1,  # 근접선 충족 후 바로 회피; 전체 차선 마스크도 비교
     'obstacle_near_y': 300,         # bbox 하단 근접선(480px 기준)
     'path_margin_px': 35,          # 경로/bbox 좌우 여유(640px 기준)
-    'obstacle_confirm_frames': 3,  # 회피 확정 연속 프레임(확인 중 정지)
+    'obstacle_confirm_frames': 1,  # 근접 조건 충족 시 첫 프레임부터 회피 시도
     'obstacle_clear_frames': 5,    # 장애물 해제 연속 프레임
     'alternate_min_area_px': 250,  # 대체 차선 최소 mask 면적
     'avoid_hold_s': 2.0,           # 최소 회피 유지시간(s)

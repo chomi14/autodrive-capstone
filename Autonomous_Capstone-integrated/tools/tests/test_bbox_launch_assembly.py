@@ -100,6 +100,8 @@ class LaunchTests(unittest.TestCase):
                     self.assertNotIn('lidar_publisher_node_v2', names)
                     self.assertEqual(names.count('serial_sender_node_v2'), 1 if dry == sensors == 'false' else 0)
                     self.assertEqual(module.resolve_bbox_settings(context)['speed'], 250)
+                    self.assertEqual(module.resolve_bbox_settings(context)['immediate_obstacle_avoid'], 1)
+                    self.assertEqual(module.resolve_bbox_settings(context)['obstacle_near_y'], 300)
                     # EDIT HERE must reach effective controller settings, not just comments.
                     with patch.dict(module.DRIVING_DEFAULTS, {'speed': 47}), patch.dict(module.TUNING_DEFAULTS, {'speed': 47}):
                         self.assertEqual(module.resolve_bbox_settings(context)['speed'], 47)

@@ -5,6 +5,7 @@ used for parking. Zero geometry values mean unmeasured, never guessed dimensions
 """
 
 MISSION = {
+    'immediate_obstacle_avoid': (0, 0, 1, 1),  # 1: 근접선 충족 후 1프레임 확인 + 전체 차선 마스크 비교
     'obstacle_confirm_frames': (3, 1, 30, 1),
     'obstacle_clear_frames': (5, 1, 60, 1),
     'obstacle_near_y': (300, 0, 480, 1),

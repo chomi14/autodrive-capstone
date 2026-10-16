@@ -34,6 +34,7 @@ class CanonicalSafetyTests(unittest.TestCase):
             'lidar_port': '/dev/lidar-test',
             'lidar_rotation': '180',
             'use_lidar': 'false',
+            'bbox_obstacle_avoidance': 'false',
             'arduino_port': '/dev/arduino-test',
             'device': 'cpu',
             'steering_sign': '1',

@@ -30,7 +30,9 @@ CPU 사용 시 `device:=cpu`. 원래 주행은 `bbox_obstacle_avoidance` 옵션�
 - 조정값은 `src/vehicle_bringup_pkg/launch/mission_bbox_only.launch.py` 상단에 모았습니다.
 - 기존 `~/.config/autodrive/track_tuning.yaml`의 주행/BEV/ROI 값을 읽고, 실행 인자가 최종 우선입니다. 원래 저장 파일은 수정하지 않습니다.
 - GUI P 저장은 별도 `~/.config/autodrive/mission_bbox_only_tuning.yaml`입니다. 저장된 bbox 설정으로 재시작하려면 `ros2 launch vehicle_bringup_pkg mission_bbox_only.launch.py load_saved_tuning:=true`를 사용하세요 (장치 인자 추가).
-- 현재 경로와 겹치며 bbox 하단이 `obstacle_near_y`를 넘은 obstacle만 판단합니다. 연속 확인 후 옆 차선이 보이고 비어 있을 때 전환하고, 안전한 대체 차선이 없으면 정지합니다.
+- bbox 하단이 `obstacle_near_y=300` 이상(480px 높이 기준)이며 현재 경로 또는 현재 차선의 원본 마스크와 겹치는 obstacle만 판단합니다. 반대 차선은 화면 전체에서 매 프레임 확인하며 오래된 검출을 재사용하지 않습니다.
+- `immediate_obstacle_avoid=1`이면 위 근접 조건을 충족한 첫 프레임부터 전환을 시도합니다. 하단 근접 조건은 생략하지 않습니다. 0이면 원래 경로 비교와 `obstacle_confirm_frames`를 사용합니다.
+- 반대 차선이 보이고 장애물 겹침이 없을 때만 전환합니다. 전환 프레임은 정지하고 다음 프레임의 새 차선 경로가 유효해야 구동합니다. 반대 차선이 사다리꼴 밖에서만 보여 실제 경로를 만들 수 없으면 계속 정지하므로 BEV/ROI 보정은 별도로 필요합니다.
 - 핵심 값: `obstacle_near_y`, `path_margin_px`, `obstacle_confirm_frames`, `obstacle_clear_frames`, `avoid_speed`, `avoid_hold_s`. 신호등 로직도 기존 미션 기능을 사용합니다.
 - BEV 좌표를 GUI에서 바꾸면 장애물 경로 판정도 동일한 변환을 즉시 사용합니다.
 
@@ -40,5 +42,5 @@ ROS 환경 및 위 빌드 후:
 
 ```bash
 python3 tools/tests/test_bbox_launch_assembly.py
-python3 -m pytest -q src/skku_track_drive_pkg/test/test_mission_parking.py src/skku_track_drive_pkg/test/test_lane_processing.py tools/tests/test_bev_source_tuning.py tools/tests/test_bbox_1009_integration.py
+python3 -m pytest -q src/skku_track_drive_pkg/test tools/tests
 ```

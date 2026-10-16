@@ -65,6 +65,22 @@ def color_of_light(frame, detection, settings):
     return evidence['color'], evidence['strength']
 
 
+def mask_blocked(detection, mask, settings, image_shape):
+    """Obstacle ground-contact band intersects a currently observed lane mask."""
+    h, w = image_shape[:2]
+    x1, top, x2, bottom = box_xyxy(detection)
+    if bottom < 0 or top >= h or x2 < 0 or x1 >= w:
+        return False
+    if bottom < settings['obstacle_near_y'] * h / 480.0:
+        return False
+    # A close obstacle clipped by the bottom edge must not disappear from
+    # collision evidence just because its predicted box extends past the image.
+    y = min(h - 1, int(bottom))
+    margin = settings['path_margin_px'] * w / 640.0
+    left, right = max(0, int(x1 - margin)), min(w, int(x2 + margin) + 1)
+    return bool(np.any(mask[max(0, y - 3):min(h, y + 4), left:right]))
+
+
 def path_blocked(detection, camera_path, settings, image_shape):
     """Horizontal footprint of a near obstacle crosses the actual path."""
     if len(camera_path) < 2:
@@ -122,31 +138,32 @@ class MissionCore:
             self.red_latched = False
 
         obstacles = [d for d in detections.detections if d.class_name == 'obstacle']
-        self.blocking_boxes = [d for d in obstacles if path_blocked(d, camera_path, p, frame.shape)]
+        # Refresh BOTH lanes from the full camera image on EVERY frame, even
+        # during NORMAL. Never retain an old clear-lane mask after detection loss.
+        masks = {lane: lane_mask(detections, f'lane{lane}', frame.shape) for lane in (1, 2)}
+        lane_areas = {lane: int(np.count_nonzero(mask)) for lane, mask in masks.items()}
+        self.blocking_boxes = [d for d in obstacles
+                               if path_blocked(d, camera_path, p, frame.shape)
+                               or (p['immediate_obstacle_avoid'] and mask_blocked(
+                                   d, masks[self.target_lane], p, frame.shape))]
         blocking = bool(self.blocking_boxes)
         evaluated_lane = self.target_lane
         alternative = 1 if self.target_lane == 2 else 2
-        alternate_mask = lane_mask(detections, f'lane{alternative}', frame.shape)
+        alternate_mask = masks[alternative]
         alternate_visible = np.count_nonzero(alternate_mask) >= p['alternate_min_area_px']
         alternate_blocked = False
         alternate_blockers = []
         for det in obstacles:
-            box = det.bbox
-            y = int(np.clip(box.center.position.y + box.size.y / 2, 0, h - 1))
-            if y < p['obstacle_near_y'] * h / 480.0:
-                continue
-            margin = p['path_margin_px'] * w / 640.0
-            x1 = max(0, int(box.center.position.x - box.size.x / 2 - margin))
-            x2 = min(w, int(box.center.position.x + box.size.x / 2 + margin))
-            if np.any(alternate_mask[max(0, y - 3):min(h, y + 4), x1:x2]):
+            if mask_blocked(det, alternate_mask, p, frame.shape):
                 alternate_blocked = True
                 alternate_blockers.append(det)
         self.block_count = self.block_count + 1 if blocking else 0
         self.clear_count = 0 if blocking else self.clear_count + 1
         confirmation_count = self.block_count
+        required_confirmation = 1 if p['immediate_obstacle_avoid'] else p['obstacle_confirm_frames']
         switched = False
         if not self.red_latched:
-            if self.block_count >= p['obstacle_confirm_frames'] and self.state != 'AVOIDING':
+            if self.block_count >= required_confirmation and self.state != 'AVOIDING':
                 if alternate_visible and not alternate_blocked:
                     self.target_lane = alternative
                     self.state = 'AVOIDING'
@@ -190,6 +207,9 @@ class MissionCore:
             'selected_color_ratio': max((r for k, r in colors if k == color), default=0.0),
             'red_count': self.red_count, 'green_count': self.green_count,
             'path_blocked': blocking, 'alternate_visible': alternate_visible,
+            'lane_mask_areas_px': lane_areas,
+            'lane_detection_scope': 'full_camera_frame_current_observation',
+            'immediate_obstacle_avoid': bool(p['immediate_obstacle_avoid']),
             'alternate_blocked': alternate_blocked, 'stop': stop,
             'path_lane': evaluated_lane, 'path_valid': lane_valid,
             'camera_path': camera_path, 'alternate_lane': alternative,
@@ -197,7 +217,7 @@ class MissionCore:
             'alternate_valid': alternate_visible and not alternate_blocked,
             'alternate_valid_basis': 'visible_mask_area_and_obstacle_overlap_not_planned_path',
             'obstacle_confirm_count': confirmation_count, 'clear_count': self.clear_count,
-            'obstacle_confirm_required': p['obstacle_confirm_frames'],
+            'obstacle_confirm_required': required_confirmation,
             'red_confirm_required': p['red_confirm_frames'], 'green_confirm_required': p['green_confirm_frames'],
             'red_latched': self.red_latched, 'lane_switch_requested': switched,
             'reasons': reasons, 'reason': '|'.join(reasons),
