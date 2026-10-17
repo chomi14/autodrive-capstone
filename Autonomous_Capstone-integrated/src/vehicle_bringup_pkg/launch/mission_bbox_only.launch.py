@@ -78,6 +78,7 @@ DRIVING_DEFAULTS = {
     'heading_step': 3,             # 방향 계산 점 간격
     'car_center_x': 325.0,          # 차량 기준점 x(px)
     'car_center_y': 179.0,          # 차량 기준점 y(px)
+    'car_center_reference_roi_cut': None,  # None: 처음 불러온 ROI 기준, 저장된 기준값 우선
     'max_steering_angle': 50.0,     # 조향 명령 변환 최대각(deg)
 }
 MAX_STEERING_COMMAND = 7.0          # 펌웨어 조향 명령 최대값
@@ -159,7 +160,11 @@ def resolve_bbox_settings(context):
     for name, default in TUNING_DEFAULTS.items():
         raw = LaunchConfiguration(name).perform(context).strip()
         if raw:
-            settings[name] = types.get(name, type(default))(raw)
+            value_type = int if name == 'car_center_reference_roi_cut' else types.get(name, type(default))
+            settings[name] = value_type(raw)
+    if settings.get('car_center_reference_roi_cut') is None:
+        # Partial saved YAMLs can omit ROI; the controller then defaults to 300.
+        settings['car_center_reference_roi_cut'] = settings.get('roi_cut', 300)
     return settings
 
 

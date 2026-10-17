@@ -19,6 +19,8 @@ class LaneCenter:
     reconstructed: bool = False
     valid: bool = True
     source: str = "two_edges"
+    # Boundary contact and an incomplete interior detection are different evidence.
+    reconstruction_reason: str = ""
 
 
 def _weighted_median(values, weights):

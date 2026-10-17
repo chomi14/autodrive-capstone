@@ -48,7 +48,7 @@ class TrackControllerNode(Node):
         default_model = str(
             Path(get_package_share_directory('skku_track_drive_pkg'))
             / 'models'
-            / 'best.pt'
+            / 'best_v2.pt'
         )
 
         # ROS I/O
@@ -94,6 +94,12 @@ class TrackControllerNode(Node):
         for name, value in BEV_SOURCE_DEFAULTS.items():
             self.declare_parameter(name, value)
         self.declare_parameter('roi_cut', 300)
+        # Older tuning files express car_center_y in their initial cropped ROI.
+        # Persist that reference cut so later ROI saves/restarts keep the same
+        # full-BEV vehicle point rather than treating the new crop as its origin.
+        self.declare_parameter(
+            'car_center_reference_roi_cut', int(self.get_parameter('roi_cut').value)
+        )
         self.declare_parameter('look_shift', 50)
         self.declare_parameter('ema_alpha', 0.3)
         self.declare_parameter('virtual_lane_width', 300)
@@ -176,10 +182,15 @@ class TrackControllerNode(Node):
             max_missed_frames=int(self.get_parameter('max_missed_frames').value),
             min_component_area=int(self.get_parameter('min_component_area').value),
         )
+        self._initialize_vehicle_reference(
+            float(self.get_parameter('car_center_y').value),
+            int(self.get_parameter('car_center_reference_roi_cut').value),
+        )
+        vehicle_y = self._vehicle_y_in_roi(self.lane.roi_cut)
         self.path_planner = PathPlanner(
             car_center_point=(
                 int(self.get_parameter('car_center_x').value),
-                int(self.get_parameter('car_center_y').value),
+                vehicle_y,
             )
         )
         self.motion = MotionPlanner(
@@ -190,7 +201,7 @@ class TrackControllerNode(Node):
             lookahead_steps=int(self.get_parameter('lookahead_index').value),
             heading_step=int(self.get_parameter('heading_step').value),
             car_center_x=float(self.get_parameter('car_center_x').value),
-            car_center_y=float(self.get_parameter('car_center_y').value),
+            car_center_y=vehicle_y,
             default_left_speed=self.speed,
             default_right_speed=self.speed,
             stop_on_red=False,
@@ -273,6 +284,7 @@ class TrackControllerNode(Node):
             'confidence': (float, 0.0, 1.0),
             'bev_top_shift': (int, -100, 100),
             'roi_cut': (int, 0, 470),
+            'car_center_reference_roi_cut': (int, 0, 470),
             'look_shift': (int, -150, 150),
             'ema_alpha': (float, 0.0, 1.0),
             'virtual_lane_width': (int, 1, 1000),
@@ -315,6 +327,17 @@ class TrackControllerNode(Node):
         if reason:
             raise RuntimeError('Invalid BEV source: ' + reason)
 
+    def _initialize_vehicle_reference(self, car_center_y, reference_roi_cut):
+        """Keep the saved vehicle offset tied to its original ROI coordinate frame."""
+        self._car_center_y_at_reference = float(car_center_y)
+        self._car_center_reference_roi_cut = int(reference_roi_cut)
+
+    def _vehicle_y_in_roi(self, roi_cut):
+        return self._vehicle_y_in_bev() - roi_cut
+
+    def _vehicle_y_in_bev(self):
+        return self._car_center_y_at_reference + self._car_center_reference_roi_cut
+
     def _apply_tuning_values(self, updates):
         """Apply validated values to the objects used by the image callback."""
         if any(name in updates for name in BEV_SOURCE_DEFAULTS):
@@ -339,7 +362,6 @@ class TrackControllerNode(Node):
             'stanley_softening': 'stanley_softening',
             'heading_step': 'heading_step',
             'car_center_x': 'car_center_x',
-            'car_center_y': 'car_center_y',
         }
         for parameter_name, attribute_name in motion_attributes.items():
             if parameter_name in updates:
@@ -361,7 +383,13 @@ class TrackControllerNode(Node):
             if parameter_name in updates:
                 setattr(self.lane, attribute_name, updates[parameter_name])
 
-        if 'car_center_x' in updates or 'car_center_y' in updates:
+        if 'car_center_y' in updates:
+            self._car_center_y_at_reference = updates['car_center_y']
+        if 'car_center_reference_roi_cut' in updates:
+            self._car_center_reference_roi_cut = updates['car_center_reference_roi_cut']
+        vehicle_updates = {'car_center_x', 'car_center_y', 'roi_cut', 'car_center_reference_roi_cut'}
+        if vehicle_updates.intersection(updates):
+            self.motion.car_center_y = self._vehicle_y_in_roi(self.lane.roi_cut)
             self.path_planner.car_center_point = (
                 self.motion.car_center_x,
                 self.motion.car_center_y,
@@ -667,9 +695,24 @@ class TrackControllerNode(Node):
 
         mask = debug['bev_mask']
         panel = np.zeros((mask.shape[0], mask.shape[1], 3), dtype=np.uint8)
+        observed = debug.get('observed_mask')
+        if observed is not None:
+            panel[observed > 0] = (22, 22, 22)
+            # Pad before contour extraction so coverage touching the canvas
+            # boundary is also outlined. This is coverage, not a road mask.
+            coverage_contours, _ = cv2.findContours(
+                cv2.copyMakeBorder(observed, 1, 1, 1, 1, cv2.BORDER_CONSTANT),
+                cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE,
+            )
+            cv2.drawContours(panel, [contour - 1 for contour in coverage_contours],
+                             -1, (140, 140, 140), 1, cv2.LINE_AA)
         panel[mask > 0] = (70, 70, 70)
         contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         cv2.drawContours(panel, contours, -1, (255, 255, 0), 1, cv2.LINE_AA)
+        calibration = debug.get('calibration_points')
+        if calibration is not None:
+            cv2.polylines(panel, [np.rint(calibration).astype(np.int32)],
+                          True, (0, 165, 255), 1, cv2.LINE_AA)
 
         roi_cut = int(debug['roi_cut'])
         # Show the exact boundary used by extraction; the mask above it is empty.
@@ -690,6 +733,11 @@ class TrackControllerNode(Node):
                     -1,
                 )
             cv2.circle(panel, (int(lane_center.center), y), 4, (0, 0, 255), -1)
+            if lane_center.reconstructed:
+                label = ('clip' if lane_center.reconstruction_reason.startswith('clipped_')
+                         else 'infer')
+                cv2.putText(panel, label, (max(2, min(panel.shape[1] - 45, lane_center.center + 8)), y),
+                            cv2.FONT_HERSHEY_SIMPLEX, .35, (0, 165, 255), 1, cv2.LINE_AA)
 
         bev_path = [
             (int(round(x)), int(round(y)) + roi_cut)
@@ -699,7 +747,7 @@ class TrackControllerNode(Node):
 
         vehicle = (
             int(round(self.motion.car_center_x)),
-            int(round(self.motion.car_center_y)) + roi_cut,
+            int(round(self._vehicle_y_in_bev())),
         )
         cv2.drawMarker(
             panel,
@@ -746,6 +794,16 @@ class TrackControllerNode(Node):
             1,
             cv2.LINE_AA,
         )
+        cv2.putText(panel, 'orange box=calibration only  gray=camera coverage border',
+                    (8, 80), cv2.FONT_HERSHEY_SIMPLEX, .40, (180, 180, 180), 1, cv2.LINE_AA)
+        counts = debug.get('row_counts', {})
+        cv2.putText(panel,
+                    f"rows: real={counts.get('two_edges', 0)} clip="
+                    f"{counts.get('clipped_left', 0) + counts.get('clipped_right', 0)} "
+                    f"infer={counts.get('incomplete_detection', 0)} "
+                    f"missing={counts.get('missing', 0)} both={counts.get('clipped_both', 0)} "
+                    f"path={debug['source']}",
+                    (8, 100), cv2.FONT_HERSHEY_SIMPLEX, .40, (220, 220, 220), 1, cv2.LINE_AA)
         return panel
 
     def _draw_bev_source(self, frame):
@@ -769,9 +827,9 @@ class TrackControllerNode(Node):
         top_width = int(points[1, 0] - points[0, 0])
         bottom_width = int(points[2, 0] - points[3, 0])
         tilt = np.degrees(np.arctan2(points[1, 1] - points[0, 1], top_width))
-        cv2.putText(frame, f'BEV source: top={top_width}px bottom={bottom_width}px tilt={tilt:+.1f}deg',
+        cv2.putText(frame, f'BEV calibration only: top={top_width}px bottom={bottom_width}px tilt={tilt:+.1f}deg',
                     (10, 95), cv2.FONT_HERSHEY_SIMPLEX, .48, (0, 0, 0), 3, cv2.LINE_AA)
-        cv2.putText(frame, f'BEV source: top={top_width}px bottom={bottom_width}px tilt={tilt:+.1f}deg',
+        cv2.putText(frame, f'BEV calibration only: top={top_width}px bottom={bottom_width}px tilt={tilt:+.1f}deg',
                     (10, 95), cv2.FONT_HERSHEY_SIMPLEX, .48, color, 1, cv2.LINE_AA)
 
     def _make_debug(
@@ -798,6 +856,17 @@ class TrackControllerNode(Node):
         if lane_debug is not None:
             roi_cut = int(lane_debug['roi_cut'])
             inverse = lane_debug['inverse_transform']
+            bev_mask = lane_debug['bev_mask']
+            # The horizontal cut is in BEV coordinates. Its camera-space
+            # projection can be tilted and is independent of the source box.
+            roi_line = np.float32([
+                [0, roi_cut], [bev_mask.shape[1] - 1, roi_cut],
+            ]).reshape(1, -1, 2)
+            projected = cv2.perspectiveTransform(roi_line, inverse)[0]
+            if np.all(np.isfinite(projected)):
+                cv2.line(out, tuple(np.rint(projected[0]).astype(int)),
+                         tuple(np.rint(projected[1]).astype(int)),
+                         (255, 0, 255), 2, cv2.LINE_AA)
             target_bev = [
                 (point.target_x, point.target_y + roi_cut)
                 for point in lane_info.target_points
@@ -815,7 +884,7 @@ class TrackControllerNode(Node):
 
             vehicle_bev = [(
                 self.motion.car_center_x,
-                self.motion.car_center_y + roi_cut,
+                self._vehicle_y_in_bev(),
             )]
             vehicle_raw = self._transform_bev_points(vehicle_bev, inverse)
             if vehicle_raw:

@@ -14,6 +14,7 @@ class LaneInfoExtractor:
                         음수면 더 먼 곳(지평선 쪽)을 포함 → 더 위에서 내려다보는 느낌.
       - bev_source_points : 원본 카메라의 사다리꼴 꼭짓점. 좌상/우상/우하/좌하 순서의 [x, y].
                             GUI의 BEV Source Points에서 조절하며 상단 y에는 bev_top_shift를 더한다.
+                            원근 변환 보정 기준이며, 이 사다리꼴 밖의 검출도 변환한다.
       - roi_cut       : BEV 영상에서 잘라낼 상단 경계(px). 클수록 더 아래(가까운 곳)만 본다.
                         런치의 Track Tuner GUI에서 ROI Cut (px) 슬라이더로 실시간 조절한다.
       - look_shift    : 차선 중심 샘플링 높이 범위의 이동량(px). 음수=더 위(먼 곳), 양수=더 아래(가까운 곳).
@@ -48,9 +49,7 @@ class LaneInfoExtractor:
         self.smoothed_slope = None
         # 코너링 시 잘린 차선을 복원할 때 쓰는 가상 차선 폭(px). 실시간 조절 가능.
         self.virtual_lane_width = virtual_lane_width
-        # BEV 캔버스를 좌우로 넓히는 패딩(px, 한쪽). 코너에서 창 밖으로 나가 잘리던 차선을
-        # 되살리고, 가상 차선이 보일 공간을 만든다. 좌표가 +bev_pad 이동하므로 차량 중심도
-        # 같이 이동해야 한다(드라이버가 motion.car_center_x = 원래중심+bev_pad 로 설정).
+        # 시각화 전용 패딩. 계산 캔버스와 차량/경로 좌표는 이동하지 않는다.
         self.bev_pad = bev_pad
         self.center_ema_alpha = center_ema_alpha
         self.max_center_jump_px = max_center_jump_px
@@ -80,42 +79,35 @@ class LaneInfoExtractor:
         self._last_geometry = geometry
         if self.capture_debug:
             self.last_debug = None
-        if len(detections.detections) == 0:
-            return self._held_lane_info()
-
         lane2_mask = CPFL.draw_edges(detections, cls_name=self.lane_class_name, color=255)
         h, w = lane2_mask.shape[:2]
 
-        # 계산은 원래 640 캔버스에서 수행한다. 그래야 경계(x=0, x=w-1) 접촉 판정이
-        # 원래대로 동작해 잘린 차선의 가상 복원이 정확히 작동한다.
+        # 기존 계산 캔버스와 좌표계를 유지한다. 실제 관측 경계는 아래에서
+        # 원본 영상 전체를 변환해 구하며, 보정 사다리꼴과 구분한다.
         # (bev_pad는 시각화 캔버스를 좌우로 넓히는 데에만 쓴다.)
         dst_mat = np.float32([[round(w * 0.3), 0], [round(w * 0.7), 0],
                               [round(w * 0.7), h], [round(w * 0.3), h]])
         src_mat = np.float32(self._src_mat())
         M = cv2.getPerspectiveTransform(src_mat, dst_mat)
 
-        # Pixels outside the calibrated source trapezoid can be projected into
-        # the driving ROI as large false regions. Mask them before the warp and
-        # carry a separate valid-region mask through the same homography.
-        source_valid = np.zeros((h, w), dtype=np.uint8)
-        cv2.fillConvexPoly(source_valid, np.rint(src_mat).astype(np.int32), 255)
-        lane2_mask = cv2.bitwise_and(lane2_mask, source_valid)
+        # The four source points calibrate the homography, not a detection crop.
+        # Warp the complete lane mask. Camera coverage is carried separately so
+        # virtual reconstruction uses actual image/canvas clipping boundaries.
         lane2_bird_image = cv2.warpPerspective(
             lane2_mask, M, (w, h), flags=cv2.INTER_NEAREST
         )
-        valid_bird = cv2.warpPerspective(
-            source_valid, M, (w, h), flags=cv2.INTER_NEAREST
+        observed_bird = cv2.warpPerspective(
+            np.full((h, w), 255, dtype=np.uint8), M, (w, h), flags=cv2.INTER_NEAREST
         )
 
         roi_cut = int(max(0, min(h - 10, self.roi_cut)))
-        valid_roi = cv2.erode(
-            valid_bird[roi_cut:], np.ones((3, 3), dtype=np.uint8), iterations=1
-        )
+        observed_roi = observed_bird[roi_cut:]
         roi_image = CPFL.clean_lane_mask(
             lane2_bird_image[roi_cut:],
             min_component_area=self.min_component_area,
         )
-        roi_image[valid_roi == 0] = 0
+        # Cleanup must not grow detections into pixels outside camera coverage.
+        roi_image[observed_roi == 0] = 0
 
         # BEV 원근 사다리꼴의 상/하단 폭. 윗변(먼 곳)은 좁고 아랫변(가까운 곳)은 넓다.
         # 직사각형으로 잡아당기면 위로 갈수록 더 크게 확대되므로, 가상 차선 폭도 그만큼 늘린다.
@@ -127,6 +119,7 @@ class LaneInfoExtractor:
 
         roi_h = roi_image.shape[0]
         row_observations = []
+        row_counts = {}
         for target_y in range(3, max(4, roi_h - 2), 6):
             previous_center = self._previous_center_at(target_y)
             virtual_width = self._virtual_width(
@@ -137,17 +130,22 @@ class LaneInfoExtractor:
                 target_y,
                 virtual_width,
                 previous_center,
-                valid_roi,
+                observed_roi,
             )
+            reason = observation.reconstruction_reason or observation.source
+            row_counts[reason] = row_counts.get(reason, 0) + 1
             if observation.valid:
                 row_observations.append((target_y, observation))
 
         fit, fit_confidence = self._fit_centerline(row_observations, roi_h)
         if fit is None:
+            held = self._held_lane_info()
             self._capture_debug(
-                lane2_bird_image, roi_image, roi_cut, dst_mat, src_mat, []
+                lane2_bird_image, roi_image, roi_cut, dst_mat, src_mat, [],
+                confidence=held.confidence, source=held.source,
+                observed_mask=observed_bird, row_counts=row_counts,
             )
-            return self._held_lane_info()
+            return held
 
         target_ys = [
             int(max(0, min(roi_h - 1, base_y + self.look_shift)))
@@ -185,6 +183,7 @@ class LaneInfoExtractor:
                     reconstructed=observed.reconstructed,
                     valid=True,
                     source=observed.source,
+                    reconstruction_reason=observed.reconstruction_reason,
                 ),
             ))
 
@@ -195,6 +194,7 @@ class LaneInfoExtractor:
             lane2_bird_image, roi_image, roi_cut, dst_mat, src_mat, samples,
             confidence=fit_confidence,
             source="observed",
+            observed_mask=observed_bird, row_counts=row_counts,
         )
 
         if self.show_image:
@@ -235,32 +235,36 @@ class LaneInfoExtractor:
         return [part for part in np.split(xs, split_indices) if len(part) > 0]
 
     def _row_center(
-        self, mask, target_y, virtual_width, previous_center, valid_mask=None
+        self, mask, target_y, virtual_width, previous_center, observed_mask=None
     ):
         h, w = mask.shape[:2]
         upper = max(0, int(target_y) - 2)
         lower = min(h, int(target_y) + 3)
-        xs = np.flatnonzero(np.any(mask[upper:lower] > 0, axis=0))
-        runs = self._contiguous_runs(xs)
-        if not runs:
-            return CPFL.LaneCenter(
-                center=w // 2, edges=[], valid=False, source="invalid"
-            )
-
         valid_left = 0
         valid_right = w - 1
-        if valid_mask is not None and valid_mask.size > 0:
+        if observed_mask is not None and observed_mask.size > 0:
             valid_xs = np.flatnonzero(
-                np.any(valid_mask[upper:lower] > 0, axis=0)
+                np.any(observed_mask[upper:lower] > 0, axis=0)
             )
             if len(valid_xs) == 0:
                 return CPFL.LaneCenter(
-                    center=w // 2, edges=[], valid=False, source="invalid"
+                    center=w // 2, edges=[], valid=False, source="unobserved"
                 )
             valid_left = int(valid_xs[0])
             valid_right = int(valid_xs[-1])
 
+        observed = mask[upper:lower] > 0
+        if observed_mask is not None:
+            observed &= observed_mask[upper:lower] > 0
+        xs = np.flatnonzero(np.any(observed, axis=0))
+        runs = self._contiguous_runs(xs)
+        if not runs:
+            return CPFL.LaneCenter(
+                center=w // 2, edges=[], valid=False, source="missing"
+            )
+
         candidates = []
+        both_clipped = False
         for run in runs:
             left = int(run[0])
             right = int(run[-1])
@@ -269,12 +273,18 @@ class LaneInfoExtractor:
             right_touch = right >= valid_right - 3
             half_width = virtual_width / 2.0
 
+            if left_touch and right_touch:
+                # Neither physical lane boundary is visible. The image midpoint
+                # is not a two-edge observation; let the existing hold handle it.
+                both_clipped = True
+                continue
             if left_touch and not right_touch:
                 center = right - half_width
                 result = CPFL.LaneCenter(
                     center=int(round(center)), edges=[right],
                     virtual_x=int(round(right - virtual_width)),
                     reconstructed=True, source="right_edge",
+                    reconstruction_reason="clipped_left",
                 )
             elif right_touch and not left_touch:
                 center = left + half_width
@@ -282,6 +292,7 @@ class LaneInfoExtractor:
                     center=int(round(center)), edges=[left],
                     virtual_x=int(round(left + virtual_width)),
                     reconstructed=True, source="left_edge",
+                    reconstruction_reason="clipped_right",
                 )
             elif run_width >= max(12.0, virtual_width * 0.25):
                 center = (left + right) / 2.0
@@ -308,6 +319,7 @@ class LaneInfoExtractor:
                     center=int(round(center)), edges=[int(round(visible))],
                     virtual_x=int(round(virtual_x)), reconstructed=True,
                     source=source,
+                    reconstruction_reason="incomplete_detection",
                 )
             else:
                 continue
@@ -321,7 +333,8 @@ class LaneInfoExtractor:
 
         if not candidates:
             return CPFL.LaneCenter(
-                center=w // 2, edges=[], valid=False, source="ambiguous"
+                center=w // 2, edges=[], valid=False,
+                source="clipped_both" if both_clipped else "ambiguous",
             )
         return min(candidates, key=lambda item: (item[0], item[1]))[2]
 
@@ -420,6 +433,8 @@ class LaneInfoExtractor:
         samples,
         confidence=0.0,
         source="invalid",
+        observed_mask=None,
+        row_counts=None,
     ):
         if not self.capture_debug:
             return
@@ -429,6 +444,9 @@ class LaneInfoExtractor:
             'bev_mask': cleaned_full,
             'inverse_transform': cv2.getPerspectiveTransform(dst_mat, src_mat),
             'source_points': src_mat.copy(),
+            'calibration_points': dst_mat.copy(),
+            'observed_mask': observed_mask,
+            'row_counts': dict(row_counts or {}),
             'roi_cut': roi_cut,
             'samples': samples,
             'confidence': confidence,

@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import cv2
 import numpy as np
+import pytest
 from rclpy.parameter import Parameter
 
 from skku_track_drive_pkg.bev_geometry import BEV_DEFAULT_POINTS
@@ -17,6 +18,7 @@ from skku_track_drive_pkg.track_controller_node import TrackControllerNode
 def controller():
     node = object.__new__(TrackControllerNode)
     node.lane = LaneInfoExtractor(show_image=False, capture_debug=True, bev_top_shift=-8)
+    node._initialize_vehicle_reference(179., node.lane.roi_cut)
     node._parameter_lock = RLock()
     node.allow_speed_tuning = True
     node.speed = 80
@@ -106,3 +108,37 @@ def test_camera_overlay_is_present_without_detections_or_bev_panel():
     assert 'P4 BL (155,476)' in labels
     assert tuple(rendered[308, 238]) == (0, 165, 255)
     assert not np.any(frame)  # Rendering leaves the camera input unchanged.
+
+
+@pytest.mark.parametrize('missing', [False, True])
+def test_debug_distinguishes_calibration_coverage_and_horizontal_roi(missing):
+    node = controller()
+    detections = DetectionArray() if missing else lane_detection()
+    info = node.lane.process(detections)
+    node.enabled = False
+    node.publish_bev_debug = True
+    node.motion = SimpleNamespace(last_heading_deg=0., last_cte=0.,
+                                 car_center_x=325., car_center_y=179.,
+                                 last_reference_point=None)
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    labels = []
+    put_text = cv2.putText
+
+    def capture_label(image, label, *args, **kwargs):
+        labels.append(label)
+        return put_text(image, label, *args, **kwargs)
+
+    with patch.object(cv2, 'putText', side_effect=capture_label):
+        rendered = node._make_debug(
+            frame, detections, info, SimpleNamespace(x_points=[], y_points=[]),
+            SimpleNamespace(steering=0, left_speed=0, right_speed=0), 0., info.valid, False,
+        )
+
+    assert rendered.shape == (480, 1280, 3)
+    assert any(label.startswith('BEV calibration only:') for label in labels)
+    assert 'orange box=calibration only  gray=camera coverage border' in labels
+    assert 'ROI Cut=300px  use rows 300..479' in labels
+    # The horizontal cut extends outside the calibration strip 192..448.
+    assert tuple(rendered[300, 640 + 100]) == (255, 0, 255)
+    assert tuple(rendered[150, 640 + 100]) == (22, 22, 22)
+    assert not np.any(frame)

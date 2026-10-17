@@ -106,6 +106,7 @@ class LaunchTests(unittest.TestCase):
                     context.launch_configurations.update(speed='23', roi_cut='280')
                     self.assertEqual(module.resolve_bbox_settings(context)['speed'], 23)
                     self.assertEqual(module.resolve_bbox_settings(context)['roi_cut'], 280)
+                    self.assertEqual(module.resolve_bbox_settings(context)['car_center_reference_roi_cut'], 280)
                     context.launch_configurations.update(speed='', roi_cut='')
                 # An existing P-save must not silently defeat edits at the top.
                 import json
@@ -116,6 +117,7 @@ class LaunchTests(unittest.TestCase):
                 self.assertEqual(module.resolve_bbox_settings(context)['obstacle_near_y'], 300)
                 context.launch_configurations['load_saved_tuning'] = 'true'
                 self.assertEqual(module.resolve_bbox_settings(context)['speed'], 55)
+                self.assertEqual(module.resolve_bbox_settings(context)['car_center_reference_roi_cut'], 300)
                 self.assertEqual(module.resolve_bbox_settings(context)['obstacle_near_y'], 350)
                 context.launch_configurations['speed'] = '21'
                 self.assertEqual(module.resolve_bbox_settings(context)['speed'], 21)
