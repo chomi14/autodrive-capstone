@@ -65,6 +65,49 @@ def color_of_light(frame, detection, settings):
     return evidence['color'], evidence['strength']
 
 
+def visible_box(detection, image_shape):
+    """Finite, positive bbox clipped to current camera pixels."""
+    box = detection.bbox
+    values = (box.center.position.x, box.center.position.y, box.size.x, box.size.y)
+    if not all(np.isfinite(value) for value in values) or box.size.x <= 0 or box.size.y <= 0:
+        return None
+    h, w = image_shape[:2]
+    x1, y1, x2, y2 = box_xyxy(detection)
+    x1, y1, x2, y2 = max(0., x1), max(0., y1), min(float(w), x2), min(float(h), y2)
+    return (x1, y1, x2, y2) if x2 > x1 and y2 > y1 else None
+
+
+def bbox_area_ratio(detection, image_shape):
+    box = visible_box(detection, image_shape)
+    if box is None:
+        return 0.0
+    x1, y1, x2, y2 = box
+    return (x2 - x1) * (y2 - y1) / (image_shape[0] * image_shape[1])
+
+
+def obstacle_is_near(detection, settings, image_shape):
+    if settings.get('obstacle_trigger_mode', 0) == 1:
+        box = visible_box(detection, image_shape)
+        return (box is not None
+                and box[3] >= settings['obstacle_near_y'] * image_shape[0] / 480.0
+                and bbox_area_ratio(detection, image_shape) >= settings['obstacle_min_area_ratio'])
+    box = detection.bbox
+    return box.center.position.y + box.size.y / 2 >= settings['obstacle_near_y'] * image_shape[0] / 480.0
+
+
+def bbox_overlaps_lane(detection, mask, settings, image_shape):
+    """Full-frame, current observation only. No stale or guessed alternate lane."""
+    box = visible_box(detection, image_shape)
+    if box is None:
+        return False
+    h, w = image_shape[:2]
+    x1, _, x2, bottom = box
+    y = min(h - 1, int(bottom))
+    margin = settings['path_margin_px'] * w / 640.0
+    left, right = max(0, int(x1 - margin)), min(w, int(np.ceil(x2 + margin)) + 1)
+    return bool(np.any(mask[max(0, y-3):min(h, y+4), left:right]))
+
+
 def path_blocked(detection, camera_path, settings, image_shape):
     """Horizontal footprint of a near obstacle crosses the actual path."""
     if len(camera_path) < 2:
@@ -72,7 +115,7 @@ def path_blocked(detection, camera_path, settings, image_shape):
     box = detection.bbox
     x, y = box.center.position.x, box.center.position.y + box.size.y / 2
     h = image_shape[0]
-    if y < settings['obstacle_near_y'] * h / 480.0:
+    if not obstacle_is_near(detection, settings, image_shape):
         return False
     points = sorted(camera_path, key=lambda p: p[1])
     if y < points[0][1] - 10 or y > points[-1][1] + 30:
@@ -121,8 +164,13 @@ class MissionCore:
         if self.green_count >= p['green_confirm_frames']:
             self.red_latched = False
 
-        obstacles = [d for d in detections.detections if d.class_name == 'obstacle']
-        self.blocking_boxes = [d for d in obstacles if path_blocked(d, camera_path, p, frame.shape)]
+        size_mode = p.get('obstacle_trigger_mode', 0) == 1
+        obstacles = [d for d in detections.detections if d.class_name in ('obstacle', 'obstacles')]
+        current_mask = lane_mask(detections, f'lane{self.target_lane}', frame.shape) if size_mode else None
+        self.blocking_boxes = [d for d in obstacles
+                               if (path_blocked(d, camera_path, p, frame.shape) and (lane_valid or not size_mode))
+                               or (size_mode and obstacle_is_near(d, p, frame.shape)
+                                   and bbox_overlaps_lane(d, current_mask, p, frame.shape))]
         blocking = bool(self.blocking_boxes)
         evaluated_lane = self.target_lane
         alternative = 1 if self.target_lane == 2 else 2
@@ -131,6 +179,13 @@ class MissionCore:
         alternate_blocked = False
         alternate_blockers = []
         for det in obstacles:
+            if size_mode:
+                # Even a smaller/farther obstacle can make the destination
+                # unsuitable. Do not apply our own-lane size gate to clearance.
+                if bbox_overlaps_lane(det, alternate_mask, p, frame.shape):
+                    alternate_blocked = True
+                    alternate_blockers.append(det)
+                continue
             box = det.bbox
             y = int(np.clip(box.center.position.y + box.size.y / 2, 0, h - 1))
             if y < p['obstacle_near_y'] * h / 480.0:
@@ -144,10 +199,13 @@ class MissionCore:
         self.block_count = self.block_count + 1 if blocking else 0
         self.clear_count = 0 if blocking else self.clear_count + 1
         confirmation_count = self.block_count
+        required_confirmation = 1 if size_mode else p['obstacle_confirm_frames']
+        cooldown_remaining = (max(0.0, p['lane_change_cooldown_s'] - (now - self.changed_at))
+                              if size_mode and self.changed_at is not None else 0.0)
         switched = False
         if not self.red_latched:
-            if self.block_count >= p['obstacle_confirm_frames'] and self.state != 'AVOIDING':
-                if alternate_visible and not alternate_blocked:
+            if self.block_count >= required_confirmation and self.state != 'AVOIDING':
+                if alternate_visible and not alternate_blocked and cooldown_remaining <= 0:
                     self.target_lane = alternative
                     self.state = 'AVOIDING'
                     self.changed_at = now
@@ -171,6 +229,8 @@ class MissionCore:
             reasons.append('RED_LATCH_OR_WAIT_FOR_GREEN')
         if switched:
             reasons.append('LANE_SWITCH_PAUSE')
+        if self.state == 'BLOCKED_STOP' and cooldown_remaining > 0:
+            reasons.append('LANE_CHANGE_COOLDOWN')
         if self.state == 'BLOCKED_STOP':
             reasons.append('WAIT_OBSTACLE_CLEAR_CONFIRMATION' if not blocking else
                            'ALTERNATE_LANE_NOT_VISIBLE' if not alternate_visible else
@@ -197,11 +257,16 @@ class MissionCore:
             'alternate_valid': alternate_visible and not alternate_blocked,
             'alternate_valid_basis': 'visible_mask_area_and_obstacle_overlap_not_planned_path',
             'obstacle_confirm_count': confirmation_count, 'clear_count': self.clear_count,
-            'obstacle_confirm_required': p['obstacle_confirm_frames'],
+            'obstacle_confirm_required': required_confirmation,
+            'obstacle_trigger_mode': 'bbox_area_and_bottom' if size_mode else 'bbox_bottom',
+            'obstacle_min_area_ratio': p['obstacle_min_area_ratio'],
+            'lane_change_cooldown_remaining_s': cooldown_remaining,
             'red_confirm_required': p['red_confirm_frames'], 'green_confirm_required': p['green_confirm_frames'],
             'red_latched': self.red_latched, 'lane_switch_requested': switched,
             'reasons': reasons, 'reason': '|'.join(reasons),
             'obstacles': [{'box': box_xyxy(d),
+                           'area_ratio': bbox_area_ratio(d, frame.shape),
+                           'near': obstacle_is_near(d, p, frame.shape),
                            'blocks_path': any(d is b for b in self.blocking_boxes),
                            'blocks_alternate': any(d is b for b in alternate_blockers)} for d in obstacles],
             'traffic_boxes': traffic_boxes,

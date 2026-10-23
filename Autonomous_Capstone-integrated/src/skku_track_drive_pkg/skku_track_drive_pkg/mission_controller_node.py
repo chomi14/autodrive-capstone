@@ -22,11 +22,11 @@ class MissionControllerNode(TrackControllerNode):
             self.declare_parameter(name, default)
 
     def initialize_mode(self):
-        required = {'lane1', 'lane2', 'obstacle', 'traffic_light'}
+        required = {'lane1', 'lane2', 'traffic_light'}
         names = set(self.yolo.yolo.names.values())
         missing = required - names
-        if missing or self.yolo.yolo.task != 'segment':
-            raise RuntimeError(f'Mission requires segmentation classes {sorted(required)}; missing={sorted(missing)}')
+        if missing or not names.intersection({'obstacle', 'obstacles'}) or self.yolo.yolo.task != 'segment':
+            raise RuntimeError(f'Mission requires segmentation classes {sorted(required)} and obstacle/obstacles; missing={sorted(missing)}')
         self.mission = MissionCore({name: self.get_parameter(name).value for name in MISSION})
         self.status_pub = self.create_publisher(String, '/mission/status', 1)
         self._processed_lane = 2
@@ -101,7 +101,9 @@ class MissionControllerNode(TrackControllerNode):
             x1, y1, x2, y2 = map(int, evidence['box'])
             color = (0, 0, 255) if evidence['blocks_path'] else (0, 165, 255)
             cv2.rectangle(marked, (x1, y1), (x2, y2), color, 2)
-            cv2.putText(marked, f"path={evidence['blocks_path']} alt={evidence['blocks_alternate']}",
+            size_text = (f" area={evidence.get('area_ratio', 0):.1%} near={evidence.get('near')}"
+                         if status.get('obstacle_trigger_mode') == 'bbox_area_and_bottom' else '')
+            cv2.putText(marked, f"path={evidence['blocks_path']} alt={evidence['blocks_alternate']}" + size_text,
                         (x1, max(15, y1-5)), cv2.FONT_HERSHEY_SIMPLEX, .4, color, 1)
         for evidence in status.get('traffic_boxes', []):
             x1, y1, x2, y2 = map(int, evidence['box'])

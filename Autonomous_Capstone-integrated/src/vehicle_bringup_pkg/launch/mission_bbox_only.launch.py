@@ -89,6 +89,9 @@ START_ENABLED = True               # 계산 활성화; 실제 출발은 기존 W
 # EDIT HERE: bbox 장애물 회피
 # =========================
 BBOX_DEFAULTS = {
+    'obstacle_trigger_mode': 0,     # 기존 동작 유지. 면적 모드는 별도 launch 사용.
+    'obstacle_min_area_ratio': 0.02, # 면적 모드: 화면 대비 bbox 최소 면적
+    'lane_change_cooldown_s': 0.0, # 기존 모드 영향 없음
     'obstacle_near_y': 300,         # bbox 하단 근접선(480px 기준)
     'path_margin_px': 35,          # 경로/bbox 좌우 여유(640px 기준)
     'obstacle_confirm_frames': 3,  # 회피 확정 연속 프레임(확인 중 정지)
@@ -189,7 +192,7 @@ def bbox_assemble(context):
         'max_steering': MAX_STEERING_COMMAND, 'allow_speed_tuning': ALLOW_SPEED_TUNING,
         'cmd_topic': command_topic(context),
         'steering_sign': ParameterValue(LaunchConfiguration('steering_sign'), value_type=float),
-        'initial_target_lane': DEFAULT_INITIAL_LANE,
+        'initial_target_lane': ParameterValue(LaunchConfiguration('initial_target_lane'), value_type=int),
     })
     actions[index] = Node(
         package='skku_track_drive_pkg', executable='bbox_mission_controller_node',
@@ -238,5 +241,6 @@ def generate_launch_description():
         DeclareLaunchArgument('track_tuning_path', default_value=TRACK_TUNING_PATH),
         DeclareLaunchArgument('model_path', default_value=model),
         DeclareLaunchArgument('steering_sign', default_value=str(DEFAULT_STEERING_SIGN)),
+        DeclareLaunchArgument('initial_target_lane', default_value=str(DEFAULT_INITIAL_LANE)),
         OpaqueFunction(function=bbox_assemble),
     ])
