@@ -1,7 +1,10 @@
 """Real-track drive pipeline with a parameter-only OpenCV tuning panel."""
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, LogInfo, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, LogInfo, OpaqueFunction, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from pathlib import Path
+from ament_index_python.packages import get_package_share_directory
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -13,6 +16,7 @@ from vehicle_bringup_pkg.mode_launch import camera_node, lidar_node, vehicle_io_
 from vehicle_bringup_pkg.tuning_configuration import (
     resolve_tuning,
     tuning_launch_arguments,
+    TUNING_TYPES,
 )
 
 
@@ -28,6 +32,38 @@ def _as_bool(context, name):
 
 
 def _launch_nodes(context):
+    if _as_bool(context, 'bbox_obstacle_avoidance'):
+        # Run one controller/camera/sender only. Keep the current track calibration.
+        forwarded = {
+            name: LaunchConfiguration(name).perform(context)
+            for name in ('vehicle_config', 'dry_run', 'sensors_only', 'gui', 'camera_device',
+                         'arduino_port', 'arduino_baud', 'auto_calibrate', 'calibration_tolerance',
+                         'device', 'steering_sign', 'command_timeout', 'ui_timeout',
+                         'perception_stop_s', 'record_dir', 'analysis', *TUNING_TYPES)
+        }
+        track_file = LaunchConfiguration('tuning_config').perform(context).strip()
+        if track_file and not Path(track_file).expanduser().is_file():
+            raise RuntimeError(f'Explicit track tuning config not found: {track_file}')
+        forwarded.update({
+            'track_tuning_path': track_file or LaunchConfiguration('saved_tuning_path').perform(context),
+            'load_saved_track_tuning': 'true',
+            'load_saved_tuning': 'false',
+            # Override parent launch scope so a track YAML is never read as a mission YAML.
+            'tuning_config': '',
+            'saved_tuning_path': str(Path.home() / '.config/autodrive/mission_bbox_only_tuning.yaml'),
+            'publish_debug': str(_as_bool(context, 'enable_visualization')).lower(),
+            'publish_bev_debug': str(_as_bool(context, 'show_bev')).lower(),
+            'profile': str(_as_bool(context, 'profile')).lower(),
+            'debug_log': str(_as_bool(context, 'debug_log')).lower(),
+        })
+        model = LaunchConfiguration('obstacle_model_path').perform(context).strip()
+        if model:
+            forwarded['model_path'] = model
+        return [IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(str(Path(get_package_share_directory('vehicle_bringup_pkg'))
+                                             / 'launch/mission_bbox_only.launch.py')),
+            launch_arguments=forwarded.items(),
+        )]
     tuning_parameters, selected_config, save_path, config_source = resolve_tuning(context)
 
     camera_device = LaunchConfiguration('camera_device')
@@ -104,6 +140,10 @@ def _launch_nodes(context):
 def generate_launch_description():
     return LaunchDescription([
         config_argument(),
+        DeclareLaunchArgument('bbox_obstacle_avoidance', default_value='false',
+                              description='Enable obstacle bbox path checks using the mission model and current track tuning'),
+        DeclareLaunchArgument('obstacle_model_path', default_value='',
+                              description='Optional lane1/lane2/obstacle/traffic_light segmentation model'),
         DeclareLaunchArgument('dry_run', default_value='false'),
         DeclareLaunchArgument('sensors_only', default_value='false', description='Keep real sensors/GUI; omit vehicle serial and arm gate'),
         DeclareLaunchArgument('gui', default_value='true'),

@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 import cv2
 import numpy as np
 from launch import LaunchContext
+from launch.actions import DeclareLaunchArgument
 from launch_ros.utilities import evaluate_parameters
 from rclpy.parameter import Parameter
 from sensor_bringup_pkg.camera_publisher_node import CameraPublisherNode
@@ -29,6 +30,9 @@ class CanonicalSafetyTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         context = LaunchContext()
+        for action in module.generate_launch_description().entities:
+            if isinstance(action, DeclareLaunchArgument):
+                action.execute(context)
         context.launch_configurations.update({
             'camera_device': '/dev/video-test',
             'lidar_port': '/dev/lidar-test',

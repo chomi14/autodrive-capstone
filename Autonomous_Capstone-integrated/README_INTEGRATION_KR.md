@@ -256,6 +256,15 @@ ros2 launch vehicle_bringup_pkg sensor_check.launch.py \
 
 ## 6. 수동 WASD + 자동 startup calibration + 라벨링
 
+현재 `manual_capture.launch.py`는 수동 창에서 새 출발 승인 토큰과 UI 생존 신호를
+시리얼 bridge에 전달한다. W/S는 속도 +20/-20의 누적 조절이고, **X/Space는
+정지/disarm**이다. ARM 표시는 bridge의 실제 승인 피드백을 따른다.
+R은 자동 촬영 ON/OFF이며 승인된 주행 상태에서 속도 명령이 0이 아닐 때
+기본 0.20초 간격으로 저장한다. C는 정지 상태에서도 한 장 저장한다.
+`output_dir`를 생략하면 사진은 `~/autodrive_dataset/manual_drive/images/`,
+조향·속도 명령 기록은 `~/autodrive_dataset/manual_drive/labels.csv`에 저장된다.
+CSV는 세그멘테이션 폴리곤 라벨이 아니라 촬영 당시의 제어 명령 기록이다.
+
 ```bash
 ros2 launch vehicle_bringup_pkg manual_capture.launch.py \
   camera_device:=/dev/video0 \
@@ -379,6 +388,47 @@ W start safety gate
 ```
 
 를 모두 켠다.
+
+`Track Tuner` 창의 **ROI Cut (px)** 슬라이더로 BEV 상단 절단 위치를
+0~470px 범위에서 실시간 조절할 수 있다(기본값 300px).
+`Track Debug View` 오른쪽 BEV 화면에 현재 ROI 값과 자홍색 경계선이 표시되며,
+경계선 위쪽 차선 정보는 제외하고 아래 영역으로 차선을 처리한다.
+값을 키우면 가까운 영역만 보고, 줄이면 먼 영역까지 포함한다.
+`gui:=false`로 튜닝 창을 끌 수 있다.
+런치 인자 `roi_cut:=300`으로 슬라이더의 초기값을 지정할 수 있다.
+
+설정 저장과 다음 실행 시 자동 로드는 `track_drive_tuning.launch.py`를 사용한다.
+이 런치에서도 같은 슬라이더를 제공하며, 변경 반영 후 **P**를 누르면 ROI를 포함한
+튜닝 값이 `~/.config/autodrive/track_tuning.yaml`에 저장된다.
+
+카메라 화면에는 BEV 변환에 사용하는 **주황색 사다리꼴**과 네 점의 실제 좌표를 표시한다.
+차선이 검출되지 않거나 BEV 화면을 꺼도 이 표시를 볼 수 있다.
+`Track Tuner BEV Source Points` 창에서 **P1 TL(좌상), P2 TR(우상),
+P3 BR(우하), P4 BL(좌하)** 각각의 X/Y 슬라이더를 움직여 모양을 조절한다.
+X는 좌우 위치, Y는 상하 위치다. 좌우 점의 X 간격으로 폭을 바꾸고,
+위쪽 두 점의 Y 차이로 기울기를 바꾼다. 카메라 화면에는 위·아래 폭과 위쪽 변의 각도도 표시한다.
+위쪽 두 점의 실제 Y는 `Y (base) + BEV Top Shift`이며, 아래쪽 점에는 이동량을 더하지 않는다.
+점이 교차하거나 퇴화하는 모양은 거부하고 마지막 적용값으로 슬라이더를 되돌린다.
+`track_drive_tuning.launch.py`에서 **P**를 누르면 네 점도 저장되어 다음 실행에 자동 로드된다.
+
+주황색 사다리꼴은 **BEV 원근 변환 보정 기준**이며 검출을 잘라내는 ROI가 아니다.
+사다리꼴 밖의 차선도 같은 변환행렬로 BEV에 옮기고, `ROI Cut` 가로선으로 위쪽을 제외한다.
+BEV 화면의 회색 외곽선은 원본 카메라 영상이 실제로 투영되는 관측 범위이며,
+주황색 직사각형은 보정 사다리꼴의 변환 위치를 참고용으로 표시한다.
+초록 점은 실제 경계, 주황 점은 가상 경계, 빨간 점은 평활화된 중심이다.
+가상 복원 옆의 `clip`은 관측 경계에서 잘림, `infer`는 불완전한 내부 검출을 이전 중심으로 추정함을 뜻한다.
+차선 전체가 누락되면 기존 프레임 유지 정책을 사용하며, 관측 범위 양쪽에 모두 닿아
+실제 경계를 알 수 없는 영역을 화면 중앙의 정상 차선으로 취급하지 않는다.
+좌표계와 계산 캔버스는 기존 640×480으로 유지한다. 가로선 아래의 큰 오탐까지 제거하는
+별도 도로 마스크는 적용하지 않았으므로, 자세한 검증과 한계는
+[BEV/ROI 분리 검증](docs/BEV_ROI_SEPARATION.md)을 참고한다.
+
+`ROI Cut` 변경 시 차량 기준점(핑크 십자가)은 전체 BEV에서 같은 위치를 유지한다.
+제어용 Y는 `car_center_y + car_center_reference_roi_cut - roi_cut`으로 보정한다.
+기존 파일에 기준 ROI 값이 없으면 최초 실행 시 불러온 `roi_cut`을 기준으로 삼아
+초기 튜닝을 보존한다. **P** 저장 시 `car_center_y`와 `car_center_reference_roi_cut`도
+함께 저장하므로, ROI를 바꾼 뒤 재실행해도 기준점이 이동하지 않는다.
+기본 설정에서는 전체 BEV의 Y=479에 고정된다.
 
 실행 직후 차량은 **절대 바로 출발하지 않는다**.
 

@@ -68,7 +68,10 @@ def test_only_mission_uses_mission_model_and_track_preserves_default_with_tunabl
     controller = next(n for n in nodes if n.node_executable == 'mission_controller_node')
     settings = evaluate_parameters(context, controller._Node__parameters)[0]
     assert settings['model_path'].endswith('/models/mission/best.pt')
-    context, nodes = topology('track')
+    # Test the package defaults independently of the operator's P-saved YAML.
+    context, nodes = topology('track', {
+        'tuning_config': str(ROOT/'src/vehicle_bringup_pkg/config/track_tuning.yaml'),
+    })
     controller = next(n for n in nodes if n.node_executable == 'track_controller_node')
     settings = evaluate_parameters(context, controller._Node__parameters)[0]
     assert settings['speed'] == 250 and settings['allow_speed_tuning'] is True
