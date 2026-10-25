@@ -5,6 +5,7 @@ used for parking. Zero geometry values mean unmeasured, never guessed dimensions
 """
 
 MISSION = {
+    'obstacle_stop_enabled': (1, 0, 1, 1),  # 0: 장애물 자동 정지 해제, 신호등 정지는 유지
     'obstacle_trigger_mode': (0, 0, 1, 1),  # 0: 기존 하단 / 1: bbox 면적 + 하단
     'obstacle_min_area_ratio': (0.02, 0.001, 0.5, 0.001),  # 화면 대비 bbox 면적
     'lane_change_cooldown_s': (0.0, 0.0, 30.0, 0.1),  # 면적 모드 재전환 제한

@@ -54,6 +54,7 @@ def test_size_launch_is_opt_in_and_has_one_command_owner(dry,sensors):
         settings=base.resolve_bbox_settings(ctx)
         assert settings['speed']==30
         assert settings['obstacle_trigger_mode']==1
+        assert settings['obstacle_stop_enabled']==0
         assert settings['obstacle_min_area_ratio']==.02
         assert settings['obstacle_near_y']==300
         assert settings['lane_change_cooldown_s']==2

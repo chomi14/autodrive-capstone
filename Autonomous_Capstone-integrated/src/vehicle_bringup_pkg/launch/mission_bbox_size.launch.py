@@ -9,6 +9,7 @@ from launch.substitutions import LaunchConfiguration
 
 # ===== EDIT HERE: 면적 회피 기본값 (나머지 주행값은 기존 bbox/track 설정 유지) =====
 SIZE_DEFAULTS = {
+    'obstacle_stop_enabled': '0',       # 장애물/전환/경로/쿨다운으로 정지하지 않음. 빨간불은 유지.
     'initial_target_lane': '2',         # 출발 차선: 1 또는 2. 현재 차선의 반대로 전환.
     'obstacle_trigger_mode': '1',       # 1: 면적 기준 / 0: 기존 하단 기준
     'obstacle_min_area_ratio': '0.02',  # 화면의 2% (640x480에서 6144px²)

@@ -89,6 +89,7 @@ START_ENABLED = True               # 계산 활성화; 실제 출발은 기존 W
 # EDIT HERE: bbox 장애물 회피
 # =========================
 BBOX_DEFAULTS = {
+    'obstacle_stop_enabled': 1,     # 기존 모드 유지. 면적 모드 launch에서는 0으로 지정.
     'obstacle_trigger_mode': 0,     # 기존 동작 유지. 면적 모드는 별도 launch 사용.
     'obstacle_min_area_ratio': 0.02, # 면적 모드: 화면 대비 bbox 최소 면적
     'lane_change_cooldown_s': 0.0, # 기존 모드 영향 없음

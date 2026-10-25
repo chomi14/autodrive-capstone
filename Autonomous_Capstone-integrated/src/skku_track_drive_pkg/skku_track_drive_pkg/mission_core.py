@@ -221,9 +221,13 @@ class MissionCore:
             elif self.state == 'BLOCKED_STOP' and self.clear_count >= p['obstacle_clear_frames']:
                 self.state = 'NORMAL'
 
-        # Stop immediately on an obstruction while accumulating confirmation;
-        # do not drive into it during the confirmation window.
-        stop = self.red_latched or self.state == 'BLOCKED_STOP' or switched or (blocking and self.state != 'AVOIDING') or (not lane_valid and self.state == 'AVOIDING')
+        obstacle_stop_enabled = bool(p['obstacle_stop_enabled'])
+        obstacle_stop = (self.state == 'BLOCKED_STOP' or switched
+                         or (blocking and self.state != 'AVOIDING')
+                         or (not lane_valid and self.state == 'AVOIDING'))
+        # Opt-out affects mission obstacle stops ONLY, not red lights or the
+        # sender/manual/perception safety gates outside this decision layer.
+        stop = self.red_latched or (obstacle_stop_enabled and obstacle_stop)
         reasons = []
         if self.red_latched:
             reasons.append('RED_LATCH_OR_WAIT_FOR_GREEN')
@@ -239,12 +243,23 @@ class MissionCore:
             reasons.append('CURRENT_PATH_OBSTACLE')
         if not lane_valid and self.state == 'AVOIDING':
             reasons.append('AVOIDANCE_PATH_NOT_CURRENTLY_VALID')
+        obstacle_warnings = []
+        if not obstacle_stop_enabled:
+            obstacle_warnings = [('LANE_SWITCH_REQUESTED' if reason == 'LANE_SWITCH_PAUSE' else reason)
+                                 for reason in reasons if reason != 'RED_LATCH_OR_WAIT_FOR_GREEN']
+            reasons = [reason for reason in reasons if reason == 'RED_LATCH_OR_WAIT_FOR_GREEN']
+            if not reasons:
+                reasons.append('OBSTACLE_STOP_DISABLED' if obstacle_stop else
+                               'AVOIDING' if self.state == 'AVOIDING' else 'NORMAL')
         if not reasons:
             reasons.append('AVOIDING' if self.state == 'AVOIDING' else 'NORMAL')
         if color == 'Yellow' and not stop:
             reasons.append('YELLOW_SPEED_LIMIT')
         self.status = {
-            'state': 'RED_STOP' if self.red_latched else self.state,
+            'state': ('RED_STOP' if self.red_latched else
+                      'BLOCKED_NO_STOP' if self.state == 'BLOCKED_STOP' and not obstacle_stop_enabled else self.state),
+            'obstacle_stop_enabled': obstacle_stop_enabled,
+            'obstacle_warnings': obstacle_warnings,
             'target_lane': self.target_lane, 'traffic_color': color,
             'color_ratio': round(max((r for _, r in colors), default=0.0), 3),
             'selected_color_ratio': max((r for k, r in colors if k == color), default=0.0),
@@ -272,7 +287,8 @@ class MissionCore:
             'traffic_boxes': traffic_boxes,
 
         }
-        limit = p['avoid_speed'] if self.state == 'AVOIDING' else 255
+        limit = (p['avoid_speed'] if self.state == 'AVOIDING'
+                 or (not obstacle_stop_enabled and obstacle_stop) else 255)
         if color == 'Yellow':
             limit = min(limit, p['yellow_speed'])
         return stop, limit
