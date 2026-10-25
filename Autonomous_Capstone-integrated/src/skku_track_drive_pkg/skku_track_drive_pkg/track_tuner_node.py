@@ -139,6 +139,10 @@ class TrackTunerNode(Node):
                                durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.drive_key_pub = self.create_publisher(String, 'vehicle/drive_key', key_qos)
         self.ui_heartbeat_pub = self.create_publisher(String, 'vehicle/tuner_heartbeat', key_qos)
+        self.capture_key_pub = self.create_publisher(String, 'capture/key', key_qos)
+        self.capture_status = {}
+        self.capture_status_time = float('-inf')
+        self.create_subscription(String, 'capture/status', self.on_capture_status, state_qos)
         self._arm_challenge = ''
         self._last_ui_heartbeat = 0.0
         self.create_subscription(String, 'vehicle/arm_challenge', self.on_arm_challenge, state_qos)
@@ -359,6 +363,8 @@ class TrackTunerNode(Node):
                 window = self.tuner_window
                 if name in BEV_SOURCE_DEFAULTS:
                     window = f'{self.tuner_window} BEV Source Points'
+                elif name == 'obstacle_near_y':
+                    window = f'{self.tuner_window} Obstacle'
                 elif extra := (regular_index // 12 + int(self.mode_controls_separate)):
                     window = f'{self.tuner_window} Controls {extra}'
                 if name not in BEV_SOURCE_DEFAULTS:
@@ -366,7 +372,7 @@ class TrackTunerNode(Node):
                 if window != self.tuner_window:
                     if window not in self.control_windows:
                         cv2.namedWindow(window, cv2.WINDOW_NORMAL)
-                        cv2.resizeWindow(window, 620, 650)
+                        cv2.resizeWindow(window, 620, 170 if name == 'obstacle_near_y' else 650)
                         self.control_windows.append(window)
                 self.parameter_windows[name] = window
                 position = self._position_for(name, self.current_values[name])
@@ -498,7 +504,9 @@ class TrackTunerNode(Node):
 
     def _draw_status(self):
         lines = [
-            'W: start   S: stop   P: save   D: debug   B: BEV   R: parking reset   Q/ESC: close',
+            ('W: start   S: stop   P: save   D: debug   B: BEV   '
+             + ('R: parking reset' if self.parking else 'R: auto capture   C: capture')
+             + '   Q/ESC: close'),
             (
                 f'Debug: {"ON" if self.desired_values.get("publish_debug") else "OFF"}   '
                 f'BEV: {"ON" if self.desired_values.get("publish_bev_debug") else "OFF"}'
@@ -522,6 +530,22 @@ class TrackTunerNode(Node):
             f'save to: {self.save_path}',
             f'Focus {self.tuner_window}, its control/debug windows or vehicle_start_gate for W/S.',
         ]
+        if self.parameter_root == 'mission_controller_node':
+            lines.insert(1, 'L: toggle target lane 1 <-> 2 (overrides cooldown; holds new lane for 5s)')
+            lines.insert(2, f"obstacle_near_y={self.desired_values.get('obstacle_near_y', '-')}  slider: {self.tuner_window} Obstacle")
+        if not self.parking:
+            if time.monotonic() - self.capture_status_time <= 2.0:
+                status = self.capture_status
+                state = 'OFF'
+                if status.get('enabled'):
+                    state = ('SAVING' if status.get('moving') and status.get('image_fresh')
+                             else 'ON (waiting for motion/raw image)')
+                lines.append(f'RAW CAPTURE: {state}  interval={status.get("interval")}s  saved={status.get("count")}')
+                lines.append(f'dataset: {status.get("output_dir")}')
+                if status.get('error'):
+                    lines.append(f'CAPTURE ERROR: {status["error"]}')
+            else:
+                lines.append('RAW CAPTURE unavailable: launch with capture:=true')
         if 'traffic_boxes' in self.mode_status:
             status = self.mode_status
             lines.extend([
@@ -534,6 +558,8 @@ class TrackTunerNode(Node):
                 f"red={status.get('red_count')}/{status.get('red_confirm_required')} green={status.get('green_count')}/{status.get('green_confirm_required')}",
                 f"system={status.get('system_state', 'NORMAL')} image_age_s={status.get('image_age_s', '-')}",
             ])
+            if 'lane_change_cooldown_s' in status:
+                lines.append(f"TARGET lane{status.get('target_lane')}  auto cooldown={status.get('lane_change_cooldown_remaining_s', 0):.1f}s  last switch={status.get('last_lane_switch_source', '-')}")
         else:
             lines.extend(f'{k}: {v}' for k, v in self.mode_status.items())
         for index, light in enumerate(self.mode_status.get('traffic_boxes', [])):
@@ -622,12 +648,52 @@ class TrackTunerNode(Node):
     def on_arm_challenge(self, msg):
         self._arm_challenge = msg.data
 
+    def on_capture_status(self, msg):
+        try:
+            status = json.loads(msg.data)
+            if not isinstance(status, dict):
+                return
+        except (ValueError, TypeError):
+            return
+        self.capture_status = status
+        self.capture_status_time = time.monotonic()
+
+    def forward_capture_key(self, key):
+        if time.monotonic() - self.capture_status_time > 2.0:
+            self.get_logger().warn('Raw capture unavailable. Launch with capture:=true.')
+            return
+        self.capture_key_pub.publish(String(data=key))
+
     def forward_drive_key(self, key):
         self.get_logger().info(f'KEY received in tuner/debug: {key!r}; forwarding to arm gate')
         # Stops do not need a token; they are always permitted. W must carry the
         # challenge known when the physical key was received, never a later one.
         payload = f'w:{self._arm_challenge}' if key == 'w' else key
         self.drive_key_pub.publish(String(data=payload))
+
+    def request_lane_toggle(self):
+        """Change the mission target only; never arm or publish motor commands."""
+        from std_srvs.srv import Trigger
+        if not hasattr(self, '_lane_toggle_client'):
+            self._lane_toggle_client = self.create_client(Trigger, f'{self.target_node}/toggle_target_lane')
+        if not self._lane_toggle_client.service_is_ready():
+            self.get_logger().warn('Target lane toggle unavailable: bbox mission controller is not ready')
+            return
+        if getattr(self, '_lane_toggle_future', None) is not None:
+            return
+        self._lane_toggle_future = self._lane_toggle_client.call_async(Trigger.Request())
+        self._lane_toggle_future.add_done_callback(self._on_lane_toggled)
+
+    def _on_lane_toggled(self, future):
+        self._lane_toggle_future = None
+        try:
+            response = future.result()
+            if response.success:
+                self.get_logger().info(response.message)
+            else:
+                self.get_logger().warn(response.message)
+        except Exception as exc:
+            self.get_logger().error(f'Target lane toggle failed: {exc}')
 
     def on_timer(self):
         # Keep this independent of controller parameter-service availability.
@@ -654,12 +720,16 @@ class TrackTunerNode(Node):
         key = cv2.waitKey(1) & 0xFF
         if key in (ord('w'), ord('W'), ord('s'), ord('S'), ord('x'), ord('X'), 32):
             self.forward_drive_key(chr(key).lower())
+        elif key in (ord('l'), ord('L')) and self.parameter_root == 'mission_controller_node':
+            self.request_lane_toggle()
         elif key in (ord('r'), ord('R')) and self.parking:
             from std_srvs.srv import Trigger
             if not hasattr(self, 'reset_client'):
                 self.reset_client = self.create_client(Trigger, f'{self.target_node}/reset')
             if self.reset_client.service_is_ready():
                 self.reset_client.call_async(Trigger.Request())
+        elif key in (ord('r'), ord('R'), ord('c'), ord('C')) and not self.parking:
+            self.forward_capture_key(chr(key).lower())
         elif key in (ord('p'), ord('P')):
             try:
                 self.save()

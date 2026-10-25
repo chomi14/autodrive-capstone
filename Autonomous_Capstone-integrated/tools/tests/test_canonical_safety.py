@@ -89,7 +89,7 @@ class CanonicalSafetyTests(unittest.TestCase):
 
     def test_all_launch_arguments_without_starting_nodes(self):
         paths = list((ROOT / 'src/vehicle_bringup_pkg/launch').glob('*.py'))
-        paths.append(ROOT / 'src/launch_pkg/launch/mission_launch.py')
+        paths.append(ROOT / 'development/legacy/launch_pkg/launch/mission_launch.py')
         from launch.actions import DeclareLaunchArgument
         for path in paths:
             spec = importlib.util.spec_from_file_location('test_launch', path)

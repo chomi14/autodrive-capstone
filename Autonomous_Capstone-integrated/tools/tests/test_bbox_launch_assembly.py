@@ -48,13 +48,17 @@ class LaunchTests(unittest.TestCase):
             self.assertEqual(sum(isinstance(a, Node) and a.node_executable == 'track_controller_node' for a in normal), 1)
             saved = Path(tmp)/'track.yaml'
             saved.write_text(json.dumps({'track_controller_node': {'ros__parameters': {'speed': 77, 'roi_cut': 280, 'bev_src_tl_x': 210}}}))
-            context.launch_configurations.update(bbox_obstacle_avoidance='true', speed='30', tuning_config=str(saved))
+            context.launch_configurations.update(bbox_obstacle_avoidance='true', speed='30', tuning_config=str(saved),
+                                                 capture='true', capture_interval='0.4', capture_start_enabled='true')
             with patch.object(track, 'IncludeLaunchDescription', side_effect=lambda source, launch_arguments: SimpleNamespace(args=dict(launch_arguments))):
                 actions = track._launch_nodes(context)
             self.assertEqual(len(actions), 1)
             forwarded = actions[0].args
             self.assertEqual(forwarded['tuning_config'], '')
             self.assertEqual(forwarded['track_tuning_path'], str(saved))
+            self.assertEqual(forwarded['capture'], 'true')
+            self.assertEqual(forwarded['capture_interval'], '0.4')
+            self.assertEqual(forwarded['capture_start_enabled'], 'true')
             self.assertNotEqual(forwarded['saved_tuning_path'], str(saved))
             child = LaunchContext()
             child.launch_configurations.update(forwarded)

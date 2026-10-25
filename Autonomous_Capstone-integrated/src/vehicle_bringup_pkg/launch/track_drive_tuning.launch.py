@@ -21,6 +21,7 @@ from vehicle_bringup_pkg.tuning_configuration import (
 
 
 from vehicle_bringup_pkg.recording import recording_arguments, recording_nodes, analysis_enabled
+from vehicle_bringup_pkg.capture import capture_arguments, capture_node, CAPTURE_ARGUMENT_NAMES
 
 def _as_bool(context, name):
     value = LaunchConfiguration(name).perform(context).strip().lower()
@@ -39,7 +40,7 @@ def _launch_nodes(context):
             for name in ('vehicle_config', 'dry_run', 'sensors_only', 'gui', 'camera_device',
                          'arduino_port', 'arduino_baud', 'auto_calibrate', 'calibration_tolerance',
                          'device', 'steering_sign', 'command_timeout', 'ui_timeout',
-                         'perception_stop_s', 'record_dir', 'analysis', *TUNING_TYPES)
+                         'perception_stop_s', 'record_dir', 'analysis', *CAPTURE_ARGUMENT_NAMES, *TUNING_TYPES)
         }
         track_file = LaunchConfiguration('tuning_config').perform(context).strip()
         if track_file and not Path(track_file).expanduser().is_file():
@@ -105,6 +106,7 @@ def _launch_nodes(context):
     return [
         LogInfo(msg=f'Using {config_source} tuning config: {selected_config}'),
         *([camera_node('/track/image_raw')] if hardware_enabled(context) else []),
+        *([capture_node('/track/image_raw', preview_remappings(context))] if hardware_enabled(context) else []),
         *([lidar_node('lidar_raw')] if hardware_enabled(context) and _as_bool(context, 'use_lidar') else []),
         Node(
             package='skku_track_drive_pkg',
@@ -149,6 +151,7 @@ def generate_launch_description():
         DeclareLaunchArgument('gui', default_value='true'),
         *perception_arguments('track'),
         *recording_arguments(),
+        *capture_arguments(),
         # No inference-age stop. Reuse ui_timeout for finite controller health
         # when command_timeout is zero; serial itself still runs at 20 Hz.
         DeclareLaunchArgument('command_timeout', default_value='0.0',

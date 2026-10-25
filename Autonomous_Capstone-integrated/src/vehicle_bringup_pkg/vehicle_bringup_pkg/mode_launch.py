@@ -27,6 +27,8 @@ def common_arguments(command_timeout='0.75', camera=True):
     # Keep camera_device available for tooling even in LiDAR-only modes.
     arguments.append(DeclareLaunchArgument('camera_device', default_value=VehicleDefault('camera.front.device', '/dev/video0')))
     if camera:
+        from .capture import capture_arguments
+        arguments.extend(capture_arguments())
         arguments.append(DeclareLaunchArgument('device', default_value='cuda:0'))
     return arguments
 
@@ -58,7 +60,9 @@ def preview_remappings(context):
     prefix = '/sensors_only' if hardware_enabled(context) else '/dry_run'
     # A preview GUI must not arm/heartbeat another live sender on this domain.
     return [(f'vehicle/{name}', f'{prefix}/vehicle/{name}') for name in
-            ('drive_key', 'tuner_heartbeat', 'controller_heartbeat', 'command_status', 'arm_challenge', 'drive_state')]
+            ('drive_key', 'tuner_heartbeat', 'controller_heartbeat', 'command_status', 'arm_challenge', 'drive_state')] + [
+                (f'capture/{name}', f'{prefix}/capture/{name}') for name in ('key', 'status')
+            ] + [('autonomous_capture_node/set_enabled', f'{prefix}/autonomous_capture_node/set_enabled')]
 
 
 def vehicle_remappings(prefix):

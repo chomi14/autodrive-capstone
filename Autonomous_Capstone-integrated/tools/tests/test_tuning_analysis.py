@@ -117,7 +117,7 @@ def test_calibration_log_uses_emitted_zero_pwm_while_configured_pwm_is_nonzero()
     assert frame['left_pwm']==frame['right_pwm']==frame['steering']==0
 
 
-def test_stop_reason_distinguishes_clear_confirmation_from_a_current_obstacle():
+def test_obstacle_disappearance_has_no_stop_or_clear_confirmation_wait():
     from skku_track_drive_pkg.messages import DetectionArray, Detection, BoundingBox2D, Pose2D, Point2D, Vector2
     core=MissionCore()
     frame=np.zeros((480,640,3),np.uint8)
@@ -125,8 +125,8 @@ def test_stop_reason_distinguishes_clear_confirmation_from_a_current_obstacle():
     path=[(420,180),(420,479)]
     for i in range(3):core.decide(DetectionArray([obstacle]),frame,path,float(i))
     stop,_=core.decide(DetectionArray(),frame,path,3.)
-    assert stop and not core.status['path_blocked']
-    assert core.status['reason']=='WAIT_OBSTACLE_CLEAR_CONFIRMATION'
+    assert not stop and not core.status['path_blocked']
+    assert core.status['reason']=='NORMAL'
 
 
 def test_legacy_track_video_replay_keeps_commands_and_vehicle_keys_private(tmp_path):

@@ -5,6 +5,7 @@ from launch.substitutions import LaunchConfiguration
 from launch.conditions import IfCondition
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+from vehicle_bringup_pkg.capture import capture_arguments, capture_node
 
 
 def generate_launch_description():
@@ -20,6 +21,8 @@ def generate_launch_description():
 
     return LaunchDescription([
         config_argument(),
+        *capture_arguments(),
+        capture_node('/image_raw'),
         DeclareLaunchArgument('auto_calibrate', default_value=VehicleDefault('steering.auto_calibrate', False)),
         DeclareLaunchArgument('arduino_baud', default_value=VehicleDefault('arduino.baud', 115200)),
         DeclareLaunchArgument('camera_device', default_value=VehicleDefault('camera.front.device', '/dev/video0')),

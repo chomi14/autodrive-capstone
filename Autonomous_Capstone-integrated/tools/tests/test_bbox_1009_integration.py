@@ -10,7 +10,7 @@ from skku_track_drive_pkg.lane_processing import LaneInfoExtractor
 from skku_track_drive_pkg.mission_core import MissionCore
 from skku_track_drive_pkg.messages import (
     DetectionArray, Detection, BoundingBox2D, Pose2D, Point2D, Vector2,
-    MotionCommand, PathPlanningResult,
+    MotionCommand, PathPlanningResult, Mask,
 )
 
 
@@ -34,7 +34,7 @@ def test_no_obstacle_keeps_the_exact_1009_stanley_command():
     assert node.adjust_command(baseline, DetectionArray(), path, frame) is baseline
 
 
-def test_live_bev_changes_the_bbox_collision_path_and_clear_lane_stops():
+def test_live_bev_changes_the_debug_path_but_switching_uses_current_lane_mask():
     node = controller()
     baseline = MotionCommand(2, 250, 250)
     path = PathPlanningResult([320, 320], [20, 160])
@@ -52,11 +52,18 @@ def test_live_bev_changes_the_bbox_collision_path_and_clear_lane_stops():
     obstacle = Detection(class_name='obstacle',
         bbox=BoundingBox2D(Pose2D(Point2D(float(x), float(y-20))), Vector2(20, 40)))
     command = node.adjust_command(baseline, DetectionArray([obstacle]), path, frame)
-    assert node.mission.status['path_blocked']
-    assert command.left_speed == command.right_speed == 0
-    # Opposite lane is not visible; consecutive detection must not switch blindly.
-    for _ in range(3):
-        command = node.adjust_command(baseline, DetectionArray([obstacle]), path, frame)
-    assert node.mission.state == 'BLOCKED_STOP'
+    assert not node.mission.status['current_lane_blocked']
     assert node.mission.target_lane == 2
-    assert command.left_speed == command.right_speed == 0
+    assert command is baseline
+    # Full-frame lane evidence triggers even with no current path/destination.
+    mask = np.zeros(frame.shape[:2], np.uint8)
+    mask[:, int(x)-20:int(x)+20] = 1
+    detections = DetectionArray([obstacle, Detection(class_name='lane2', mask=Mask(bitmap=mask))])
+    command = node.adjust_command(baseline, detections, PathPlanningResult(), frame)
+    assert node.mission.status['current_lane_blocked']
+    assert node.mission.target_lane == 1
+    assert command is baseline
+    for _ in range(3):
+        command = node.adjust_command(baseline, detections, PathPlanningResult(), frame)
+        assert node.mission.target_lane == 1
+        assert command is baseline

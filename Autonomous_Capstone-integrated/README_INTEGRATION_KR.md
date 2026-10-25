@@ -30,6 +30,51 @@ CANONICAL - USE THIS: `vehicle_bringup_pkg` + `vehicle_io_pkg` + `driving_user_p
 `src/data_collection`은 **LEGACY - DO NOT USE FOR VEHICLE RUN**입니다.
 `launch_pkg/mission_launch.py`는 새 gate를 사용하는 호환 미션 경로입니다.
 
+## 자율주행 중 카메라 원본 자동 캡처
+
+수동 주행과 같은 `R` 자동 캡처 ON/OFF 및 `C` 한 장 저장을 트랙/미션 튜닝 창에서도
+사용할 수 있다. 변경 후 한 번 빌드한다.
+
+```bash
+source /opt/ros/humble/setup.bash
+colcon build --symlink-install --packages-select manual_drive_pkg skku_track_drive_pkg vehicle_bringup_pkg
+source install/setup.bash
+ros2 launch vehicle_bringup_pkg track_drive_tuning.launch.py capture:=true
+```
+
+- Track/Mission Tuner 또는 해당 프로세스의 조절·디버그 창에 포커스를 두고 `R`:
+  자동 저장 ON/OFF. 시작 시 기본 OFF이며, 상태·저장 장수·저장 경로가 튜닝 창에 표시된다.
+- 자동 저장은 시리얼 브리지의 ARM 승인 및 전달 PWM이 0이 아닐 때만 동작한다.
+  정지/해제 중에는 일시 중단하고 재출발하면 이어서 저장한다. 카메라나 브리지 상태가
+  0.75초 이상 갱신되지 않으면 저장하지 않으며, 같은 수신 프레임을 자동으로 중복 저장하지 않는다.
+- `C`: 자동 저장 OFF 또는 정지 상태에서도 최신 원본 한 장 저장.
+  기존 `W` 출발, `S`/`X`/SPACE 정지, `P` 튜닝 저장은 그대로 사용한다.
+- 저장 영상은 카메라 raw 토픽의 전체 해상도 BGR 영상을 JPEG 품질 95로 저장한다.
+  차선·bbox·글자·BEV를 포함하지 않는다. 센서 Bayer/무손실 RAW 파일 형식은 아니다.
+- 기본 저장 위치: `~/autodrive_dataset/autonomous_drive/<실행별 시각>/images/*.jpg`와
+  `labels.csv`. CSV에는 시리얼 전달 조향/PWM, 촬영 방식, 원본 이미지 header 시각을 기록한다.
+  PWM은 차량의 실측 속도가 아니다.
+- 기본 간격 0.2초(최대 초당 약 5장). `capture_dir:=/원하는/경로`,
+  `capture_interval:=0.5`, `capture_start_enabled:=true`로 변경할 수 있다.
+  `capture_start_enabled:=true`여도 실제 저장은 출발 승인 및 비영 PWM 조건을 기다린다.
+- `track_drive.launch.py`, `mission_drive_tuning.launch.py`, `mission_bbox_only.launch.py`,
+  `mission_lidar_camera.launch.py`에서도 동일한 인자를 사용한다.
+  `track_drive_tuning.launch.py bbox_obstacle_avoidance:=true`에서도 적용된다.
+  `capture:=false`(기본값)는 캡처 노드를 실행하지 않는다. 주차 모드의 `R`은 기존 주차 reset이다.
+
+GUI 없이 실행한 경우에도 다른 터미널에서 ON/OFF할 수 있다.
+
+```bash
+ros2 service call /autonomous_capture_node/set_enabled std_srvs/srv/SetBool '{data: true}'
+ros2 service call /autonomous_capture_node/set_enabled std_srvs/srv/SetBool '{data: false}'
+```
+
+센서 전용(`sensors_only:=true`)에서는 자동 저장의 출발 승인을 받을 수 없으므로 `C`로
+한 장씩 저장한다. 이때 제어 서비스 경로는 `/sensors_only/autonomous_capture_node/set_enabled`다.
+`dry_run:=true`에서는 캡처 노드도 생략한다.
+캡처는 별도 프로세스에서 카메라/브리지 상태만 구독하며 차량 제어·출발 승인 명령을 발행하지 않는다.
+저장 오류가 나면 자동 저장이 OFF되고 튜닝 창에 오류를 표시한다.
+
 공유 설정: `src/vehicle_bringup_pkg/config/vehicle.yaml`.
 노트북 USB 예시는 `laptop_autolab.example.yaml`을 명시적으로 선택합니다.
 기존 launch argument는 유지하며 YAML보다 우선합니다. steering ADC YAML은 기록용이고

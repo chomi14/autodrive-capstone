@@ -48,7 +48,7 @@ class TrackControllerNode(Node):
         default_model = str(
             Path(get_package_share_directory('skku_track_drive_pkg'))
             / 'models'
-            / 'best_v2.pt'
+            / 'best_v3.pt'
         )
 
         # ROS I/O
