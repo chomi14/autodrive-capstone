@@ -6,5 +6,8 @@ setup(
                 ('share/' + package_name, ['package.xml'])],
     install_requires=['setuptools'], zip_safe=True,
     maintainer='skku', maintainer_email='noreply@example.com', description='WASD manual drive and labeled image capture', license='MIT',
-    entry_points={'console_scripts': ['manual_drive_capture_node = manual_drive_pkg.manual_drive_capture_node:main']},
+    entry_points={'console_scripts': [
+        'manual_drive_capture_node = manual_drive_pkg.manual_drive_capture_node:main',
+        'autonomous_capture_node = manual_drive_pkg.autonomous_capture_node:main',
+    ]},
 )

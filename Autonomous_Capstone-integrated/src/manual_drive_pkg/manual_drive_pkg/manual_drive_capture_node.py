@@ -14,7 +14,7 @@ from rclpy.qos import (
     DurabilityPolicy,
 )
 from sensor_msgs.msg import Image
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from cv_bridge import CvBridge
 from interfaces_pkg.msg import MotionCommand
 
@@ -40,7 +40,8 @@ class ManualDriveCaptureNode(Node):
       Q          : DISARM and stop this node
 
     The first W/S after startup only works after the Arduino startup calibration
-    reports READY.  Pressing W/S also publishes /vehicle/armed=True.
+    reports READY. Motion requests carry the serial bridge's current challenge;
+    ARM display/capture follow the bridge's accepted drive_state feedback.
     """
 
     WINDOW = 'manual_drive_capture'
@@ -100,6 +101,8 @@ class ManualDriveCaptureNode(Node):
         self.should_quit = False
         self.calibration_ready = False
         self.armed = False
+        self.arm_challenge = ''
+        self._last_ui_heartbeat = 0.0
 
         self.speed_cmd = 0
         self.steering_cmd = 0
@@ -130,6 +133,11 @@ class ManualDriveCaptureNode(Node):
         self.ready_sub = self.create_subscription(Bool, self.ready_topic, self.on_ready, latched_qos)
         self.pub = self.create_publisher(MotionCommand, self.cmd_topic, cmd_qos)
         self.arm_pub = self.create_publisher(Bool, self.arm_topic, latched_qos)
+        if not self.dry_run:
+            self.request_pub = self.create_publisher(String, 'vehicle/arm_request', cmd_qos)
+            self.heartbeat_pub = self.create_publisher(String, 'vehicle/ui_heartbeat', cmd_qos)
+            self.create_subscription(String, 'vehicle/arm_challenge', self.on_arm_challenge, latched_qos)
+            self.create_subscription(Bool, 'vehicle/drive_state', self.on_drive_state, latched_qos)
         self.timer = self.create_timer(0.05, self.on_timer)
 
         if self.show_window:
@@ -141,7 +149,7 @@ class ManualDriveCaptureNode(Node):
         print('Focus the camera window before pressing keys.')
         print(f'W: speed +{self.speed_step} | S: speed -{self.speed_step}')
         print(f'A/D: steering ±{self.steering_step} step | range ±{self.max_steering}')
-        print('X/SPACE: stop+center+disarm | C: capture | R: auto capture | Q: quit')
+        print('X/SPACE: stop+disarm | C: capture | R: auto capture | Q: quit')
         print('DRY RUN: no Arduino bridge' if self.dry_run else
               'Vehicle is LOCKED until startup steering calibration becomes READY.')
         print(f'dataset: {root}')
@@ -165,10 +173,49 @@ class ManualDriveCaptureNode(Node):
             self.publish_current_cmd('calibration_lock')
 
     def publish_arm(self, value: bool):
-        self.armed = bool(value)
+        if not value:
+            self.armed = False
         msg = Bool()
-        msg.data = self.armed
+        msg.data = bool(value)
         self.arm_pub.publish(msg)
+
+    def _clear_motion(self, reason):
+        self.speed_cmd = 0
+        self.steering_cmd = 0
+        self.publish_current_cmd(reason)
+
+    def on_arm_challenge(self, msg: String):
+        if self.dry_run:
+            return
+        if self.arm_challenge != msg.data:
+            self.arm_challenge = msg.data
+            self.armed = False
+            # A bridge stop/restart invalidates earlier manual commands. There
+            # is no automatic retry that could turn a pre-stop key into a new W.
+            self._clear_motion('bridge_disarm')
+
+    def on_drive_state(self, msg: Bool):
+        if self.dry_run:
+            return
+        was_armed = self.armed
+        self.armed = bool(msg.data)
+        if was_armed and not self.armed:
+            self._clear_motion('bridge_disarm')
+
+    def publish_ui_heartbeat(self, force=False):
+        if self.dry_run or self.should_quit or not self.arm_challenge:
+            return
+        now = time.monotonic()
+        if force or now - self._last_ui_heartbeat >= 0.1:
+            self.heartbeat_pub.publish(String(data=self.arm_challenge))
+            self._last_ui_heartbeat = now
+
+    def request_manual_motion(self):
+        if self.dry_run:
+            self.armed = True
+        elif not self.armed:
+            self.publish_ui_heartbeat(force=True)
+            self.request_pub.publish(String(data=self.arm_challenge))
 
     def publish_current_cmd(self, key: str):
         self.cmd.steering = int(max(-self.max_steering, min(self.max_steering, self.steering_cmd)))
@@ -188,22 +235,26 @@ class ManualDriveCaptureNode(Node):
         if not self.calibration_ready:
             self.get_logger().warn('Drive key ignored: steering calibration is not READY yet')
             return False
-        if not self.armed:
-            self.publish_arm(True)
+        if not self.arm_challenge:
+            self.get_logger().warn('Drive key ignored: waiting for the serial bridge start token')
+            return False
         return True
 
     def handle_key(self, key: str):
+        key = key.lower()
         if key == 'w':
             if not self._arm_for_manual_motion():
                 return
             self.speed_cmd = min(self.max_speed, self.speed_cmd + self.speed_step)
             self.publish_current_cmd(key)
+            self.request_manual_motion()
 
         elif key == 's':
             if not self._arm_for_manual_motion():
                 return
             self.speed_cmd = max(-self.max_speed, self.speed_cmd - self.speed_step)
             self.publish_current_cmd(key)
+            self.request_manual_motion()
 
         elif key == 'a':
             if not (self.calibration_ready or self.dry_run):
@@ -302,7 +353,18 @@ class ManualDriveCaptureNode(Node):
 
     def on_timer(self):
         self.pub.publish(self.cmd)
+        if self.show_window:
+            try:
+                closed = cv2.getWindowProperty(self.WINDOW, cv2.WND_PROP_VISIBLE) < 1
+            except cv2.error:
+                closed = True
+            if closed:
+                self.handle_key('q')
+                return
         self.draw_window()
+        if self.should_quit:
+            return
+        self.publish_ui_heartbeat()
 
         moving = (self.armed or self.dry_run) and (self.cmd.left_speed != 0 or self.cmd.right_speed != 0)
         now = time.monotonic()

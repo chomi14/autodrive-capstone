@@ -4,7 +4,18 @@ Each specification is (default, minimum, maximum, slider step). SI units are
 used for parking. Zero geometry values mean unmeasured, never guessed dimensions.
 """
 
+LEGACY_OBSTACLE_PARAMETERS = {
+    'obstacle_trigger_mode', 'obstacle_min_area_ratio', 'lane_change_cooldown_s',
+    'obstacle_confirm_frames', 'obstacle_clear_frames', 'path_margin_px',
+    'alternate_min_area_px', 'avoid_hold_s', 'avoid_speed',
+}
+
+# Legacy obstacle values remain accepted for existing launch/YAML files and the
+# development fusion mode. Bbox missions use only lane masks + obstacle_near_y.
 MISSION = {
+    'obstacle_trigger_mode': (0, 0, 1, 1),  # bbox 미션에서는 사용하지 않음
+    'obstacle_min_area_ratio': (0.02, 0.001, 0.5, 0.001),  # 화면 대비 bbox 면적
+    'lane_change_cooldown_s': (0.0, 0.0, 30.0, 0.1),  # 면적 모드 재전환 제한
     'obstacle_confirm_frames': (3, 1, 30, 1),
     'obstacle_clear_frames': (5, 1, 60, 1),
     'obstacle_near_y': (300, 0, 480, 1),

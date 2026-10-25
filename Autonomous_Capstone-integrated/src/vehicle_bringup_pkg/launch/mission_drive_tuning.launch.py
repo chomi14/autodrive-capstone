@@ -1,4 +1,2 @@
-from vehicle_bringup_pkg.tuned_modes import description
-
-def generate_launch_description():
-    return description('mission')
+"""Compatibility launch; edit vehicle_bringup_pkg/development/mission_drive_tuning.py."""
+from vehicle_bringup_pkg.development.mission_drive_tuning import *  # noqa: F401,F403

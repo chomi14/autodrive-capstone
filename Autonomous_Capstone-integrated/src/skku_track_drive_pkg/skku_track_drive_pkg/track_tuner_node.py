@@ -28,6 +28,8 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
 from interfaces_pkg.msg import MotionCommand
+from .bev_geometry import BEV_SOURCE_DEFAULTS
+from .stop_history import StopHistory
 
 
 TUNER_WINDOW_NAME = 'Track Tuner'
@@ -47,7 +49,7 @@ TRACKBARS = {
         lambda v: round(float(v) * 100.0),
     ),
     'lookahead_index': (
-        'Lookahead Index', 27,
+        'Lookahead Index (+3)', 96,
         lambda p: int(p + 3),
         lambda v: int(v) - 3,
     ),
@@ -61,6 +63,7 @@ TRACKBARS = {
         lambda p: int(p - 40),
         lambda v: int(v) + 40,
     ),
+    'roi_cut': ('ROI Cut (px)', 470, lambda p: int(p), lambda v: int(v)),
     'look_shift': ('Look Shift', 120, lambda p: int(p), lambda v: int(v)),
     'ema_alpha': (
         'EMA Alpha x100', 100,
@@ -78,6 +81,15 @@ TRACKBARS = {
         lambda v: round(float(v)) - 30,
     ),
 }
+TRACKBARS.update({
+    name: (
+        f'P{index // 2 + 1} {name.split("_")[2].upper()} {name[-1].upper()}'
+        + (' (base)' if name.endswith('_y') and index < 4 else ''),
+        639 if name.endswith('_x') else 479,
+        lambda p: int(p), lambda v: int(v),
+    )
+    for index, name in enumerate(BEV_SOURCE_DEFAULTS)
+})
 DISPLAY_PARAMETERS = ('publish_debug', 'publish_bev_debug')
 
 
@@ -97,6 +109,7 @@ class TrackTunerNode(Node):
         self.control_windows = []
         self.parameter_windows = {}
         self.mode_status = {}
+        self.stop_history = StopHistory()
         self.parking = parking
         self.mode_controls_separate = window_prefix != 'Track'
         self.declare_parameter('target_node', '/track_controller_node')
@@ -126,6 +139,10 @@ class TrackTunerNode(Node):
                                durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.drive_key_pub = self.create_publisher(String, 'vehicle/drive_key', key_qos)
         self.ui_heartbeat_pub = self.create_publisher(String, 'vehicle/tuner_heartbeat', key_qos)
+        self.capture_key_pub = self.create_publisher(String, 'capture/key', key_qos)
+        self.capture_status = {}
+        self.capture_status_time = float('-inf')
+        self.create_subscription(String, 'capture/status', self.on_capture_status, state_qos)
         self._arm_challenge = ''
         self._last_ui_heartbeat = 0.0
         self.create_subscription(String, 'vehicle/arm_challenge', self.on_arm_challenge, state_qos)
@@ -139,7 +156,13 @@ class TrackTunerNode(Node):
         if self.loaded_config_path and Path(self.loaded_config_path).is_file():
             with Path(self.loaded_config_path).open() as stream:
                 persisted = (yaml.safe_load(stream) or {}).get(self.parameter_root, {}).get('ros__parameters', {})
-        self.managed_parameters = tuple(dict.fromkeys([*self.trackbars, *persisted, *DISPLAY_PARAMETERS]))
+        # The legacy car Y is relative to the ROI at first load. Save its
+        # reference cut alongside it so changing/saving ROI cannot move the
+        # full-BEV vehicle reference on the next launch.
+        vehicle_reference = ('car_center_y', 'car_center_reference_roi_cut') if 'roi_cut' in self.trackbars else ()
+        self.managed_parameters = tuple(dict.fromkeys([
+            *self.trackbars, *persisted, *vehicle_reference, *DISPLAY_PARAMETERS,
+        ]))
         status_topic = str(self.get_parameter('status_topic').value)
         if status_topic:
             self.create_subscription(String, status_topic, self.on_mode_status, 1)
@@ -199,15 +222,71 @@ class TrackTunerNode(Node):
 
     def on_mode_status(self, message):
         try:
-            self.mode_status = json.loads(message.data)
+            status = json.loads(message.data)
+            if not isinstance(status, dict):
+                return
         except (ValueError, TypeError):
             self.mode_status = {'status': message.data}
+            return
+        self.mode_status = status
+        reason = (status.get('reason') or status.get('state') or 'stop requested') if status.get('stop') is True else None
+        self._record_stop('MISSION', reason)
 
     def on_serial_status(self, message):
         try:
-            self.command_status = json.loads(message.data)
+            status = json.loads(message.data)
+            if not isinstance(status, dict):
+                return
         except (ValueError, TypeError):
-            self.command_status = {}
+            return
+        self.command_status = status
+        reason = None
+        if status.get('armed') is False:
+            reason = status.get('stop_reason') or 'disarmed (reason not reported)'
+        elif (status.get('armed') is True and status.get('left_pwm') == 0
+              and status.get('right_pwm') == 0):
+            reason = status.get('stop_reason') or 'zero PWM while armed (reason not reported)'
+        self._record_stop('SERIAL', reason)
+
+    def _record_stop(self, source, reason):
+        event = self.stop_history.observe(source, reason)
+        if event is not None:
+            self.get_logger().warn(f'STOP HISTORY [{event.timestamp}] {event.source}: {event.reason}')
+
+    @staticmethod
+    def _wrap_status_line(line, width, scale=0.52):
+        """Keep the full reason visible, including long joined mission reasons."""
+        rows = []
+        remaining = line
+        while remaining:
+            end = len(remaining)
+            while end > 1 and cv2.getTextSize(remaining[:end], cv2.FONT_HERSHEY_SIMPLEX, scale, 1)[0][0] > width - 24:
+                end -= 1
+            if end < len(remaining):
+                space = remaining.rfind(' ', 0, end + 1)
+                if space > 0:
+                    end = space
+            rows.append(remaining[:end])
+            remaining = remaining[end:].lstrip()
+        return rows or ['']
+
+    def _serial_status_lines(self, width=1100, scale=0.52):
+        lines = []
+        applied = self.command_status
+        if applied:
+            lines.append(f"SERIAL command PWM L/R={applied.get('left_pwm')}/{applied.get('right_pwm')} "
+                         f"steer={applied.get('steering')} armed={applied.get('armed')}")
+            age = applied.get('result_age_s')
+            age_text = f'{age:.2f}s' if isinstance(age, (int, float)) else '-'
+            lines.append(f"PERCEPTION age={age_text} stop={applied.get('stop_reason') or '-'}")
+        lines.append('STOP HISTORY: latest 3, retained until tuner restart (newest first)')
+        if not self.stop_history.events:
+            lines.append('No stop observed yet.')
+        for event in self.stop_history.events:
+            lines.append(f'[{event.timestamp}] {event.source}: {event.reason}')
+        if applied:
+            lines.append('Serial values are software commands; physical motor PWM is unmeasured.')
+        return [row for line in lines for row in self._wrap_status_line(line, width, scale)]
 
     def on_debug_image(self, message):
         try:
@@ -279,13 +358,21 @@ class TrackTunerNode(Node):
             cv2.namedWindow(self.tuner_window, cv2.WINDOW_NORMAL)
             cv2.resizeWindow(self.tuner_window, 900, 720)
             self._initializing_ui = True
-            for index, (name, (label, maximum, _decode, _encode)) in enumerate(self.trackbars.items()):
+            regular_index = 0
+            for name, (label, maximum, _decode, _encode) in self.trackbars.items():
                 window = self.tuner_window
-                if extra := (index // 12 + int(self.mode_controls_separate)):
+                if name in BEV_SOURCE_DEFAULTS:
+                    window = f'{self.tuner_window} BEV Source Points'
+                elif name == 'obstacle_near_y':
+                    window = f'{self.tuner_window} Obstacle'
+                elif extra := (regular_index // 12 + int(self.mode_controls_separate)):
                     window = f'{self.tuner_window} Controls {extra}'
+                if name not in BEV_SOURCE_DEFAULTS:
+                    regular_index += 1
+                if window != self.tuner_window:
                     if window not in self.control_windows:
                         cv2.namedWindow(window, cv2.WINDOW_NORMAL)
-                        cv2.resizeWindow(window, 620, 650)
+                        cv2.resizeWindow(window, 620, 170 if name == 'obstacle_near_y' else 650)
                         self.control_windows.append(window)
                 self.parameter_windows[name] = window
                 position = self._position_for(name, self.current_values[name])
@@ -417,7 +504,9 @@ class TrackTunerNode(Node):
 
     def _draw_status(self):
         lines = [
-            'W: start   S: stop   P: save   D: debug   B: BEV   R: parking reset   Q/ESC: close',
+            ('W: start   S: stop   P: save   D: debug   B: BEV   '
+             + ('R: parking reset' if self.parking else 'R: auto capture   C: capture')
+             + '   Q/ESC: close'),
             (
                 f'Debug: {"ON" if self.desired_values.get("publish_debug") else "OFF"}   '
                 f'BEV: {"ON" if self.desired_values.get("publish_bev_debug") else "OFF"}'
@@ -436,10 +525,27 @@ class TrackTunerNode(Node):
                 f'L/R speed: {self.current_left_speed}/{self.current_right_speed}'
             ),
             f'control update rate: {self.processing_fps:.1f} Hz',
+            *self._serial_status_lines(scale=0.62),
             f'loaded: {self.loaded_config_path or "controller defaults"}',
             f'save to: {self.save_path}',
             f'Focus {self.tuner_window}, its control/debug windows or vehicle_start_gate for W/S.',
         ]
+        if self.parameter_root == 'mission_controller_node':
+            lines.insert(1, 'L: toggle target lane 1 <-> 2 (overrides cooldown; holds new lane for 5s)')
+            lines.insert(2, f"obstacle_near_y={self.desired_values.get('obstacle_near_y', '-')}  slider: {self.tuner_window} Obstacle")
+        if not self.parking:
+            if time.monotonic() - self.capture_status_time <= 2.0:
+                status = self.capture_status
+                state = 'OFF'
+                if status.get('enabled'):
+                    state = ('SAVING' if status.get('moving') and status.get('image_fresh')
+                             else 'ON (waiting for motion/raw image)')
+                lines.append(f'RAW CAPTURE: {state}  interval={status.get("interval")}s  saved={status.get("count")}')
+                lines.append(f'dataset: {status.get("output_dir")}')
+                if status.get('error'):
+                    lines.append(f'CAPTURE ERROR: {status["error"]}')
+            else:
+                lines.append('RAW CAPTURE unavailable: launch with capture:=true')
         if 'traffic_boxes' in self.mode_status:
             status = self.mode_status
             lines.extend([
@@ -452,6 +558,8 @@ class TrackTunerNode(Node):
                 f"red={status.get('red_count')}/{status.get('red_confirm_required')} green={status.get('green_count')}/{status.get('green_confirm_required')}",
                 f"system={status.get('system_state', 'NORMAL')} image_age_s={status.get('image_age_s', '-')}",
             ])
+            if 'lane_change_cooldown_s' in status:
+                lines.append(f"TARGET lane{status.get('target_lane')}  auto cooldown={status.get('lane_change_cooldown_remaining_s', 0):.1f}s  last switch={status.get('last_lane_switch_source', '-')}")
         else:
             lines.extend(f'{k}: {v}' for k, v in self.mode_status.items())
         for index, light in enumerate(self.mode_status.get('traffic_boxes', [])):
@@ -459,13 +567,6 @@ class TrackTunerNode(Node):
             lines.append(f"light#{index} box={light['box']} eligible={light['eligible']} used={light.get('used_for_color')} "
                          f"color={light.get('color', 'rejected')} R/G/Y=" +
                          '/'.join(f"{ratios.get(k, 0):.3f}" for k in ('Red', 'Green', 'Yellow')))
-        applied = getattr(self, 'command_status', {})
-        if applied:
-            lines.append(f"SERIAL command PWM L/R={applied.get('left_pwm')}/{applied.get('right_pwm')} "
-                         f"steer={applied.get('steering')} armed={applied.get('armed')}")
-            lines.append(f"PERCEPTION age={applied.get('result_age_s')} "
-                         f"stop={applied.get('stop_reason')}")
-            lines.append('Serial values are software commands; physical motor PWM is unmeasured.')
         canvas = np.zeros((max(300, 45 + len(lines) * 33), 1100, 3), dtype=np.uint8)
         for index, line in enumerate(lines):
             # Preserve the filename and latest values when a long path exceeds
@@ -486,6 +587,19 @@ class TrackTunerNode(Node):
                 cv2.LINE_AA,
             )
         cv2.imshow(self.tuner_window, canvas)
+        source_window = f'{self.tuner_window} BEV Source Points'
+        if source_window in self.control_windows:
+            point_canvas = np.zeros((150, 620, 3), dtype=np.uint8)
+            for index, line in enumerate((
+                'Camera points: P1 TL, P2 TR, P3 BR, P4 BL',
+                'X: left/right. Y: up/down. Change pairs for width/tilt.',
+                'Top Y is base Y + BEV Top Shift.',
+                'Orange outline/coordinates on camera show applied points.',
+                'P: save accepted points. Invalid shapes are rejected.',
+            )):
+                cv2.putText(point_canvas, line, (10, 24 + index * 26),
+                            cv2.FONT_HERSHEY_SIMPLEX, .48, (220, 220, 220), 1, cv2.LINE_AA)
+            cv2.imshow(source_window, point_canvas)
 
     def _draw_debug(self):
         enabled = bool(self.desired_values.get('publish_debug', False))
@@ -496,15 +610,23 @@ class TrackTunerNode(Node):
             return
         if self._latest_debug_frame is None:
             return
+        frame = self._latest_debug_frame
+        lines = self._serial_status_lines(frame.shape[1])
+        footer = np.zeros((12 + len(lines) * 25, frame.shape[1], 3), dtype=np.uint8)
+        for index, line in enumerate(lines):
+            color = (0, 200, 255) if line.startswith(('STOP HISTORY', '[')) else (220, 220, 220)
+            cv2.putText(footer, line, (12, 22 + index * 25), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.52, color, 1, cv2.LINE_AA)
+        display = np.vstack((frame, footer))
         if not self._debug_window_open:
             cv2.namedWindow(self.debug_window, cv2.WINDOW_NORMAL)
             cv2.resizeWindow(
                 self.debug_window,
-                self._latest_debug_frame.shape[1],
-                self._latest_debug_frame.shape[0],
+                display.shape[1],
+                display.shape[0],
             )
             self._debug_window_open = True
-        cv2.imshow(self.debug_window, self._latest_debug_frame)
+        cv2.imshow(self.debug_window, display)
 
     def _close_gui_windows(self, log_continues=True):
         self.forward_drive_key('s')
@@ -526,12 +648,52 @@ class TrackTunerNode(Node):
     def on_arm_challenge(self, msg):
         self._arm_challenge = msg.data
 
+    def on_capture_status(self, msg):
+        try:
+            status = json.loads(msg.data)
+            if not isinstance(status, dict):
+                return
+        except (ValueError, TypeError):
+            return
+        self.capture_status = status
+        self.capture_status_time = time.monotonic()
+
+    def forward_capture_key(self, key):
+        if time.monotonic() - self.capture_status_time > 2.0:
+            self.get_logger().warn('Raw capture unavailable. Launch with capture:=true.')
+            return
+        self.capture_key_pub.publish(String(data=key))
+
     def forward_drive_key(self, key):
         self.get_logger().info(f'KEY received in tuner/debug: {key!r}; forwarding to arm gate')
         # Stops do not need a token; they are always permitted. W must carry the
         # challenge known when the physical key was received, never a later one.
         payload = f'w:{self._arm_challenge}' if key == 'w' else key
         self.drive_key_pub.publish(String(data=payload))
+
+    def request_lane_toggle(self):
+        """Change the mission target only; never arm or publish motor commands."""
+        from std_srvs.srv import Trigger
+        if not hasattr(self, '_lane_toggle_client'):
+            self._lane_toggle_client = self.create_client(Trigger, f'{self.target_node}/toggle_target_lane')
+        if not self._lane_toggle_client.service_is_ready():
+            self.get_logger().warn('Target lane toggle unavailable: bbox mission controller is not ready')
+            return
+        if getattr(self, '_lane_toggle_future', None) is not None:
+            return
+        self._lane_toggle_future = self._lane_toggle_client.call_async(Trigger.Request())
+        self._lane_toggle_future.add_done_callback(self._on_lane_toggled)
+
+    def _on_lane_toggled(self, future):
+        self._lane_toggle_future = None
+        try:
+            response = future.result()
+            if response.success:
+                self.get_logger().info(response.message)
+            else:
+                self.get_logger().warn(response.message)
+        except Exception as exc:
+            self.get_logger().error(f'Target lane toggle failed: {exc}')
 
     def on_timer(self):
         # Keep this independent of controller parameter-service availability.
@@ -558,12 +720,16 @@ class TrackTunerNode(Node):
         key = cv2.waitKey(1) & 0xFF
         if key in (ord('w'), ord('W'), ord('s'), ord('S'), ord('x'), ord('X'), 32):
             self.forward_drive_key(chr(key).lower())
+        elif key in (ord('l'), ord('L')) and self.parameter_root == 'mission_controller_node':
+            self.request_lane_toggle()
         elif key in (ord('r'), ord('R')) and self.parking:
             from std_srvs.srv import Trigger
             if not hasattr(self, 'reset_client'):
                 self.reset_client = self.create_client(Trigger, f'{self.target_node}/reset')
             if self.reset_client.service_is_ready():
                 self.reset_client.call_async(Trigger.Request())
+        elif key in (ord('r'), ord('R'), ord('c'), ord('C')) and not self.parking:
+            self.forward_capture_key(chr(key).lower())
         elif key in (ord('p'), ord('P')):
             try:
                 self.save()

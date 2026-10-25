@@ -19,8 +19,12 @@ PATH = [(420, 180), (420, 479)]
 def box(name, x, y=380, width=40, height=40):
     return Detection(class_name=name, bbox=BoundingBox2D(Pose2D(Point2D(x, y)), Vector2(width, height)))
 
-def scene(*objects, alternative=True):
+def scene(*objects, alternative=True, current=True):
     detections = list(objects)
+    if current:
+        mask = np.zeros((480, 640), np.uint8)
+        mask[180:, 380:460] = 1
+        detections.append(Detection(class_name='lane2', mask=Mask(bitmap=mask)))
     if alternative:
         mask = np.zeros((480, 640), np.uint8)
         mask[180:, 50:230] = 1
@@ -43,26 +47,23 @@ def test_no_mission_does_not_replace_track_dropout_command():
     assert mission.apply(baseline, stop, limit) is baseline
 
 
-def test_path_obstruction_switches_only_to_visible_clear_lane():
+def test_current_lane_obstacle_switches_immediately_without_stopping():
     mission = MissionCore({'obstacle_confirm_frames': 2})
     obstacles = scene(box('obstacle', 420))
-    assert mission.decide(obstacles, FRAME, PATH, 1)[0]
-    assert mission.target_lane == 2
-    assert mission.decide(obstacles, FRAME, PATH, 2)[0]
+    assert not mission.decide(obstacles, FRAME, PATH, 1)[0]
     assert mission.target_lane == 1
     assert mission.state == 'AVOIDING'
     assert mission.decide(obstacles, FRAME, [(130, 180), (130, 479)], 2.1)[0] is False
-    # Never resume using held points when the selected avoidance lane is lost.
-    assert mission.decide(obstacles, FRAME, [], 9, lane_valid=False)[0]
-    assert mission.state == 'AVOIDING'
+    assert not mission.decide(obstacles, FRAME, [], 9, lane_valid=False)[0]
+    assert mission.target_lane == 1
 
 
 @pytest.mark.parametrize('alternative,extra', [(False, []), (True, [box('obstacle', 130)])])
-def test_no_clear_escape_lane_stops_without_lane_switch(alternative, extra):
+def test_opposite_lane_visibility_and_obstacles_do_not_delay_switch(alternative, extra):
     mission = MissionCore({'obstacle_confirm_frames': 1})
     stop, _ = mission.decide(scene(box('obstacle', 420), *extra, alternative=alternative), FRAME, PATH, 1)
-    assert stop and mission.state == 'BLOCKED_STOP'
-    assert mission.target_lane == 2
+    assert not stop and mission.state == 'AVOIDING'
+    assert mission.target_lane == 1
 
 
 def test_small_far_obstacle_does_not_trigger_avoidance():
