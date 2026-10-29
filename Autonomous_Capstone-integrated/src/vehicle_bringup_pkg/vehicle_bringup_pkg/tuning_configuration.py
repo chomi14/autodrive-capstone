@@ -43,6 +43,11 @@ def _profile(mode):
     if mode == 'mission':
         types = {**TUNING_TYPES, **{key: type(spec[0]) for key, spec in MISSION.items()}}
         return 'mission_controller_node', 'mission_tuning.yaml', types, ALLOWED_TUNING_PARAMETERS | set(MISSION)
+    if mode == 'traffic_track':
+        from skku_track_drive_pkg.mode_parameters import TRAFFIC_LIGHT
+        types = {**TUNING_TYPES, **{key: type(spec[0]) for key, spec in TRAFFIC_LIGHT.items()}}
+        return ('traffic_light_track_controller_node', 'traffic_light_track_tuning.yaml',
+                types, ALLOWED_TUNING_PARAMETERS | set(TRAFFIC_LIGHT))
     if mode == 'calibration':
         from skku_track_drive_pkg.calibration_controller_node import CALIBRATION
         types = {key: type(spec[0]) for key, spec in CALIBRATION.items()}

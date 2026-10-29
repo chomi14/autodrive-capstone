@@ -15,7 +15,7 @@ def analysis_enabled(context):
     return bool(LaunchConfiguration('record_dir', default='').perform(context).strip()) or LaunchConfiguration('analysis', default='false').perform(context).lower() in ('true', '1')
 
 
-def recording_nodes(context, mode):
+def recording_nodes(context, mode, profile_mode=None):
     directory = LaunchConfiguration('record_dir', default='').perform(context).strip()
     if not directory:
         return []
@@ -24,7 +24,7 @@ def recording_nodes(context, mode):
     if mode == 'calibration' and motor_enabled(context):
         prefix, topic = '/parking_calibration/vehicle', '/parking_calibration/command'
     from .tuning_configuration import _profile
-    root, _, _, allowed = _profile(mode)
+    root, _, _, allowed = _profile(profile_mode or mode)
     return [Node(package='skku_track_drive_pkg', executable='tuning_recorder_node', output='screen', parameters=[{
         'output_dir': directory, 'mode': mode, 'controller_root': root, 'tuning_keys_json': json.dumps(sorted(allowed)), 'command_topic': topic, 'vehicle_prefix': prefix,
         'input_topic': '/track/image_raw' if mode == 'track' else '/mission/image_raw' if mode == 'mission'

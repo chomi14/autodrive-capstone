@@ -30,6 +30,29 @@ MISSION = {
     'yellow_h_max': (30, 20, 39, 1),
 }
 
+# Light-only subset used by the pure-track traffic-light overlay. Keep the
+# values identical to mission mode so both modes share one tuning vocabulary.
+TRAFFIC_LIGHT = {
+    name: MISSION[name]
+    for name in (
+        'yellow_speed',
+        'red_confirm_frames',
+        'green_confirm_frames',
+        'wait_for_green',
+        'traffic_min_width',
+        'traffic_min_bottom_y',
+        'traffic_min_color_ratio',
+        'hsv_s_min',
+        'hsv_v_min',
+        'red_h_low_max',
+        'red_h_high_min',
+        'green_h_min',
+        'green_h_max',
+        'yellow_h_min',
+        'yellow_h_max',
+    )
+}
+
 PARKING_COMMON = {
     'geometry_confirmed': (0, 0, 1, 1),
     'lidar_x_m': (0.0, -2.0, 2.0, 0.01),

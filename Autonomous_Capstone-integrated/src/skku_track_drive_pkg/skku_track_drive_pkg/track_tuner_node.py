@@ -442,12 +442,19 @@ class TrackTunerNode(Node):
         ]
         if 'traffic_boxes' in self.mode_status:
             status = self.mode_status
+            if 'path_blocked' in status:
+                lines.extend([
+                    f"MISSION {status.get('state')} reason={status.get('reason')} stop={status.get('stop')}",
+                    f"path lane={status.get('path_lane')} target(next)={status.get('target_lane')} valid={status.get('path_valid')}",
+                    f"path blocked={status.get('path_blocked')} confirm={status.get('obstacle_confirm_count')}/{status.get('obstacle_confirm_required')}",
+                    f"alternative lane={status.get('alternate_lane')} visible={status.get('alternate_visible')} blocked={status.get('alternate_blocked')} valid={status.get('alternate_valid')}",
+                    f"alternative mask area={status.get('alternate_mask_area_px')}px (mask evidence, not a planned path)",
+                ])
+            else:
+                lines.append(
+                    f"LIGHT TRACK {status.get('state')} reason={status.get('reason')} stop={status.get('stop')}"
+                )
             lines.extend([
-                f"MISSION {status.get('state')} reason={status.get('reason')} stop={status.get('stop')}",
-                f"path lane={status.get('path_lane')} target(next)={status.get('target_lane')} valid={status.get('path_valid')}",
-                f"path blocked={status.get('path_blocked')} confirm={status.get('obstacle_confirm_count')}/{status.get('obstacle_confirm_required')}",
-                f"alternative lane={status.get('alternate_lane')} visible={status.get('alternate_visible')} blocked={status.get('alternate_blocked')} valid={status.get('alternate_valid')}",
-                f"alternative mask area={status.get('alternate_mask_area_px')}px (mask evidence, not a planned path)",
                 f"LIGHT {status.get('traffic_color')} red_latched={status.get('red_latched')} selected_ratio={status.get('selected_color_ratio')} max_candidate_ratio={status.get('color_ratio')}",
                 f"red={status.get('red_count')}/{status.get('red_confirm_required')} green={status.get('green_count')}/{status.get('green_confirm_required')}",
                 f"system={status.get('system_state', 'NORMAL')} image_age_s={status.get('image_age_s', '-')}",

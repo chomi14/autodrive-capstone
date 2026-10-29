@@ -8,6 +8,7 @@ from skku_track_drive_pkg.messages import (
     BoundingBox2D, Detection, DetectionArray, Mask, MotionCommand, Point2D, Pose2D, Vector2,
 )
 from skku_track_drive_pkg.mission_core import MissionCore, color_of_light
+from skku_track_drive_pkg.traffic_light_core import TrafficLightCore
 from skku_track_drive_pkg.mode_parameters import MISSION, defaults
 from skku_track_drive_pkg.parking_core import ParkingCore
 from skku_track_drive_pkg.lidar_geometry import scan_points
@@ -93,6 +94,32 @@ def test_yellow_reduces_speed_without_changing_steering():
     mission = MissionCore({'yellow_speed': 40})
     stop, limit = mission.decide(scene(light), frame, PATH, 1)
     assert mission.apply(MotionCommand(3, 80, 80), stop, limit) == MotionCommand(3, 40, 40)
+
+
+def test_traffic_track_red_unknown_green_latch_sequence():
+    light = box('traffic_light', 80, y=120)
+    core = TrafficLightCore({'red_confirm_frames': 2, 'green_confirm_frames': 2})
+    red = FRAME.copy()
+    red[100:140, 60:100] = (0, 0, 255)
+    green = FRAME.copy()
+    green[100:140, 60:100] = (0, 255, 0)
+
+    assert not core.decide(scene(light), red)[0]
+    assert core.decide(scene(light), red)[0]
+    assert core.decide(scene(), FRAME)[0]
+    assert core.status['traffic_color'] == 'Unknown'
+    assert core.decide(scene(light), green)[0]
+    assert not core.decide(scene(light), green)[0]
+
+
+def test_traffic_track_yellow_caps_speed_and_preserves_steering():
+    light = box('traffic_light', 80, y=120)
+    core = TrafficLightCore({'yellow_speed': 40})
+    frame = FRAME.copy()
+    frame[100:140, 60:100] = (0, 255, 255)
+
+    stop, limit = core.decide(scene(light), frame)
+    assert core.apply(MotionCommand(3, 80, 80), stop, limit) == MotionCommand(3, 40, 40)
 
 
 def test_outside_frame_light_crop_does_not_crash():
