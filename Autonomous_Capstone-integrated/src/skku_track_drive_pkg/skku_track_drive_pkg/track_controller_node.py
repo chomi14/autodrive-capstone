@@ -824,14 +824,6 @@ class TrackControllerNode(Node):
                         (0, 0, 0), 3, cv2.LINE_AA)
             cv2.putText(frame, label, location, cv2.FONT_HERSHEY_SIMPLEX, .43,
                         color, 1, cv2.LINE_AA)
-        top_width = int(points[1, 0] - points[0, 0])
-        bottom_width = int(points[2, 0] - points[3, 0])
-        tilt = np.degrees(np.arctan2(points[1, 1] - points[0, 1], top_width))
-        cv2.putText(frame, f'BEV calibration only: top={top_width}px bottom={bottom_width}px tilt={tilt:+.1f}deg',
-                    (10, 95), cv2.FONT_HERSHEY_SIMPLEX, .48, (0, 0, 0), 3, cv2.LINE_AA)
-        cv2.putText(frame, f'BEV calibration only: top={top_width}px bottom={bottom_width}px tilt={tilt:+.1f}deg',
-                    (10, 95), cv2.FONT_HERSHEY_SIMPLEX, .48, color, 1, cv2.LINE_AA)
-
     def _make_debug(
         self,
         frame,
@@ -906,12 +898,14 @@ class TrackControllerNode(Node):
                 if reference_raw:
                     cv2.circle(out, reference_raw[0], 7, (0, 255, 255), 2)
 
+        self._draw_bev_source(out)
+        body = out
+        if self.publish_bev_debug:
+            body = np.hstack((out, self._make_bev_debug(frame.shape, path_result)))
+        header = np.full((104, body.shape[1], 3), 20, dtype=np.uint8)
         state = 'DRIVING' if self.enabled else 'DISABLED'
-        shade = out.copy()
-        cv2.rectangle(shade, (0, 0), (out.shape[1] - 1, 78), (0, 0, 0), -1)
-        out = cv2.addWeighted(shade, 0.62, out, 0.38, 0.0)
         cv2.putText(
-            out,
+            header,
             f'{state} fps={fps:.1f} steer={cmd.steering:+d} '
             f'speed={cmd.left_speed}/{cmd.right_speed}',
             (10, 24),
@@ -920,7 +914,7 @@ class TrackControllerNode(Node):
             (0, 255, 0) if self.enabled else (0, 0, 255),
             2,
         )
-        cv2.putText(out,
+        cv2.putText(header,
                     f'lane={str(lane_detected).lower()} '
                     f'path={str(path_generated).lower()} '
                     f'src={lane_info.source} conf={lane_info.confidence:.2f} '
@@ -928,7 +922,7 @@ class TrackControllerNode(Node):
                     f'cte={self.motion.last_cte:+.1f}px',
                     (10, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (0, 255, 255), 1)
         cv2.putText(
-            out,
+            header,
             'cyan=YOLO lane red=target blue=path magenta=vehicle yellow=reference',
             (10, 70),
             cv2.FONT_HERSHEY_SIMPLEX,
@@ -938,11 +932,13 @@ class TrackControllerNode(Node):
             cv2.LINE_AA,
         )
 
-        self._draw_bev_source(out)
-        if self.publish_bev_debug:
-            bev_panel = self._make_bev_debug(frame.shape, path_result)
-            return np.hstack((out, bev_panel))
-        return out
+        points = np.rint(self.lane._src_mat()).astype(np.int32)
+        top_width = int(points[1, 0] - points[0, 0])
+        bottom_width = int(points[2, 0] - points[3, 0])
+        tilt = np.degrees(np.arctan2(points[1, 1] - points[0, 1], top_width))
+        cv2.putText(header, f'BEV calibration only: top={top_width}px bottom={bottom_width}px tilt={tilt:+.1f}deg',
+                    (10, 94), cv2.FONT_HERSHEY_SIMPLEX, .46, (0, 165, 255), 1, cv2.LINE_AA)
+        return np.vstack((header, body))
 
     def _image_to_bgr(self, image_msg: Image):
         """Accept canonical BGR8 and legacy OpenCV 8UC3 image messages.

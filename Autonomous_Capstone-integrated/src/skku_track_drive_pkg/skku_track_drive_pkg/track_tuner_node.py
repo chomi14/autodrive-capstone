@@ -30,6 +30,7 @@ from std_msgs.msg import String
 from interfaces_pkg.msg import MotionCommand
 from .bev_geometry import BEV_SOURCE_DEFAULTS
 from .stop_history import StopHistory
+from .traffic_light_display import add_traffic_light_panel
 
 
 TUNER_WINDOW_NAME = 'Track Tuner'
@@ -364,7 +365,8 @@ class TrackTunerNode(Node):
                 if name in BEV_SOURCE_DEFAULTS:
                     window = f'{self.tuner_window} BEV Source Points'
                 elif name == 'obstacle_near_y':
-                    window = f'{self.tuner_window} Obstacle'
+                    # Keep the frequently used obstacle cut on the main panel.
+                    window = self.tuner_window
                 elif extra := (regular_index // 12 + int(self.mode_controls_separate)):
                     window = f'{self.tuner_window} Controls {extra}'
                 if name not in BEV_SOURCE_DEFAULTS:
@@ -372,7 +374,7 @@ class TrackTunerNode(Node):
                 if window != self.tuner_window:
                     if window not in self.control_windows:
                         cv2.namedWindow(window, cv2.WINDOW_NORMAL)
-                        cv2.resizeWindow(window, 620, 170 if name == 'obstacle_near_y' else 650)
+                        cv2.resizeWindow(window, 620, 650)
                         self.control_windows.append(window)
                 self.parameter_windows[name] = window
                 position = self._position_for(name, self.current_values[name])
@@ -532,7 +534,7 @@ class TrackTunerNode(Node):
         ]
         if self.parameter_root == 'mission_controller_node':
             lines.insert(1, 'L: toggle target lane 1 <-> 2 (overrides cooldown; holds new lane for 5s)')
-            lines.insert(2, f"obstacle_near_y={self.desired_values.get('obstacle_near_y', '-')}  slider: {self.tuner_window} Obstacle")
+            lines.insert(2, f"Obstacle Cut (Y px)={self.desired_values.get('obstacle_near_y', '-')}  slider: top of {self.tuner_window}")
         if not self.parking:
             if time.monotonic() - self.capture_status_time <= 2.0:
                 status = self.capture_status
@@ -567,6 +569,9 @@ class TrackTunerNode(Node):
             lines.append(f"light#{index} box={light['box']} eligible={light['eligible']} used={light.get('used_for_color')} "
                          f"color={light.get('color', 'rejected')} R/G/Y=" +
                          '/'.join(f"{ratios.get(k, 0):.3f}" for k in ('Red', 'Green', 'Yellow')))
+            if 'rgb_sample' in light:
+                lines.append(f"TL#{index} ROI mean RGB={light['rgb_mean']} sample RGB={light['rgb_sample']} HSV={light['hsv_sample']}")
+                lines.append(f"TL#{index} S/V pass={light['sv_valid_ratio']:.1%} {light.get('sample_reason', '')}")
         canvas = np.zeros((max(300, 45 + len(lines) * 33), 1100, 3), dtype=np.uint8)
         for index, line in enumerate(lines):
             # Preserve the filename and latest values when a long path exceeds
@@ -586,6 +591,8 @@ class TrackTunerNode(Node):
                 1,
                 cv2.LINE_AA,
             )
+        if 'traffic_boxes' in self.mode_status:
+            canvas = add_traffic_light_panel(canvas, self.mode_status)
         cv2.imshow(self.tuner_window, canvas)
         source_window = f'{self.tuner_window} BEV Source Points'
         if source_window in self.control_windows:
@@ -620,10 +627,11 @@ class TrackTunerNode(Node):
         display = np.vstack((frame, footer))
         if not self._debug_window_open:
             cv2.namedWindow(self.debug_window, cv2.WINDOW_NORMAL)
+            scale = min(1., 1280 / display.shape[1], 900 / display.shape[0])
             cv2.resizeWindow(
                 self.debug_window,
-                display.shape[1],
-                display.shape[0],
+                max(1, round(display.shape[1] * scale)),
+                max(1, round(display.shape[0] * scale)),
             )
             self._debug_window_open = True
         cv2.imshow(self.debug_window, display)

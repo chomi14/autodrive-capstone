@@ -27,7 +27,7 @@ mission_controller_node:
     green_confirm_frames: 3
     wait_for_green: 0
     traffic_min_width: 20
-    traffic_min_bottom_y: 80
+    traffic_max_bottom_y: 60
     traffic_min_color_ratio: 0.02
     hsv_s_min: 100
     hsv_v_min: 95

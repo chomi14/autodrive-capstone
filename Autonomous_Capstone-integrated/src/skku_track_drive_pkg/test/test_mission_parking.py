@@ -73,13 +73,13 @@ def test_small_far_obstacle_does_not_trigger_avoidance():
 
 
 def test_black_light_is_unknown_and_red_requires_confirmed_green():
-    light = box('traffic_light', 80, y=120)
+    light = box('traffic_light', 80, y=40)
     mission = MissionCore({'red_confirm_frames': 2, 'green_confirm_frames': 2})
     assert color_of_light(FRAME, light, mission.p)[0] == 'Unknown'
     red = FRAME.copy()
-    red[100:140, 60:100] = (0, 0, 255)
+    red[20:60, 60:100] = (0, 0, 255)
     green = FRAME.copy()
-    green[100:140, 60:100] = (0, 255, 0)
+    green[20:60, 60:100] = (0, 255, 0)
     assert not mission.decide(scene(light), red, PATH, 1)[0]
     assert mission.decide(scene(light), red, PATH, 2)[0]
     assert mission.decide(scene(), FRAME, PATH, 3)[0]
@@ -88,9 +88,9 @@ def test_black_light_is_unknown_and_red_requires_confirmed_green():
 
 
 def test_yellow_reduces_speed_without_changing_steering():
-    light = box('traffic_light', 80, y=120)
+    light = box('traffic_light', 80, y=40)
     frame = FRAME.copy()
-    frame[100:140, 60:100] = (0, 255, 255)
+    frame[20:60, 60:100] = (0, 255, 255)
     mission = MissionCore({'yellow_speed': 40})
     stop, limit = mission.decide(scene(light), frame, PATH, 1)
     assert mission.apply(MotionCommand(3, 80, 80), stop, limit) == MotionCommand(3, 40, 40)
@@ -98,6 +98,36 @@ def test_yellow_reduces_speed_without_changing_steering():
 
 def test_outside_frame_light_crop_does_not_crash():
     assert color_of_light(FRAME, box('traffic_light', -200), defaults(MISSION))[0] == 'Unknown'
+
+
+
+@pytest.mark.parametrize('scale', [1, 2])
+def test_max_bottom_y_gate_boundary_confirmation_and_latch(scale):
+    mission = MissionCore({'red_confirm_frames': 2, 'green_confirm_frames': 2})
+    red = np.full((480 * scale, 640 * scale, 3), (0, 0, 255), dtype=np.uint8)
+    green = np.full_like(red, (0, 255, 0))
+
+    def decide(bottom, frame):
+        light = box('traffic_light', 80 * scale, y=(bottom - 10) * scale,
+                    width=40 * scale, height=20 * scale)
+        return mission.decide(DetectionArray([light]), frame, [], 1)[0]
+
+    # Too-low boxes cannot trigger stop, even after enough red observations.
+    assert not decide(61, red)
+    assert not decide(65, red)
+    assert mission.status['traffic_color'] == 'Unknown'
+    assert not mission.status['traffic_boxes'][0]['eligible']
+    # The maximum is inclusive, and an out-of-range frame breaks confirmation.
+    assert not decide(60, red)
+    assert not decide(61, red)
+    assert not decide(60, red)
+    assert decide(59, red)
+    assert mission.status['traffic_boxes'][0]['eligible']
+    # Stop remains latched after the light disappears or leaves the Y range.
+    assert mission.decide(DetectionArray([]), red, [], 1)[0]
+    assert decide(61, green)
+    assert decide(60, green)
+    assert not decide(59, green)
 
 
 MEASURED = dict(geometry_confirmed=1, wheelbase_m=.26, vehicle_width_m=.20,

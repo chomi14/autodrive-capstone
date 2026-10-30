@@ -101,12 +101,12 @@ def test_camera_overlay_is_present_without_detections_or_bev_panel():
             SimpleNamespace(steering=0, left_speed=0, right_speed=0), 0., False, False,
         )
 
-    assert rendered.shape == frame.shape
+    assert rendered.shape == (584, 640, 3)  # Camera plus external driving header.
     assert 'P1 TL (238,308)' in labels
     assert 'P2 TR (402,305)' in labels
     assert 'P3 BR (501,476)' in labels
     assert 'P4 BL (155,476)' in labels
-    assert tuple(rendered[308, 238]) == (0, 165, 255)
+    assert tuple(rendered[104 + 308, 238]) == (0, 165, 255)
     assert not np.any(frame)  # Rendering leaves the camera input unchanged.
 
 
@@ -134,11 +134,11 @@ def test_debug_distinguishes_calibration_coverage_and_horizontal_roi(missing):
             SimpleNamespace(steering=0, left_speed=0, right_speed=0), 0., info.valid, False,
         )
 
-    assert rendered.shape == (480, 1280, 3)
+    assert rendered.shape == (584, 1280, 3)
     assert any(label.startswith('BEV calibration only:') for label in labels)
     assert 'orange box=calibration only  gray=camera coverage border' in labels
     assert 'ROI Cut=300px  use rows 300..479' in labels
     # The horizontal cut extends outside the calibration strip 192..448.
-    assert tuple(rendered[300, 640 + 100]) == (255, 0, 255)
-    assert tuple(rendered[150, 640 + 100]) == (22, 22, 22)
+    assert tuple(rendered[104 + 300, 640 + 100]) == (255, 0, 255)
+    assert tuple(rendered[104 + 150, 640 + 100]) == (22, 22, 22)
     assert not np.any(frame)

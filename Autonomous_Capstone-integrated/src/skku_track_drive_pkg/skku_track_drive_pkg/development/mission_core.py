@@ -146,7 +146,7 @@ class MissionCore:
         h, w = frame.shape[:2]
         lights = [d for d in detections.detections if d.class_name == 'traffic_light'
                   and d.bbox.size.x >= p['traffic_min_width'] * w / 640.0
-                  and d.bbox.center.position.y + d.bbox.size.y / 2 >= p['traffic_min_bottom_y'] * h / 480.0]
+                  and d.bbox.center.position.y + d.bbox.size.y / 2 <= p['traffic_max_bottom_y'] * h / 480.0]
         evidence = [light_evidence(frame, d, p) for d in lights]
         colors = [(e['color'], e['strength']) for e in evidence]
         traffic_boxes = [{'box': box_xyxy(d), 'eligible': True, **e} for d, e in zip(lights, evidence)]

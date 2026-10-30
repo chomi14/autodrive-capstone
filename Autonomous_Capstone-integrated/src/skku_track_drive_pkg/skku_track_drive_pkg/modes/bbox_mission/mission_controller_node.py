@@ -10,7 +10,9 @@ from std_srvs.srv import Trigger
 from skku_track_drive_pkg.track_controller_node import TrackControllerNode
 from .mission_core import MissionCore
 from skku_track_drive_pkg.mode_parameters import MISSION, limits
+from skku_track_drive_pkg.messages import DetectionArray
 from skku_track_drive_pkg.controller_liveness import run_controller
+from skku_track_drive_pkg.traffic_light_display import add_traffic_light_panel, describe_traffic_boxes
 
 
 class MissionControllerNode(TrackControllerNode):
@@ -88,6 +90,12 @@ class MissionControllerNode(TrackControllerNode):
         # selected lane mask and never pauses for an unavailable path.
         valid = len(points) >= 2 and self.lane.missed_frames == 0
         stop, limit = self.mission.decide(detections, frame, camera_path, self.last_mission_frame, valid)
+        self.mission.status['traffic_boxes'] = describe_traffic_boxes(frame, self.mission.status, self.mission.p)
+        self.mission.status['traffic_limits'] = {
+            name: self.mission.p[name] for name in (
+                'hsv_s_min', 'hsv_v_min', 'traffic_min_color_ratio',
+                'traffic_min_width', 'traffic_max_bottom_y')
+        }
         self.status_pub.publish(String(data=json.dumps(self.mission.status)))
         return self.mission.apply(command, stop, limit)
 
@@ -103,6 +111,12 @@ class MissionControllerNode(TrackControllerNode):
         # A mission exception must never bypass a latched red or obstruction.
         self.publish_stop()
 
+    @staticmethod
+    def _draw_detection(frame, detections):
+        # Traffic boxes get their own matching TL# labels after the base image.
+        other = DetectionArray([d for d in detections.detections if d.class_name != 'traffic_light'])
+        TrackControllerNode._draw_detection(frame, other)
+
     def _make_debug(self, frame, detections, *args):
         marked = frame.copy()
         status = self.mission.status
@@ -116,22 +130,19 @@ class MissionControllerNode(TrackControllerNode):
             size_text = f" near={evidence.get('near')}"
             cv2.putText(marked, f"path={evidence['blocks_path']} alt={evidence['blocks_alternate']}" + size_text,
                         (x1, max(15, y1-5)), cv2.FONT_HERSHEY_SIMPLEX, .4, color, 1)
-        for evidence in status.get('traffic_boxes', []):
-            x1, y1, x2, y2 = map(int, evidence['box'])
-            cv2.rectangle(marked, (x1, y1), (x2, y2), (255, 255, 0), 2)
-            label = evidence.get('color', evidence.get('rejection', 'Unknown'))
-            ratios = evidence.get('ratios', {})
-            text = f"{label} used={evidence.get('used_for_color')} R/G/Y=" + '/'.join(f"{ratios.get(k, 0):.2f}" for k in ('Red', 'Green', 'Yellow'))
-            cv2.putText(marked, text, (max(0, x1), max(15, y1-5)), cv2.FONT_HERSHEY_SIMPLEX, .4, (255, 255, 0), 1)
         debug = super()._make_debug(marked, detections, *args)
-        status = self.mission.status
-        cv2.putText(debug, f"MISSION {status.get('state')} lane{self.mission.target_lane} light={status.get('traffic_color')}",
-                    (12, 25), cv2.FONT_HERSHEY_SIMPLEX, .65, (0, 255, 255), 2)
-        if 'lane_change_cooldown_s' in status:
-            cv2.putText(debug,
-                        f"Target lane{self.mission.target_lane}  auto cooldown={status.get('lane_change_cooldown_remaining_s', 0):.1f}s  L: toggle lane",
-                        (12, 120), cv2.FONT_HERSHEY_SIMPLEX, .55, (0, 255, 255), 2)
-        return debug
+        # The parent adds a header above the untouched camera coordinates.
+        camera_y = debug.shape[0] - frame.shape[0]
+        for index, evidence in enumerate(status.get('traffic_boxes', [])):
+            x1, y1, x2, y2 = map(int, evidence['box'])
+            color = (255, 255, 0) if evidence.get('eligible') else (128, 128, 128)
+            cv2.rectangle(debug, (x1, y1+camera_y), (x2, y2+camera_y), color, 2)
+            cv2.putText(debug, f'TL#{index}', (max(0, x1), max(camera_y+15, y1+camera_y-5)),
+                        cv2.FONT_HERSHEY_SIMPLEX, .45, color, 1, cv2.LINE_AA)
+            if 'sample_xy' in evidence:
+                sx, sy = evidence['sample_xy']
+                cv2.drawMarker(debug, (sx, sy+camera_y), color, cv2.MARKER_CROSS, 7, 1)
+        return add_traffic_light_panel(debug, status, camera_frame=frame)
 
 
 def main(args=None):

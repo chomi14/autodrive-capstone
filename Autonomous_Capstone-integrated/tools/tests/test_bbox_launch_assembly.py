@@ -150,3 +150,18 @@ class LaunchTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def test_legacy_minimum_y_yaml_uses_new_default_without_rewriting(tmp_path):
+    from vehicle_bringup_pkg.tuning_configuration import _profile, _validate_parameter_file
+    root, _, _, allowed = _profile('mission')
+    path = tmp_path / 'mission.yaml'
+    for extra, expected in [('', 60), ('    traffic_max_bottom_y: 45\n', 45)]:
+        original = ('mission_controller_node:\n  ros__parameters:\n'
+                    '    traffic_min_bottom_y: 80\n    obstacle_near_y: 310\n' + extra)
+        path.write_text(original)
+        settings = _validate_parameter_file(path, root, allowed)
+        assert 'traffic_min_bottom_y' not in settings
+        assert settings['traffic_max_bottom_y'] == expected
+        assert settings['obstacle_near_y'] == 310
+        assert path.read_text() == original

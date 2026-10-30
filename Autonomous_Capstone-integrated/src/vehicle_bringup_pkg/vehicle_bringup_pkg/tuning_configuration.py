@@ -94,6 +94,13 @@ def _validate_parameter_file(path, root='track_controller_node', allowed=None):
         ) from exc
     if not isinstance(parameters, dict):
         raise ValueError(f'{path}: ros__parameters must be a mapping')
+    # Old minimum-Y values have the opposite meaning; use the new default
+    # rather than interpreting a saved minimum as a maximum. Never rewrite YAML.
+    if root == 'mission_controller_node' and 'traffic_min_bottom_y' in parameters:
+        from skku_track_drive_pkg.mode_parameters import MISSION
+        parameters = dict(parameters)
+        parameters.pop('traffic_min_bottom_y')
+        parameters.setdefault('traffic_max_bottom_y', MISSION['traffic_max_bottom_y'][0])
     unknown = sorted(set(parameters) - (ALLOWED_TUNING_PARAMETERS if allowed is None else allowed))
     if unknown:
         raise ValueError(

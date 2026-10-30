@@ -114,7 +114,7 @@ TRAFFIC_DEFAULTS = {
     'green_confirm_frames': 3,     # 초록불 확정 연속 프레임
     'wait_for_green': 0,           # 1: 최초 출발도 초록불까지 대기
     'traffic_min_width': 20,       # 신호등 최소 bbox 폭(640px 기준)
-    'traffic_min_bottom_y': 80,    # 신호등 최소 bbox 하단 y(480px 기준)
+    'traffic_max_bottom_y': 60,    # bbox 하단 y <= 이 값일 때 유효(480px 기준)
     'traffic_min_color_ratio': 0.02, # bbox 내부 색상 증거 최소 비율
     'hsv_s_min': 100,              # HSV 최소 채도
     'hsv_v_min': 95,               # HSV 최소 밝기
