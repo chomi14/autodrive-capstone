@@ -4,7 +4,18 @@ Each specification is (default, minimum, maximum, slider step). SI units are
 used for parking. Zero geometry values mean unmeasured, never guessed dimensions.
 """
 
+LEGACY_OBSTACLE_PARAMETERS = {
+    'obstacle_trigger_mode', 'obstacle_min_area_ratio', 'lane_change_cooldown_s',
+    'obstacle_confirm_frames', 'obstacle_clear_frames', 'path_margin_px',
+    'alternate_min_area_px', 'avoid_hold_s', 'avoid_speed',
+}
+
+# Legacy obstacle values remain accepted for existing launch/YAML files and the
+# development fusion mode. Bbox missions use only lane masks + obstacle_near_y.
 MISSION = {
+    'obstacle_trigger_mode': (0, 0, 1, 1),  # bbox 미션에서는 사용하지 않음
+    'obstacle_min_area_ratio': (0.02, 0.001, 0.5, 0.001),  # 화면 대비 bbox 면적
+    'lane_change_cooldown_s': (0.0, 0.0, 30.0, 0.1),  # 면적 모드 재전환 제한
     'obstacle_confirm_frames': (3, 1, 30, 1),
     'obstacle_clear_frames': (5, 1, 60, 1),
     'obstacle_near_y': (300, 0, 480, 1),
@@ -18,7 +29,7 @@ MISSION = {
     'green_confirm_frames': (3, 1, 30, 1),
     'wait_for_green': (0, 0, 1, 1),
     'traffic_min_width': (20, 1, 640, 1),
-    'traffic_min_bottom_y': (80, 0, 480, 1),
+    'traffic_max_bottom_y': (60, 0, 480, 1),
     'traffic_min_color_ratio': (0.02, 0.0, 1.0, 0.005),
     'hsv_s_min': (100, 0, 255, 1),
     'hsv_v_min': (95, 0, 255, 1),
@@ -107,7 +118,8 @@ def trackbars(specs):
     for name, (default, minimum, maximum, step) in specs.items():
         value_type = type(default)
         result[name] = (
-            name, int(round((maximum - minimum) / step)),
+            'Obstacle Cut (Y px)' if name == 'obstacle_near_y' else name,
+            int(round((maximum - minimum) / step)),
             lambda pos, lo=minimum, inc=step, typ=value_type: typ(round(lo + pos * inc, 6)),
             lambda val, lo=minimum, inc=step: int(round((val - lo) / inc)),
         )

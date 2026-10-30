@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from .track_tuner_node import TrackTunerNode
-from .mode_parameters import MISSION, PERPENDICULAR, PARALLEL, trackbars
+from .mode_parameters import MISSION, PERPENDICULAR, PARALLEL, LEGACY_OBSTACLE_PARAMETERS, trackbars
 
 
 def run(mode, args=None):
@@ -11,6 +11,8 @@ def run(mode, args=None):
     try:
         parking = mode != 'mission'
         specs = {'mission': MISSION, 'perpendicular': PERPENDICULAR, 'parallel': PARALLEL}[mode]
+        if mode == 'mission':
+            specs = {name: spec for name, spec in specs.items() if name not in LEGACY_OBSTACLE_PARAMETERS}
         node = TrackTunerNode(
             node_name=f'{mode}_tuner_node', extra_trackbars=trackbars(specs),
             parameter_root=f'{mode}_parking_controller_node' if parking else 'mission_controller_node',

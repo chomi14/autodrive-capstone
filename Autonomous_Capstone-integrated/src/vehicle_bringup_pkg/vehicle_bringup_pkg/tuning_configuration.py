@@ -6,15 +6,18 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
+from skku_track_drive_pkg.bev_geometry import BEV_SOURCE_DEFAULTS
 
 
 TUNING_TYPES = {
+    **{name: int for name in BEV_SOURCE_DEFAULTS},
     'speed': int,
     'stanley_gain': float,
     'heading_gain': float,
     'lookahead_index': int,
     'confidence': float,
     'bev_top_shift': int,
+    'roi_cut': int,
     'look_shift': int,
     'ema_alpha': float,
     'virtual_lane_width': int,
@@ -23,10 +26,10 @@ TUNING_TYPES = {
 ADVANCED_TUNING_PARAMETERS = {
     'stanley_softening',
     'heading_step',
-    'roi_cut',
     'bev_pad',
     'car_center_x',
     'car_center_y',
+    'car_center_reference_roi_cut',
     'center_ema_alpha',
     'max_center_jump_px',
     'max_missed_frames',
@@ -91,6 +94,13 @@ def _validate_parameter_file(path, root='track_controller_node', allowed=None):
         ) from exc
     if not isinstance(parameters, dict):
         raise ValueError(f'{path}: ros__parameters must be a mapping')
+    # Old minimum-Y values have the opposite meaning; use the new default
+    # rather than interpreting a saved minimum as a maximum. Never rewrite YAML.
+    if root == 'mission_controller_node' and 'traffic_min_bottom_y' in parameters:
+        from skku_track_drive_pkg.mode_parameters import MISSION
+        parameters = dict(parameters)
+        parameters.pop('traffic_min_bottom_y')
+        parameters.setdefault('traffic_max_bottom_y', MISSION['traffic_max_bottom_y'][0])
     unknown = sorted(set(parameters) - (ALLOWED_TUNING_PARAMETERS if allowed is None else allowed))
     if unknown:
         raise ValueError(

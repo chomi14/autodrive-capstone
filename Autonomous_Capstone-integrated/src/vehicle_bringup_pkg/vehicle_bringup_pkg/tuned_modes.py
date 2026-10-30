@@ -11,6 +11,7 @@ from .mode_launch import common_arguments, hardware_enabled, motor_enabled, prev
 from .tuning_configuration import resolve_tuning, tuning_launch_arguments, _profile
 from .perception_policy import perception_arguments
 from .recording import recording_nodes, analysis_enabled
+from .capture import capture_node
 
 
 def assemble(context, mode):
@@ -33,6 +34,8 @@ def assemble(context, mode):
     actions = [LogInfo(msg=f'{mode}: using {source} tuning {selected}; save to {save_path}')]
     if hardware_enabled(context):
         actions.extend([lidar_node('/parking/scan')] if parking else [camera_node(image_topic)])
+        if not parking:
+            actions.append(capture_node(image_topic, preview_remappings(context)))
     actions.append(Node(package='skku_track_drive_pkg', executable=executable, name=root,
                         output='screen', parameters=[settings], remappings=preview_remappings(context)))
     if as_bool(context, 'gui'):
@@ -54,7 +57,7 @@ def description(mode):
     arguments = [config_argument(), *common_arguments('0.75' if camera else '0.25', camera=camera)]
     if camera:
         arguments.extend(perception_arguments('mission'))
-        default_model = str(Path(get_package_share_directory('skku_track_drive_pkg'), 'models/mission/best.pt'))
+        default_model = str(Path(get_package_share_directory('skku_track_drive_pkg'), 'models/mission/best_m.pt'))
         arguments.append(DeclareLaunchArgument('model_path', default_value=default_model,
                                              description='Segmentation model with lane1, lane2, obstacle, traffic_light'))
     arguments.extend(tuning_launch_arguments(mode))

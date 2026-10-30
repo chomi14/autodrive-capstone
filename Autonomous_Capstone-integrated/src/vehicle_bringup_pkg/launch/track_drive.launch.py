@@ -5,6 +5,7 @@ from launch.substitutions import LaunchConfiguration
 from launch.conditions import IfCondition
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+from vehicle_bringup_pkg.capture import capture_arguments, capture_node
 
 
 def generate_launch_description():
@@ -20,6 +21,8 @@ def generate_launch_description():
 
     return LaunchDescription([
         config_argument(),
+        *capture_arguments(),
+        capture_node('/image_raw'),
         DeclareLaunchArgument('auto_calibrate', default_value=VehicleDefault('steering.auto_calibrate', False)),
         DeclareLaunchArgument('arduino_baud', default_value=VehicleDefault('arduino.baud', 115200)),
         DeclareLaunchArgument('camera_device', default_value=VehicleDefault('camera.front.device', '/dev/video0')),
@@ -29,6 +32,8 @@ def generate_launch_description():
         DeclareLaunchArgument('arduino_port', default_value=VehicleDefault('arduino.port', '/dev/arduino')),
         DeclareLaunchArgument('device', default_value='cuda:0'),
         DeclareLaunchArgument('speed', default_value='80'),
+        DeclareLaunchArgument('gui', default_value='true'),
+        DeclareLaunchArgument('roi_cut', default_value='300'),
         DeclareLaunchArgument('steering_sign', default_value='1.0'),
         DeclareLaunchArgument('calibration_tolerance', default_value=VehicleDefault('steering.calibration_tolerance', '35')),
 
@@ -67,10 +72,21 @@ def generate_launch_description():
                 'cmd_topic': 'topic_control_signal',
                 'device': device,
                 'speed': ParameterValue(speed, value_type=int),
+                'roi_cut': ParameterValue(LaunchConfiguration('roi_cut'), value_type=int),
                 'start_enabled': True,
                 'steering_sign': ParameterValue(steering_sign, value_type=float),
                 'max_steering': 7.0,
                 'publish_debug': True,
+            }],
+        ),
+        Node(
+            condition=IfCondition(LaunchConfiguration('gui')),
+            package='skku_track_drive_pkg', executable='track_tuner_node',
+            name='track_tuner_node', output='screen',
+            parameters=[{
+                'target_node': '/track_controller_node',
+                'cmd_topic': '/topic_control_signal',
+                'debug_topic': '/track_debug_image',
             }],
         ),
         Node(

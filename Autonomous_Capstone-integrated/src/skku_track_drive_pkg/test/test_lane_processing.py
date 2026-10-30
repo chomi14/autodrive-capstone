@@ -61,7 +61,7 @@ def test_full_bitmap_mask_is_preferred_over_polygon_approximation():
     assert mask[5, 5] == 0
 
 
-def test_valid_bev_boundary_drives_clipped_side_reconstruction():
+def test_camera_coverage_boundary_drives_clipped_side_reconstruction():
     mask = np.zeros((80, 200), dtype=np.uint8)
     valid = np.zeros_like(mask)
     valid[:, 40:161] = 255
@@ -72,6 +72,7 @@ def test_valid_bev_boundary_drives_clipped_side_reconstruction():
 
     assert result.valid
     assert result.source == 'right_edge'
+    assert result.reconstruction_reason == 'clipped_left'
     assert result.center == 60
 
 
