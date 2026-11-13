@@ -1,0 +1,79 @@
+{
+  "synthetic": true,
+  "hardware_opened": false,
+  "session": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/normal_drive/work/ros_record_1794149206190720880",
+  "stats": {
+    "direct_source_id": 18,
+    "source_sequence_gaps": 0,
+    "transmissions": 36,
+    "transmission_without_command": 0,
+    "frames": 18,
+    "unique_commands": 18,
+    "camera_period": {
+      "count": 17,
+      "p50_ns": 100000000,
+      "p95_ns": 100000000
+    },
+    "controller_processing": {
+      "count": 18,
+      "p50_ns": 39000000,
+      "p95_ns": 39000000
+    },
+    "serial_write_duration": {
+      "count": 36,
+      "p50_ns": 1000000,
+      "p95_ns": 1000000
+    },
+    "out_of_order_source_records": 0,
+    "invalid_event_lines": 0,
+    "camera_status": [],
+    "decode_failures": [],
+    "closed_cleanly": false,
+    "demo": true
+  },
+  "manifest": {
+    "schema": 2,
+    "run_id": "51d40824-eda3-43c8-9f2a-bdd6c7a54469",
+    "origin_run_id": "51d40824-eda3-43c8-9f2a-bdd6c7a54469",
+    "closed_cleanly": false,
+    "demo": true,
+    "source_clock_domain": "ros_host_system",
+    "monotonic_domain": "host_boot:38bd3683-76e3-409d-818b-1fc7c1e42cf1",
+    "frame_stamp_semantics": "host ROS stamp after cap.read and resize; exposure latency unmeasured",
+    "steering": {
+      "unit": "command_step",
+      "min": -7,
+      "max": 7,
+      "negative": "left",
+      "wheel_angle_calibrated": false
+    },
+    "source_code": "56395e0c9930bf88bf616c061b86faf0ebff1d65",
+    "mcu_acknowledgement": false,
+    "queue_overflow": "bag log + exact ID audit at import; DDS silent loss detected by gaps",
+    "mode": "track",
+    "controller": "track_controller_node",
+    "topics": [
+      "/dry_run/topic_control_signal",
+      "/parameter_events",
+      "/e2e/camera_status",
+      "/e2e/teacher_command",
+      "/video_replay_node/frame_source",
+      "/e2e/source_frame",
+      "/track_controller_node/perception_timing",
+      "/vehicle/armed",
+      "/vehicle/calibration_ready",
+      "/vehicle/command_status",
+      "/vehicle/drive_state",
+      "/vehicle/drive_key",
+      "/vehicle/controller_heartbeat",
+      "/vehicle/arm_challenge",
+      "/vehicle/calibration_status"
+    ],
+    "started_ros_ns": 1794149206633589350,
+    "timestamp_basis": "frame_stamp_ns joins original Image/LaserScan header; received_ros_ns matches rosbag receipt clock",
+    "physical_pwm_measured": false,
+    "rows": 0,
+    "worktree_sha256": "3f5ed8fc6b1f0504db017b54cd3a9ba438b06ee86ad49709a71211fc38e36372",
+    "heartbeat_ros_ns": 1794149212139190792
+  }
+}

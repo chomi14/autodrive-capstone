@@ -1,0 +1,10 @@
+{
+  "cuda_available": true,
+  "cuda_build": "12.4",
+  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "driver": "595.99.02",
+  "camera_device_exists": false,
+  "nvidia_device_exists": true,
+  "execution": "outside sandbox; actual host",
+  "gpu_validation": true
+}

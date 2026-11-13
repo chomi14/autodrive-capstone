@@ -1,0 +1,63 @@
+{
+  "synthetic": true,
+  "hardware_opened": false,
+  "predictions": [
+    {
+      "shadow": true,
+      "camera_instance": "DEMO-camera-0",
+      "source_sequence": 0,
+      "source_stamp_ns": 1790000000123456789,
+      "source_clock_domain": "ros_host_system",
+      "prediction_normalized": -0.007826853543519974,
+      "prediction_steps": -0.054787974804639816,
+      "command_step_if_selected": 0,
+      "inference_pipeline_ns": 2464950,
+      "generated_ros_ns": 1794149103842550574,
+      "dataset_version": "e78d20b067c2164e6506da7fcb9d11c4adc1f202de6858b49c66b950d40b0500",
+      "actuation_enabled": false
+    },
+    {
+      "shadow": true,
+      "camera_instance": "DEMO-camera-0",
+      "source_sequence": 1,
+      "source_stamp_ns": 1790000000223456789,
+      "source_clock_domain": "ros_host_system",
+      "prediction_normalized": 0.22436366975307465,
+      "prediction_steps": 1.5705456882715225,
+      "command_step_if_selected": 2,
+      "inference_pipeline_ns": 1286627,
+      "generated_ros_ns": 1794149104046949856,
+      "dataset_version": "e78d20b067c2164e6506da7fcb9d11c4adc1f202de6858b49c66b950d40b0500",
+      "actuation_enabled": false
+    },
+    {
+      "shadow": true,
+      "camera_instance": "DEMO-camera-0",
+      "source_sequence": 2,
+      "source_stamp_ns": 1790000000323456789,
+      "source_clock_domain": "ros_host_system",
+      "prediction_normalized": 0.3462536633014679,
+      "prediction_steps": 2.4237756431102753,
+      "command_step_if_selected": 2,
+      "inference_pipeline_ns": 1288783,
+      "generated_ros_ns": 1794149104250546571,
+      "dataset_version": "e78d20b067c2164e6506da7fcb9d11c4adc1f202de6858b49c66b950d40b0500",
+      "actuation_enabled": false
+    },
+    {
+      "shadow": true,
+      "camera_instance": "DEMO-camera-0",
+      "source_sequence": 3,
+      "source_stamp_ns": 1790000000423456789,
+      "source_clock_domain": "ros_host_system",
+      "prediction_normalized": 0.5349541306495667,
+      "prediction_steps": 3.7446789145469666,
+      "command_step_if_selected": 4,
+      "inference_pipeline_ns": 1441961,
+      "generated_ros_ns": 1794149104454220702,
+      "dataset_version": "e78d20b067c2164e6506da7fcb9d11c4adc1f202de6858b49c66b950d40b0500",
+      "actuation_enabled": false
+    }
+  ],
+  "motion_publishers": 0
+}

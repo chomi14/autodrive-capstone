@@ -1,0 +1,121 @@
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'vehicle_config':
+        no description given
+        (default: '/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/normal_drive/install/vehicle_bringup_pkg/share/vehicle_bringup_pkg/config/vehicle.yaml')
+
+    'camera_device':
+        no description given
+        (default: '/dev/video2')
+
+    'device':
+        no description given
+        (default: 'cpu')
+
+    'sensors_only':
+        no description given
+        (default: 'true')
+
+    'gui':
+        no description given
+        (default: 'true')
+
+    'arduino_port':
+        no description given
+        (default: <vehicle_bringup_pkg.configuration.VehicleDefault object at 0x70d85fbd88b0>)
+
+    'arduino_baud':
+        no description given
+        (default: '115200')
+
+    'perception_stop_s':
+        no description given
+        (default: '6.0')
+
+    'record_dir':
+        no description given
+        (default: '')
+
+    'tuning_config':
+        Explicit tuning YAML. Empty selects the saved user YAML when it exists, otherwise the package default.
+        (default: '')
+
+    'saved_tuning_path':
+        P-key save path and automatically loaded user tuning YAML
+        (default: '/home/autolab/.config/autodrive/normal_track_tuning.yaml')
+
+    'bev_src_tl_x':
+        Optional explicit override for tuning parameter bev_src_tl_x
+        (default: '')
+
+    'bev_src_tl_y':
+        Optional explicit override for tuning parameter bev_src_tl_y
+        (default: '')
+
+    'bev_src_tr_x':
+        Optional explicit override for tuning parameter bev_src_tr_x
+        (default: '')
+
+    'bev_src_tr_y':
+        Optional explicit override for tuning parameter bev_src_tr_y
+        (default: '')
+
+    'bev_src_br_x':
+        Optional explicit override for tuning parameter bev_src_br_x
+        (default: '')
+
+    'bev_src_br_y':
+        Optional explicit override for tuning parameter bev_src_br_y
+        (default: '')
+
+    'bev_src_bl_x':
+        Optional explicit override for tuning parameter bev_src_bl_x
+        (default: '')
+
+    'bev_src_bl_y':
+        Optional explicit override for tuning parameter bev_src_bl_y
+        (default: '')
+
+    'speed':
+        Optional explicit override for tuning parameter speed
+        (default: '')
+
+    'stanley_gain':
+        Optional explicit override for tuning parameter stanley_gain
+        (default: '')
+
+    'heading_gain':
+        Optional explicit override for tuning parameter heading_gain
+        (default: '')
+
+    'lookahead_index':
+        Optional explicit override for tuning parameter lookahead_index
+        (default: '')
+
+    'confidence':
+        Optional explicit override for tuning parameter confidence
+        (default: '')
+
+    'bev_top_shift':
+        Optional explicit override for tuning parameter bev_top_shift
+        (default: '')
+
+    'roi_cut':
+        Optional explicit override for tuning parameter roi_cut
+        (default: '')
+
+    'look_shift':
+        Optional explicit override for tuning parameter look_shift
+        (default: '')
+
+    'ema_alpha':
+        Optional explicit override for tuning parameter ema_alpha
+        (default: '')
+
+    'virtual_lane_width':
+        Optional explicit override for tuning parameter virtual_lane_width
+        (default: '')
+
+    'max_steering_angle':
+        Optional explicit override for tuning parameter max_steering_angle
+        (default: '')

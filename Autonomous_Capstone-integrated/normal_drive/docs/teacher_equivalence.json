@@ -1,0 +1,52 @@
+{
+  "input": "synthetic lane segmentation masks, not recorded driving",
+  "samples": 7,
+  "commands_identical": true,
+  "paths_identical": true,
+  "commands": [
+    {
+      "steering": -2,
+      "left_pwm": 255,
+      "right_pwm": 255
+    },
+    {
+      "steering": -2,
+      "left_pwm": 255,
+      "right_pwm": 255
+    },
+    {
+      "steering": -2,
+      "left_pwm": 255,
+      "right_pwm": 255
+    },
+    {
+      "steering": -3,
+      "left_pwm": 255,
+      "right_pwm": 255
+    },
+    {
+      "steering": -2,
+      "left_pwm": 255,
+      "right_pwm": 255
+    },
+    {
+      "steering": -1,
+      "left_pwm": 255,
+      "right_pwm": 255
+    },
+    {
+      "steering": -1,
+      "left_pwm": 255,
+      "right_pwm": 255
+    }
+  ],
+  "unchanged_sha256": {
+    "yolo_perception.py": "b6e36fd65b2585f04958017fd6d8fc7939f93ac46029e306ab9be96b8f87350f",
+    "lane_processing.py": "832d8c738110ce583c60f9f12bc87b6116b7b268fd32ed52e92c81e823f70c12",
+    "camera_perception_core.py": "8df58a19966aae1404051e4f1a9da71b81a1d543d9b60915c1d377332d1e1ec2",
+    "bev_geometry.py": "348bef8f81d5aa1072e9869cf2f2cf3ce1bbf36a4d47f181e41ec1c95b3ab725",
+    "path_planner.py": "6aca3e94952d75ac46fe8fa9417226ecdc2f4d355f28174fd90186c16fc81e45",
+    "motion_planner.py": "240c525f0e6f6b41f46b5471e4cc7f35b462e38fb46d576f9ca651bd97e6ae86",
+    "messages.py": "c5023b56e26fcc91e6ac1735c80f7113a08482efc714d58161d6a1759c2e8f15"
+  }
+}

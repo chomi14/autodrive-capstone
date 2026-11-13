@@ -1,0 +1,18 @@
+{
+  "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+  "executable": "/usr/bin/python3",
+  "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
+  "packages": {
+    "torch": "2.5.1",
+    "torchvision": "0.20.1",
+    "ultralytics": "8.4.6",
+    "numpy": "1.26.4",
+    "opencv-python": "4.12.0.88",
+    "scipy": "1.8.0",
+    "PyYAML": "5.4.1"
+  },
+  "cuda_build": "12.4",
+  "cuda_available": false,
+  "gpu_measured": false,
+  "nvidia_smi": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running."
+}

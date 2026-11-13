@@ -1,0 +1,75 @@
+{
+  "browser": "installed Google Chrome via Playwright",
+  "synthetic": true,
+  "sessions": [
+    "33358e6c0aaa9270",
+    "125c23866b099473",
+    "02532ffd845328b8"
+  ],
+  "dataset": "690f71f68ae76cce",
+  "train_stop_epoch": 3,
+  "resumed_epoch": 20,
+  "models": [
+    {
+      "checkpoint": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/normal_drive/work/final_gui/training/3ba429c6af6a1a37/last.pt",
+      "mae_steps": 0.2717631726215283,
+      "rmse_steps": 0.31258126362146693,
+      "error_by_steering": {
+        "left": {
+          "count": 4,
+          "mae_steps": 0.27701983600854874
+        },
+        "center": {
+          "count": 6,
+          "mae_steps": 0.2342366979767879
+        },
+        "right": {
+          "count": 8,
+          "mae_steps": 0.2972796969115734
+        }
+      },
+      "mean_prediction_delta_steps": 0.7709722764351788,
+      "latency_ms": {
+        "p50": 0.806376,
+        "p95": 1.0757595999999998,
+        "device": "cpu",
+        "threads": 2,
+        "batch_size": 1,
+        "warmup": 5,
+        "scope": "preprocess + device copy + forward, excludes disk decode",
+        "torch": "2.5.1+cu124"
+      }
+    },
+    {
+      "checkpoint": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/normal_drive/work/final_gui/training/254311f95c57c5cd/last.pt",
+      "mae_steps": 0.8516891851193376,
+      "rmse_steps": 1.0656688986250176,
+      "error_by_steering": {
+        "left": {
+          "count": 4,
+          "mae_steps": 0.6202129125595093
+        },
+        "center": {
+          "count": 6,
+          "mae_steps": 1.192657904078563
+        },
+        "right": {
+          "count": 8,
+          "mae_steps": 0.7117007821798325
+        }
+      },
+      "mean_prediction_delta_steps": 0.7175663459826919,
+      "latency_ms": {
+        "p50": 0.7858160000000001,
+        "p95": 0.9798631,
+        "device": "cpu",
+        "threads": 2,
+        "batch_size": 1,
+        "warmup": 5,
+        "scope": "preprocess + device copy + forward, excludes disk decode",
+        "torch": "2.5.1+cu124"
+      }
+    }
+  ],
+  "javascript_errors": []
+}

@@ -1,0 +1,14 @@
+string command_id
+string camera_instance
+uint64 source_sequence
+builtin_interfaces/Time source_stamp
+string source_clock_domain
+int64 generated_ros_ns
+int64 processing_started_monotonic_ns
+int64 completed_monotonic_ns
+interfaces_pkg/MotionCommand command
+bool path_valid
+bool lane_visible
+int32 target_lane
+bool controller_enabled
+string state

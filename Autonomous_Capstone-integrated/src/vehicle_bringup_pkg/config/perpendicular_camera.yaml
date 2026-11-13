@@ -1,0 +1,83 @@
+# EXAMPLE ONLY: these values are NOT measurements of the user's vehicle.
+# Keep calibration_confirmed false until the commissioning steps in README pass.
+# This schema is separate from the numeric legacy parking tuner YAML.
+control:
+  calibration_confirmed: false
+  observation_timeout_s: 0.5
+  observation_loss_fault_s: 5.0
+  confirm_frames: 3
+  forward_pwm: 70
+  reverse_pwm: 60
+  max_steering: 7
+  steering_sign: 1
+  front_target_x: 0.7
+  rear_target_x: 0.5
+  front_position_gain: 20.0
+  front_angle_gain: 5.0
+  rear_position_gain: 10.0
+  rear_angle_gain: 8.0
+  end_angle_gain: 10.0
+  exit_position_gain: 5.0
+  exit_angle_gain: 5.0
+  steering_deadband: 0.3
+  align_steering: -7
+  align_yaw_error_max_rad: 0.65
+  direction_pause_s: 0.7
+  end_steering_y: 0.70
+  end_stop_y: 0.88
+  stopped_hold_s: 3.0
+  exit_enabled: false
+  escape_s: 1.5
+  outline_finish_y: 0.90
+  final_straight_s: 2.5
+  search_timeout_s: 60.0
+  maneuver_timeout_s: 25.0
+
+front:
+  device: /dev/video0
+  image_topic: /parking_camera/front/image_raw
+  model_path: ''  # acquire/train a parking segment model; no weights bundled
+  model_device: cuda:0
+  confidence: 0.5
+  width: 640
+  height: 480
+  fps: 15.0
+  rotate_deg: 0  # clockwise, then optional horizontal flip, BEFORE inference
+  flip_horizontal: false
+  classes:
+    parking_lot: parking_lot
+    parking_space: parking_space
+    out_line: out_line
+  persp_src: [0.24, 1.0, 0.76, 1.0, 0.62, 0.6, 0.38, 0.6]
+  persp_dst: [0.40, 1.0, 0.60, 1.0, 0.60, 0.6, 0.40, 0.6]
+  min_area_ratio: 0.001
+  morph_kernel: 3
+  parking_width_ratio: 0.40
+  pair_min_separation_ratio: 0.15
+  pair_max_angle_rad: 0.65
+  min_longitudinal_span_ratio: 0.05
+
+rear:
+  device: /dev/video2
+  image_topic: /parking_camera/rear/image_raw
+  model_path: ''
+  model_device: cuda:0
+  confidence: 0.5
+  width: 640
+  height: 480
+  fps: 15.0
+  rotate_deg: 0  # reference rotates rear camera; determine YOUR mounting first
+  flip_horizontal: false
+  classes:
+    parking_space: parking_space
+    end_line: end_line
+  persp_src: [0.0, 1.0, 1.0, 1.0, 0.65, 0.25, 0.35, 0.25]
+  persp_dst: [0.25, 1.0, 0.75, 1.0, 0.75, 0.15, 0.25, 0.15]
+  min_area_ratio: 0.001
+  morph_kernel: 3
+  parking_width_ratio: 0.40  # calibrate BEV slot width / BEV image width
+  pair_min_separation_ratio: 0.15
+  pair_max_angle_rad: 0.65
+  min_longitudinal_span_ratio: 0.05
+
+save_path: ~/.config/autodrive/perpendicular_camera.yaml

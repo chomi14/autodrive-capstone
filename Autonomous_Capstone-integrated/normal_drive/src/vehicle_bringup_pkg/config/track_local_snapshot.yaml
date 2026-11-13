@@ -1,0 +1,23 @@
+track_controller_node:
+  ros__parameters:
+    stanley_gain: 0.04
+    heading_gain: 0.5
+    lookahead_index: 30
+    confidence: 0.6
+    bev_top_shift: -10
+    look_shift: 0
+    ema_alpha: 0.6
+    virtual_lane_width: 240
+    max_steering_angle: 50.0
+    speed: 255
+    roi_cut: 300
+    bev_src_tl_x: 205
+    bev_src_tl_y: 316
+    bev_src_tr_x: 489
+    bev_src_tr_y: 313
+    bev_src_br_x: 612
+    bev_src_br_y: 476
+    bev_src_bl_x: 76
+    bev_src_bl_y: 476
+    car_center_y: 179.0
+    car_center_reference_roi_cut: 300

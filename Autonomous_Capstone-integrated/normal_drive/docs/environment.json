@@ -1,0 +1,25 @@
+{
+  "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+  "executable": "/usr/bin/python3",
+  "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
+  "packages": {
+    "torch": "2.5.1",
+    "torchvision": "0.20.1",
+    "ultralytics": "8.4.6",
+    "numpy": "1.26.4",
+    "opencv-python": "4.12.0.88",
+    "scipy": "1.8.0",
+    "PyYAML": "5.4.1"
+  },
+  "cuda_build": "12.4",
+  "cuda_available": true,
+  "gpu_measured": true,
+  "nvidia_smi": "Actual host: RTX 4050 Laptop GPU, driver 595.99.02; see host_devices.json and gpu_validation.json",
+  "sandbox_cuda_available": false,
+  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "driver": "595.99.02",
+  "camera_device_exists": false,
+  "nvidia_device_exists": true,
+  "execution": "outside sandbox; actual host",
+  "gpu_validation": true
+}

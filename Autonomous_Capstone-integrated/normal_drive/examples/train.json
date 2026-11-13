@@ -1,0 +1,32 @@
+{
+  "architecture": "pilotnet",
+  "mode": "new",
+  "checkpoint": "",
+  "epochs": 20,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "optimizer": "adamw",
+  "loss": "huber",
+  "scheduler": "cosine",
+  "weight_decay": 0.0001,
+  "seed": 42,
+  "early_stopping": 5,
+  "device": "cpu",
+  "threads": 2,
+  "preprocess": {
+    "crop": [
+      0.35,
+      1.0,
+      0.0,
+      1.0
+    ],
+    "width": 200,
+    "height": 66,
+    "color": "yuv",
+    "normalization": "minus_one_one"
+  },
+  "augmentation": {
+    "horizontal_flip": false,
+    "brightness": 0.1
+  }
+}

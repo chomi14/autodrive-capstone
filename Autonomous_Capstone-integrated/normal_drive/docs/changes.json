@@ -1,0 +1,502 @@
+{
+  "workspace": "normal_drive",
+  "base_commit": "56395e0c9930bf88bf616c061b86faf0ebff1d65",
+  "original_tree_modified": false,
+  "files": [
+    {
+      "file": "e2e_learning_pkg/e2e/__init__.py",
+      "action": "new",
+      "sha256": "b91156af9327aa5f6b1503916aff34c649cfccf5148493fcd0fa551587a56915"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/cli.py",
+      "action": "new",
+      "sha256": "7319a9144fb567f21efbdfa36e2bbb5d768de5b0e191619a8349c16623977798"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/core.py",
+      "action": "new",
+      "sha256": "977767a9f1dbabeba8fc2091fbbf0661c0f9b069c20c535d2db0bbb79fd6a464"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/learning.py",
+      "action": "new",
+      "sha256": "03df9a5b87992ee903c32abfcb370f2551b24212b57b504f98cdbc8bb37e1784"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/BoundingBox2D.msg",
+      "action": "new",
+      "sha256": "8e16e8b9df254bc1430628556184cb1cbb6c18a31a4028467a290a5cada4d664"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/BoundingBox3D.msg",
+      "action": "new",
+      "sha256": "16e958a9109b7daa404bfcd7df29593b22118cb7eeedbadc3f55b0150cbdbb41"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/Detection.msg",
+      "action": "new",
+      "sha256": "186c9d90ebd346066dda25466eeb694198a56825a7928a4b4c8df3a3308183e5"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/DetectionArray.msg",
+      "action": "new",
+      "sha256": "d0598b33e97db0e01af07d7bfe592d2500e0404299c70ca21d5dc80743504e60"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/KeyPoint2D.msg",
+      "action": "new",
+      "sha256": "c4ce9853b9d4d4fd0c4e9f8809aaa84ccb81ddf961fc0a02921186bbe95bc7d3"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/KeyPoint2DArray.msg",
+      "action": "new",
+      "sha256": "107266efceadc28085faf797dc424a0b17943fb2bba30cd8d1f610aa3f230af7"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/KeyPoint3D.msg",
+      "action": "new",
+      "sha256": "02cbeb6c90a647f81c31bde42fc44050433584fd3b8282a3b86ac2b6eab5e15d"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/KeyPoint3DArray.msg",
+      "action": "new",
+      "sha256": "e25eff39fee39ab7daada8431aa157c8c11c50d42288e30868542829c0e52814"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/LaneInfo.msg",
+      "action": "new",
+      "sha256": "a1552591924391858ab20600ac42ba468ff60d7953872504d1889fae5104b16e"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/Mask.msg",
+      "action": "new",
+      "sha256": "8c11a7c3f2573c64801bcad4de74db7accaa703173a5205df5698fd5de2671c6"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/MotionCommand.msg",
+      "action": "new",
+      "sha256": "c5466d94cde966e264e75821983824785a45f190937147dc4a3d3823f22b97c0"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/PathPlanningResult.msg",
+      "action": "new",
+      "sha256": "20deafa736ecf88ac1215fde45cc9d1d257ebf58c8f9f7f5056dac0e56e57e94"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/Point2D.msg",
+      "action": "new",
+      "sha256": "ce6e3545cf3a2c0f9859693f5a587f5ce18c1a43cb68697ed7f7e511cc7ad42f"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/Pose2D.msg",
+      "action": "new",
+      "sha256": "438a0e780b1c8169f06e166da1f9f67918262db08f98975f494d22178c816d13"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/SourceFrame.msg",
+      "action": "new",
+      "sha256": "318a70942819e9785cc7b2a30c62f8a94f614db8aa33af09895befab82a47605"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/TargetPoint.msg",
+      "action": "new",
+      "sha256": "6a62e0d84f9cab753abfbf33b656871949ae5876913748e17ee758777a6b831f"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/TeacherCommand.msg",
+      "action": "new",
+      "sha256": "c5841486e4e9dc5367f136d2aacd25aa694a5127afd458e93d6e8ea877c25ef3"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/rosdefs/Vector2.msg",
+      "action": "new",
+      "sha256": "d66fcc9e8cee3a8ef706f3b32b817646a53d1d4304397fa8119e7effa96bba3d"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/server.py",
+      "action": "new",
+      "sha256": "349f97142622d3c099f64bae4249fe0e6cb6f18451ba435737f84100f9d32c90"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/shadow.py",
+      "action": "new",
+      "sha256": "703953464e1045b74a2b2332d073e112da524f5aabdb5ce9073cf835920a78bf"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/static/app.js",
+      "action": "new",
+      "sha256": "bdbc98f5f82b840b8e5f3c96a82091d67c284956e2927b9fbf9fa49bec09c9dd"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/static/index.html",
+      "action": "new",
+      "sha256": "6cecf477f9d1435929e32a07608e8412c09a9d7bf591bceef362beca74b2fd1b"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/static/style.css",
+      "action": "new",
+      "sha256": "919264defd20777fb8e590aa9a52913787358a87499b789063b52025bf0ecf0d"
+    },
+    {
+      "file": "e2e_learning_pkg/e2e/synthetic.py",
+      "action": "new",
+      "sha256": "6f3687d24cf1caf723765154c6804cdd0b7375a1367a02f110ae37210822c6c2"
+    },
+    {
+      "file": "e2e_learning_pkg/package.xml",
+      "action": "new",
+      "sha256": "658e1d0c366e1f53ff9c40f9daf0a051fc0943cf913dac5778be39b965da60c0"
+    },
+    {
+      "file": "e2e_learning_pkg/resource/e2e_learning_pkg",
+      "action": "new",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "e2e_learning_pkg/setup.cfg",
+      "action": "new",
+      "sha256": "56d6b4eaa410435826f394d30b6507d12654383f874a6546212fd12df835989d"
+    },
+    {
+      "file": "e2e_learning_pkg/setup.py",
+      "action": "new",
+      "sha256": "e53233ef4a6a0630841c5401972d6016cd0635dccfb0659a1fda03595dfc8a68"
+    },
+    {
+      "file": "interfaces_pkg/CMakeLists.txt",
+      "action": "modified_copy",
+      "sha256": "343f752f35c3bb15291e4e60036be35c8e0cf241e02d248571f58cd311be595c"
+    },
+    {
+      "file": "interfaces_pkg/msg/BoundingBox2D.msg",
+      "action": "retained_identical",
+      "sha256": "8e16e8b9df254bc1430628556184cb1cbb6c18a31a4028467a290a5cada4d664"
+    },
+    {
+      "file": "interfaces_pkg/msg/BoundingBox3D.msg",
+      "action": "retained_identical",
+      "sha256": "16e958a9109b7daa404bfcd7df29593b22118cb7eeedbadc3f55b0150cbdbb41"
+    },
+    {
+      "file": "interfaces_pkg/msg/Detection.msg",
+      "action": "retained_identical",
+      "sha256": "186c9d90ebd346066dda25466eeb694198a56825a7928a4b4c8df3a3308183e5"
+    },
+    {
+      "file": "interfaces_pkg/msg/DetectionArray.msg",
+      "action": "retained_identical",
+      "sha256": "d0598b33e97db0e01af07d7bfe592d2500e0404299c70ca21d5dc80743504e60"
+    },
+    {
+      "file": "interfaces_pkg/msg/KeyPoint2D.msg",
+      "action": "retained_identical",
+      "sha256": "c4ce9853b9d4d4fd0c4e9f8809aaa84ccb81ddf961fc0a02921186bbe95bc7d3"
+    },
+    {
+      "file": "interfaces_pkg/msg/KeyPoint2DArray.msg",
+      "action": "retained_identical",
+      "sha256": "107266efceadc28085faf797dc424a0b17943fb2bba30cd8d1f610aa3f230af7"
+    },
+    {
+      "file": "interfaces_pkg/msg/KeyPoint3D.msg",
+      "action": "retained_identical",
+      "sha256": "02cbeb6c90a647f81c31bde42fc44050433584fd3b8282a3b86ac2b6eab5e15d"
+    },
+    {
+      "file": "interfaces_pkg/msg/KeyPoint3DArray.msg",
+      "action": "retained_identical",
+      "sha256": "e25eff39fee39ab7daada8431aa157c8c11c50d42288e30868542829c0e52814"
+    },
+    {
+      "file": "interfaces_pkg/msg/LaneInfo.msg",
+      "action": "retained_identical",
+      "sha256": "a1552591924391858ab20600ac42ba468ff60d7953872504d1889fae5104b16e"
+    },
+    {
+      "file": "interfaces_pkg/msg/Mask.msg",
+      "action": "retained_identical",
+      "sha256": "8c11a7c3f2573c64801bcad4de74db7accaa703173a5205df5698fd5de2671c6"
+    },
+    {
+      "file": "interfaces_pkg/msg/MotionCommand.msg",
+      "action": "retained_identical",
+      "sha256": "c5466d94cde966e264e75821983824785a45f190937147dc4a3d3823f22b97c0"
+    },
+    {
+      "file": "interfaces_pkg/msg/PathPlanningResult.msg",
+      "action": "retained_identical",
+      "sha256": "20deafa736ecf88ac1215fde45cc9d1d257ebf58c8f9f7f5056dac0e56e57e94"
+    },
+    {
+      "file": "interfaces_pkg/msg/Point2D.msg",
+      "action": "retained_identical",
+      "sha256": "ce6e3545cf3a2c0f9859693f5a587f5ce18c1a43cb68697ed7f7e511cc7ad42f"
+    },
+    {
+      "file": "interfaces_pkg/msg/Pose2D.msg",
+      "action": "retained_identical",
+      "sha256": "438a0e780b1c8169f06e166da1f9f67918262db08f98975f494d22178c816d13"
+    },
+    {
+      "file": "interfaces_pkg/msg/SourceFrame.msg",
+      "action": "new",
+      "sha256": "318a70942819e9785cc7b2a30c62f8a94f614db8aa33af09895befab82a47605"
+    },
+    {
+      "file": "interfaces_pkg/msg/TargetPoint.msg",
+      "action": "retained_identical",
+      "sha256": "6a62e0d84f9cab753abfbf33b656871949ae5876913748e17ee758777a6b831f"
+    },
+    {
+      "file": "interfaces_pkg/msg/TeacherCommand.msg",
+      "action": "new",
+      "sha256": "c5841486e4e9dc5367f136d2aacd25aa694a5127afd458e93d6e8ea877c25ef3"
+    },
+    {
+      "file": "interfaces_pkg/msg/Vector2.msg",
+      "action": "retained_identical",
+      "sha256": "d66fcc9e8cee3a8ef706f3b32b817646a53d1d4304397fa8119e7effa96bba3d"
+    },
+    {
+      "file": "interfaces_pkg/package.xml",
+      "action": "modified_copy",
+      "sha256": "034391be42d0cfa09e9adf67103385bae0a64b3600b8c01c6e16e1ef242cebde"
+    },
+    {
+      "file": "sensor_bringup_pkg/package.xml",
+      "action": "modified_copy",
+      "sha256": "347fe6e5e5011b4eb78c7a1fa518bf540538be31c8d0899ee61e72eb46119f5b"
+    },
+    {
+      "file": "sensor_bringup_pkg/resource/sensor_bringup_pkg",
+      "action": "retained_identical",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "sensor_bringup_pkg/sensor_bringup_pkg/__init__.py",
+      "action": "retained_identical",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "sensor_bringup_pkg/sensor_bringup_pkg/camera_publisher_node.py",
+      "action": "modified_copy",
+      "sha256": "ac17c8b009c3a5a363ebc10ee225b22acc8e8604ee4586fe8502c4eb03d74730"
+    },
+    {
+      "file": "sensor_bringup_pkg/setup.cfg",
+      "action": "retained_identical",
+      "sha256": "36d587d6fa218c63093aa58969d0ca60301430f64adcbeddca6c798525be4eef"
+    },
+    {
+      "file": "sensor_bringup_pkg/setup.py",
+      "action": "modified_copy",
+      "sha256": "10302b80cffe3323ce7609486e8406193ed5719b5604e630a2d745dd51af235d"
+    },
+    {
+      "file": "skku_track_drive_pkg/models/best_v3.pt",
+      "action": "retained_identical",
+      "sha256": "83ed83beae553f4220fa15de52859934a9769065902d5898f275d22567b8c7b3"
+    },
+    {
+      "file": "skku_track_drive_pkg/package.xml",
+      "action": "modified_copy",
+      "sha256": "4203ef8d1724dea0d96d41f806d8148c4df6cdc0e5d605df1e6a512f21f5716f"
+    },
+    {
+      "file": "skku_track_drive_pkg/resource/skku_track_drive_pkg",
+      "action": "retained_identical",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "skku_track_drive_pkg/setup.cfg",
+      "action": "retained_identical",
+      "sha256": "eb5571073695c1100e4ac38175fe5335ce2068a054090ad847911d39b6d1e472"
+    },
+    {
+      "file": "skku_track_drive_pkg/setup.py",
+      "action": "modified_copy",
+      "sha256": "21d65762601436c7654034600fe4cd4474e0f0f690d2a6743168989147b49eb5"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/__init__.py",
+      "action": "retained_identical",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/bev_geometry.py",
+      "action": "retained_identical",
+      "sha256": "348bef8f81d5aa1072e9869cf2f2cf3ce1bbf36a4d47f181e41ec1c95b3ab725"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/camera_perception_core.py",
+      "action": "retained_identical",
+      "sha256": "8df58a19966aae1404051e4f1a9da71b81a1d543d9b60915c1d377332d1e1ec2"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/command_lease.py",
+      "action": "retained_identical",
+      "sha256": "b4e6d15115b7520d725b45ce2fac354420b95f15ce3d0dd01d7af3231484c135"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/controller_liveness.py",
+      "action": "retained_identical",
+      "sha256": "386ea4916683f95063f2e9ad74c6f99327abe953256b567dd9eb4aef1046fac4"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/lane_processing.py",
+      "action": "retained_identical",
+      "sha256": "832d8c738110ce583c60f9f12bc87b6116b7b268fd32ed52e92c81e823f70c12"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/messages.py",
+      "action": "retained_identical",
+      "sha256": "c5023b56e26fcc91e6ac1735c80f7113a08482efc714d58161d6a1759c2e8f15"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/motion_planner.py",
+      "action": "retained_identical",
+      "sha256": "240c525f0e6f6b41f46b5471e4cc7f35b462e38fb46d576f9ca651bd97e6ae86"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/path_planner.py",
+      "action": "retained_identical",
+      "sha256": "6aca3e94952d75ac46fe8fa9417226ecdc2f4d355f28174fd90186c16fc81e45"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/perception_progress.py",
+      "action": "retained_identical",
+      "sha256": "bb8d4c45566d1cf2ff3f3406c22f7ca561e200304b952407856cb5f52941afc3"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/stop_history.py",
+      "action": "retained_identical",
+      "sha256": "ba59b6f946cc2de168eed0dc34f46966f13ae1339fc13e5547bd3c3d7d42d49c"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/track_controller_node.py",
+      "action": "modified_copy",
+      "sha256": "94d030aad7878906d7c924ef0c4a46cf1e5bb775583160ad0adf45d769f6576f"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/track_tuner_node.py",
+      "action": "modified_copy",
+      "sha256": "ee1c3cc2fb8ff21fd331c9b9539718e4e22fda7b51657be518c47c46ec98b9c6"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/tuning_analysis.py",
+      "action": "retained_identical",
+      "sha256": "7b31458eed30c5cb2e8f46f06df85ca84554c284107c604c61e6c12a96cb422e"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/tuning_recorder_node.py",
+      "action": "modified_copy",
+      "sha256": "4234cf8ffb2e643b03470d598e5b03b5f496f4ce735a11c7e46d56e809b9ec03"
+    },
+    {
+      "file": "skku_track_drive_pkg/skku_track_drive_pkg/yolo_perception.py",
+      "action": "retained_identical",
+      "sha256": "b6e36fd65b2585f04958017fd6d8fc7939f93ac46029e306ab9be96b8f87350f"
+    },
+    {
+      "file": "vehicle_bringup_pkg/config/perception_delay_policy.yaml",
+      "action": "retained_identical",
+      "sha256": "e642657db04bca87d9ac3b89abd0e9e66fc80e0cdd6caf955c2caf8989777eae"
+    },
+    {
+      "file": "vehicle_bringup_pkg/config/track_local_snapshot.yaml",
+      "action": "new",
+      "sha256": "2f01a5fd9179f7d1593fffb9eb4eb51aab0fb0dc2bded1de77d4dd7fbfbaa6d1"
+    },
+    {
+      "file": "vehicle_bringup_pkg/config/track_tuning.yaml",
+      "action": "retained_identical",
+      "sha256": "f8433a0cfdb3cfb31b207a5ebe8fd7f1129aba6b921e7dbd78dd0cb596862602"
+    },
+    {
+      "file": "vehicle_bringup_pkg/config/vehicle.yaml",
+      "action": "retained_identical",
+      "sha256": "52cf515995ac55377728f91fcfffa5d50d5bd6e31af7490e8a77ffbd6eee80ff"
+    },
+    {
+      "file": "vehicle_bringup_pkg/launch/normal_teacher.launch.py",
+      "action": "new",
+      "sha256": "d9c86f94d6c746c8a1679d99e515ef9be3624b49c12a14a3d701aa24479c2dc8"
+    },
+    {
+      "file": "vehicle_bringup_pkg/package.xml",
+      "action": "modified_copy",
+      "sha256": "cdeef3c5e7c649ac9ba0c0df0dcce69b760e13cbb4bac0b225e68cb5b3c9be13"
+    },
+    {
+      "file": "vehicle_bringup_pkg/resource/vehicle_bringup_pkg",
+      "action": "retained_identical",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vehicle_bringup_pkg/setup.cfg",
+      "action": "retained_identical",
+      "sha256": "f9cea036f798301bdff5735de34246f66e89704131d6f78f28d7143ce768bae4"
+    },
+    {
+      "file": "vehicle_bringup_pkg/setup.py",
+      "action": "retained_identical",
+      "sha256": "65a319bec985a30373a2056206ce1d1ca10c1b25d46b769515143c72ec76ad89"
+    },
+    {
+      "file": "vehicle_bringup_pkg/vehicle_bringup_pkg/__init__.py",
+      "action": "retained_identical",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vehicle_bringup_pkg/vehicle_bringup_pkg/configuration.py",
+      "action": "retained_identical",
+      "sha256": "a0d8c97b1fbe94a13c363399c3224ce71d52a6de055f0b94d712a92066736e9e"
+    },
+    {
+      "file": "vehicle_bringup_pkg/vehicle_bringup_pkg/tuning_configuration.py",
+      "action": "modified_copy",
+      "sha256": "df56be478316f4f70f6b0836c5ba2c340334ca90200babe2a42eee29156b2215"
+    },
+    {
+      "file": "vehicle_io_pkg/package.xml",
+      "action": "retained_identical",
+      "sha256": "cb4e21dc2b46072e61f3855ac8f1e235f25064e28ed2fcaf02d43365412f7810"
+    },
+    {
+      "file": "vehicle_io_pkg/resource/vehicle_io_pkg",
+      "action": "retained_identical",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vehicle_io_pkg/setup.cfg",
+      "action": "retained_identical",
+      "sha256": "556556fb16a9a9f356a2db5a0b8d4d486da63573d9c1734978fea40c28b0f92f"
+    },
+    {
+      "file": "vehicle_io_pkg/setup.py",
+      "action": "retained_identical",
+      "sha256": "77a87e6d423a282e34ffecb835413b5b80dfce222ca8fe676b12f76215ea9f02"
+    },
+    {
+      "file": "vehicle_io_pkg/vehicle_io_pkg/__init__.py",
+      "action": "retained_identical",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vehicle_io_pkg/vehicle_io_pkg/drive_arm_node.py",
+      "action": "retained_identical",
+      "sha256": "423fe2bb086ab2c591d3e8cef6f534d64ebf0e397fc7641cf483878ddb5a4e28"
+    },
+    {
+      "file": "vehicle_io_pkg/vehicle_io_pkg/perception_delay_guard.py",
+      "action": "retained_identical",
+      "sha256": "d757e609d67f76d78e215b2d6211f0eb0e90f2db8b6999d24ccb78c954600ad9"
+    },
+    {
+      "file": "vehicle_io_pkg/vehicle_io_pkg/serial_sender_node.py",
+      "action": "modified_copy",
+      "sha256": "fbaa102e333f9d38d0a423359e0616de567c93b664b072680d73be3fffe5e00e"
+    }
+  ]
+}

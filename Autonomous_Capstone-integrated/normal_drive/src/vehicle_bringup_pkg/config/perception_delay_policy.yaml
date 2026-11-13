@@ -1,0 +1,33 @@
+# Bench measurement 2026-10-04, /dev/video2 integrated webcam, RTX 4050 CUDA.
+# This is NOT a vehicle front-camera/road-scene calibration. Re-measure there.
+# Preserve the existing terminal result-silence deadline: 6.0s.
+# Staged reduction removed 2026-10-05; keep the cached command until X/disarm.
+# Original timing measurements are retained below for reference.
+schema_version: 2
+measurement:
+  camera_device: /dev/video2
+  camera_identity: SunplusIT HD Webcam Integrated Camera
+  device: cuda:0
+  gpu: NVIDIA GeForce RTX 4050 Laptop GPU
+  duration_per_run_s: 60.0
+  runs_per_mode: 2
+  duration_per_mode_s: 120.0
+  distribution_basis: Worse p99/max across the two 60-second runs, before and after receipt separation
+  validated_short_delay_s: 2.0
+profiles:
+  track:
+    perception_stop_s: 6.0
+    measured_frame_p99_ms: 86.482
+    measured_frame_max_ms: 104.904
+    measured_result_p99_ms: 101.364
+    measured_result_max_ms: 133.405
+    frame_samples: 1777
+    result_samples: 1776
+  mission:
+    perception_stop_s: 6.0
+    measured_frame_p99_ms: 87.773
+    measured_frame_max_ms: 95.663
+    measured_result_p99_ms: 105.453
+    measured_result_max_ms: 140.114
+    frame_samples: 1775
+    result_samples: 1776

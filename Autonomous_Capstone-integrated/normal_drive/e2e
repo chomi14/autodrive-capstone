@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+E2E_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHONPATH="$E2E_ROOT/.deps:$E2E_ROOT/src/e2e_learning_pkg${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m e2e.cli "$@"

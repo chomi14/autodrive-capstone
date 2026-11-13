@@ -1,0 +1,43 @@
+{
+  "synthetic": true,
+  "hardware_opened": false,
+  "actual_cpu_yolo": true,
+  "outputs": [
+    {
+      "command_id": "50e54383-2199-46ae-92d1-3eb3b6e6d803:1",
+      "source_sequence": 0,
+      "source_stamp_ns": 1790000000123456789,
+      "steering": 0,
+      "left_pwm": 255,
+      "right_pwm": 255,
+      "path_valid": false
+    },
+    {
+      "command_id": "50e54383-2199-46ae-92d1-3eb3b6e6d803:2",
+      "source_sequence": 1,
+      "source_stamp_ns": 1790000000223456789,
+      "steering": 0,
+      "left_pwm": 255,
+      "right_pwm": 255,
+      "path_valid": false
+    },
+    {
+      "command_id": "50e54383-2199-46ae-92d1-3eb3b6e6d803:3",
+      "source_sequence": 2,
+      "source_stamp_ns": 1790000000323456789,
+      "steering": 0,
+      "left_pwm": 255,
+      "right_pwm": 255,
+      "path_valid": false
+    },
+    {
+      "command_id": "50e54383-2199-46ae-92d1-3eb3b6e6d803:4",
+      "source_sequence": 3,
+      "source_stamp_ns": 1790000000423456789,
+      "steering": 0,
+      "left_pwm": 255,
+      "right_pwm": 255,
+      "path_valid": false
+    }
+  ]
+}

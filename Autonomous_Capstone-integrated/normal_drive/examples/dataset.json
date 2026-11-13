@@ -1,0 +1,13 @@
+{
+  "split": {"run_001": "train", "run_002": "validation", "run_003": "test"},
+  "sample_interval_ns": 100000000,
+  "balance_max_per_bin": 0,
+  "seed": 42,
+  "fixed_pwm": 80,
+  "require_review": true,
+  "require_transmission": true,
+  "allow_partial": false,
+  "allow_legacy": false,
+  "allow_manual_alignment": false,
+  "allow_demo": false
+}

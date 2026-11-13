@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "model_import": [
+    {
+      "input": "E2E PilotNet",
+      "state": "completed"
+    },
+    {
+      "input": "actual repository YOLO .pt",
+      "state": "failed"
+    }
+  ],
+  "range_playback": true,
+  "javascript_errors": []
+}

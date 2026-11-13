@@ -1,0 +1,227 @@
+{
+  "base_commit": "56395e0c9930bf88bf616c061b86faf0ebff1d65",
+  "retained": [
+    {
+      "file": "src/skku_track_drive_pkg/setup.py",
+      "sha256": "7a362b57a8d81c9e53c4bb25c7d9f0c12833c4e8f0f5a2c98da2127e4f538380",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/setup.cfg",
+      "sha256": "eb5571073695c1100e4ac38175fe5335ce2068a054090ad847911d39b6d1e472",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/package.xml",
+      "sha256": "f946e89fd24172dc2606e38b56f2377ec8399f1c1513f60e04ccd9d29a1b6dac",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/resource/skku_track_drive_pkg",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/track_controller_node.py",
+      "sha256": "7018922019383120d7c95be8a68da5add3ec14d68fcc917709ae64474ea196a0",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/track_tuner_node.py",
+      "sha256": "8d2b424ddd148c54988779b496409528f7a3249919348dd279bebf60682c5e23",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/yolo_perception.py",
+      "sha256": "b6e36fd65b2585f04958017fd6d8fc7939f93ac46029e306ab9be96b8f87350f",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/lane_processing.py",
+      "sha256": "832d8c738110ce583c60f9f12bc87b6116b7b268fd32ed52e92c81e823f70c12",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/bev_geometry.py",
+      "sha256": "348bef8f81d5aa1072e9869cf2f2cf3ce1bbf36a4d47f181e41ec1c95b3ab725",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/camera_perception_core.py",
+      "sha256": "8df58a19966aae1404051e4f1a9da71b81a1d543d9b60915c1d377332d1e1ec2",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/messages.py",
+      "sha256": "c5023b56e26fcc91e6ac1735c80f7113a08482efc714d58161d6a1759c2e8f15",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/path_planner.py",
+      "sha256": "6aca3e94952d75ac46fe8fa9417226ecdc2f4d355f28174fd90186c16fc81e45",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/motion_planner.py",
+      "sha256": "240c525f0e6f6b41f46b5471e4cc7f35b462e38fb46d576f9ca651bd97e6ae86",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/command_lease.py",
+      "sha256": "b4e6d15115b7520d725b45ce2fac354420b95f15ce3d0dd01d7af3231484c135",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/controller_liveness.py",
+      "sha256": "386ea4916683f95063f2e9ad74c6f99327abe953256b567dd9eb4aef1046fac4",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/perception_progress.py",
+      "sha256": "bb8d4c45566d1cf2ff3f3406c22f7ca561e200304b952407856cb5f52941afc3",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/stop_history.py",
+      "sha256": "ba59b6f946cc2de168eed0dc34f46966f13ae1339fc13e5547bd3c3d7d42d49c",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/tuning_analysis.py",
+      "sha256": "7b31458eed30c5cb2e8f46f06df85ca84554c284107c604c61e6c12a96cb422e",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/skku_track_drive_pkg/skku_track_drive_pkg/tuning_recorder_node.py",
+      "sha256": "edab41b90397d3d5ee60f9fe9ff5a98630c4fadeadf38821f9f2967c029c8e4a",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/sensor_bringup_pkg/setup.py",
+      "sha256": "50a982abd8fdc0f21bfe1799e70191ce9d87ba6affa62e57d353b4ee2d3e939b",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/sensor_bringup_pkg/setup.cfg",
+      "sha256": "36d587d6fa218c63093aa58969d0ca60301430f64adcbeddca6c798525be4eef",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/sensor_bringup_pkg/package.xml",
+      "sha256": "f072cf4a4324bcad1913a79dac33f9aed1365b526425b1083850476521d9ab82",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/sensor_bringup_pkg/resource/sensor_bringup_pkg",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/sensor_bringup_pkg/sensor_bringup_pkg/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/sensor_bringup_pkg/sensor_bringup_pkg/camera_publisher_node.py",
+      "sha256": "52ee86b7e735bd09fdf94f4bb1ce6c1f82e2d8d05bb70e409ee15501437cc5e5",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_io_pkg/setup.py",
+      "sha256": "77a87e6d423a282e34ffecb835413b5b80dfce222ca8fe676b12f76215ea9f02",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_io_pkg/setup.cfg",
+      "sha256": "556556fb16a9a9f356a2db5a0b8d4d486da63573d9c1734978fea40c28b0f92f",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_io_pkg/package.xml",
+      "sha256": "cb4e21dc2b46072e61f3855ac8f1e235f25064e28ed2fcaf02d43365412f7810",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_io_pkg/resource/vehicle_io_pkg",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_io_pkg/vehicle_io_pkg/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_io_pkg/vehicle_io_pkg/serial_sender_node.py",
+      "sha256": "d6e960be3918023aa220bbbe18d8320706552f90062785cebb0c214115857635",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_io_pkg/vehicle_io_pkg/drive_arm_node.py",
+      "sha256": "423fe2bb086ab2c591d3e8cef6f534d64ebf0e397fc7641cf483878ddb5a4e28",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_io_pkg/vehicle_io_pkg/perception_delay_guard.py",
+      "sha256": "d757e609d67f76d78e215b2d6211f0eb0e90f2db8b6999d24ccb78c954600ad9",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_bringup_pkg/setup.py",
+      "sha256": "65a319bec985a30373a2056206ce1d1ca10c1b25d46b769515143c72ec76ad89",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_bringup_pkg/setup.cfg",
+      "sha256": "f9cea036f798301bdff5735de34246f66e89704131d6f78f28d7143ce768bae4",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_bringup_pkg/package.xml",
+      "sha256": "b7028619d2640f60f2cddc9e34fafea39774e9c6701cd3e732bcb81fabf0da6b",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_bringup_pkg/resource/vehicle_bringup_pkg",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_bringup_pkg/vehicle_bringup_pkg/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_bringup_pkg/vehicle_bringup_pkg/configuration.py",
+      "sha256": "a0d8c97b1fbe94a13c363399c3224ce71d52a6de055f0b94d712a92066736e9e",
+      "reason": "runtime import/entry point or package resource"
+    },
+    {
+      "file": "src/vehicle_bringup_pkg/vehicle_bringup_pkg/tuning_configuration.py",
+      "sha256": "56b54d3b2814b65a8a4113a391850b097a1eb3839939739056893507c14320fc",
+      "reason": "runtime import/entry point or package resource"
+    }
+  ],
+  "excluded": [
+    "manual_drive_pkg",
+    "lidar_perception_pkg",
+    "missions",
+    "parking",
+    "legacy",
+    "YOLO best_v2 and mission models",
+    "capture image/video duplication"
+  ],
+  "unchanged_algorithms": [
+    "yolo_perception.py",
+    "lane_processing.py",
+    "camera_perception_core.py",
+    "bev_geometry.py",
+    "path_planner.py",
+    "motion_planner.py"
+  ]
+}

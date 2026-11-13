@@ -9,11 +9,17 @@
 | bbox 장애물 회피 + 신호등 | `mission_bbox_only.launch.py` | [bbox 전용 launch.py](src/vehicle_bringup_pkg/vehicle_bringup_pkg/modes/bbox_mission/launch.py) 상단 `EDIT HERE` | [bbox_mission/](src/skku_track_drive_pkg/skku_track_drive_pkg/modes/bbox_mission/) |
 | bbox 장애물 회피 + 신호등 (기존 size 실행 이름) | `mission_bbox_size.launch.py` | [size_launch.py](src/vehicle_bringup_pkg/vehicle_bringup_pkg/modes/bbox_mission/size_launch.py) 상단 `SIZE_DEFAULTS` | 위 bbox 미션과 같은 Y 기준 전환 |
 | 수직주차 | `perpendicular_parking.launch.py` | [수직주차 launch.py](src/vehicle_bringup_pkg/vehicle_bringup_pkg/modes/perpendicular_parking/launch.py), [perpendicular_parking.yaml](src/vehicle_bringup_pkg/config/perpendicular_parking.yaml) | [수직주차 상태 전이](src/skku_track_drive_pkg/skku_track_drive_pkg/modes/perpendicular_parking/state_machine.py) |
+| 카메라 수직주차 | `perpendicular_camera_preview.launch.py` / `perpendicular_camera_parking.launch.py` | [perpendicular_camera.yaml](src/vehicle_bringup_pkg/config/perpendicular_camera.yaml) | [전용 폴더·모델 준비·실행·검증 안내](src/skku_track_drive_pkg/skku_track_drive_pkg/modes/perpendicular_camera/README.md) |
 | 평행주차 | `parallel_parking.launch.py` | [평행주차 launch.py](src/vehicle_bringup_pkg/vehicle_bringup_pkg/modes/parallel_parking/launch.py), [parallel_parking.yaml](src/vehicle_bringup_pkg/config/parallel_parking.yaml) | [평행주차 상태 전이](src/skku_track_drive_pkg/skku_track_drive_pkg/modes/parallel_parking/state_machine.py) |
 
 각 런치는 `ros2 launch vehicle_bringup_pkg <런치 이름>`으로 실행한다. 모드는 한 번에 하나씩 실행한다.
 카메라와 Arduino 포트는 실제 차량에 맞춰 `camera_device:=...`, `arduino_port:=...`로 지정한다.
 기존 W 출발 승인과 정지 처리는 유지된다.
+
+카메라 수직주차는 전·후방 카메라와 주차 전용 segmentation 모델이 필요하다.
+전용 preview는 Arduino 없이 예상 명령을 확인하며, 실제 운용은 카메라·조향 보정 후 사용한다.
+이 모드의 카메라 장치는 `front_camera_device` / `rear_camera_device`, 전체 설정은
+`config_file`로 지정한다. 기존 수직주차와 실행 이름·설정·로직이 분리되어 있다.
 
 ```text
 src/

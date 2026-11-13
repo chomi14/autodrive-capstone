@@ -1,0 +1,74 @@
+{
+  "synthetic": true,
+  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "driver": "595.99.02",
+  "torch": "2.5.1+cu124",
+  "cuda_build": "12.4",
+  "stopped_epoch": 2,
+  "resumed_epoch": 8,
+  "dataset_version": "690f71f68ae76cce62360ca28a54b03fef12db79f1d8d08e1891228979ef3bfd",
+  "output": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/normal_drive/work/gpu_validation_1794151781945264411",
+  "models": [
+    {
+      "checkpoint": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/normal_drive/work/gpu_validation_1794151781945264411/initial/last.pt",
+      "mae_steps": 2.240240675293737,
+      "rmse_steps": 2.695641773914893,
+      "error_by_steering": {
+        "left": {
+          "count": 4,
+          "mae_steps": 4.369711190462112
+        },
+        "center": {
+          "count": 6,
+          "mae_steps": 0.9817435902853807
+        },
+        "right": {
+          "count": 8,
+          "mae_steps": 2.1193782314658165
+        }
+      },
+      "mean_prediction_delta_steps": 0.16718474753639279,
+      "latency_ms": {
+        "p50": 0.619008,
+        "p95": 0.8950023999999999,
+        "device": "cuda:0",
+        "threads": 2,
+        "batch_size": 1,
+        "warmup": 5,
+        "scope": "preprocess + device copy + forward, excludes disk decode",
+        "torch": "2.5.1+cu124"
+      }
+    },
+    {
+      "checkpoint": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/normal_drive/work/gpu_validation_1794151781945264411/resumed/best.pt",
+      "mae_steps": 0.4671287402096722,
+      "rmse_steps": 0.5668379137143729,
+      "error_by_steering": {
+        "left": {
+          "count": 4,
+          "mae_steps": 0.4072117283940315
+        },
+        "center": {
+          "count": 6,
+          "mae_steps": 0.456037113443017
+        },
+        "right": {
+          "count": 8,
+          "mae_steps": 0.5054059661924839
+        }
+      },
+      "mean_prediction_delta_steps": 0.6956285181290963,
+      "latency_ms": {
+        "p50": 0.6121369999999999,
+        "p95": 0.8769828499999996,
+        "device": "cuda:0",
+        "threads": 2,
+        "batch_size": 1,
+        "warmup": 5,
+        "scope": "preprocess + device copy + forward, excludes disk decode",
+        "torch": "2.5.1+cu124"
+      }
+    }
+  ],
+  "peak_allocated_bytes": 44039168
+}
