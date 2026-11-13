@@ -44,8 +44,7 @@ def assemble(context, preview):
     overrides = {}
     devices = {}
     for role in ('front', 'rear'):
-        overrides[role] = LaunchConfiguration(role + '_model').perform(context) or data[role]['model_path']
-        model_path(overrides[role])
+        overrides[role] = model_path(LaunchConfiguration(role + '_model').perform(context) or data[role]['model_path'])
         devices[role] = LaunchConfiguration(role + '_camera_device').perform(context) or data[role]['device']
     if source == 'camera':
         a, b = (os.path.realpath(devices[role]) for role in ('front', 'rear'))

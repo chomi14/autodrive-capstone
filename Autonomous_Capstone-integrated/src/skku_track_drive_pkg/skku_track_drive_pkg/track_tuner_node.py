@@ -36,6 +36,8 @@ from .traffic_light_display import add_traffic_light_panel
 TUNER_WINDOW_NAME = 'Track Tuner'
 DEBUG_WINDOW_NAME = 'Track Debug View'
 
+MISSION_PRIMARY_CONTROLS = ('obstacle_near_y', 'lane_change_gain', 'lane_change_gain_duration_s')
+
 # label, maximum trackbar position, position -> value, value -> position
 TRACKBARS = {
     'speed': ('Speed', 255, lambda p: int(p), lambda v: int(v)),
@@ -151,12 +153,25 @@ class TrackTunerNode(Node):
         self.create_subscription(String, 'vehicle/command_status', self.on_serial_status, key_qos)
         self.trackbars = {} if parking or only_extra_controls else dict(TRACKBARS)
         self.trackbars.update(extra_trackbars or {})
+        if self.parameter_root == 'mission_controller_node':
+            self.trackbars = {
+                **{name: self.trackbars[name] for name in MISSION_PRIMARY_CONTROLS if name in self.trackbars},
+                **self.trackbars,
+            }
         if not self.allow_speed_tuning:
             self.trackbars.pop('speed', None)
         persisted = {}
         if self.loaded_config_path and Path(self.loaded_config_path).is_file():
             with Path(self.loaded_config_path).open() as stream:
                 persisted = (yaml.safe_load(stream) or {}).get(self.parameter_root, {}).get('ros__parameters', {})
+        # Old mission tuning files use traffic_min_bottom_y. Querying this
+        # removed parameter truncates GetParameters and leaves the tuner
+        # without required values such as speed.
+        if self.parameter_root == 'mission_controller_node' and 'traffic_min_bottom_y' in persisted:
+            from .mode_parameters import MISSION
+            persisted = dict(persisted)
+            persisted.pop('traffic_min_bottom_y')
+            persisted.setdefault('traffic_max_bottom_y', MISSION['traffic_max_bottom_y'][0])
         # The legacy car Y is relative to the ROI at first load. Save its
         # reference cut alongside it so changing/saving ROI cannot move the
         # full-BEV vehicle reference on the next launch.
@@ -364,8 +379,8 @@ class TrackTunerNode(Node):
                 window = self.tuner_window
                 if name in BEV_SOURCE_DEFAULTS:
                     window = f'{self.tuner_window} BEV Source Points'
-                elif name == 'obstacle_near_y':
-                    # Keep the frequently used obstacle cut on the main panel.
+                elif name in MISSION_PRIMARY_CONTROLS:
+                    # Keep obstacle avoidance controls together on the main panel.
                     window = self.tuner_window
                 elif extra := (regular_index // 12 + int(self.mode_controls_separate)):
                     window = f'{self.tuner_window} Controls {extra}'
@@ -493,6 +508,11 @@ class TrackTunerNode(Node):
             with Path(self.loaded_config_path).open() as stream:
                 previous = yaml.safe_load(stream) or {}
             saved = previous.get(self.parameter_root, {}).get('ros__parameters', {})
+            if self.parameter_root == 'mission_controller_node' and 'traffic_min_bottom_y' in saved:
+                from .mode_parameters import MISSION
+                saved = dict(saved)
+                saved.pop('traffic_min_bottom_y')
+                saved.setdefault('traffic_max_bottom_y', MISSION['traffic_max_bottom_y'][0])
             values = {**saved, **values}
         if self.save_path.is_file():
             with self.save_path.open() as stream:
@@ -535,6 +555,9 @@ class TrackTunerNode(Node):
         if self.parameter_root == 'mission_controller_node':
             lines.insert(1, 'L: toggle target lane 1 <-> 2 (overrides cooldown; holds new lane for 5s)')
             lines.insert(2, f"Obstacle Cut (Y px)={self.desired_values.get('obstacle_near_y', '-')}  slider: top of {self.tuner_window}")
+            lines.insert(3, f"Lane Change Gain={self.desired_values.get('lane_change_gain', '-')}  Time={self.desired_values.get('lane_change_gain_duration_s', '-')}s (0s=off)")
+            if 'effective_stanley_gain' in self.mode_status:
+                lines.insert(4, f"Stanley gain active={self.mode_status['effective_stanley_gain']:.3f}  lane change={self.mode_status.get('lane_change_gain_active', False)}  remaining={self.mode_status.get('lane_change_gain_remaining_s', 0):.1f}s")
         if not self.parking:
             if time.monotonic() - self.capture_status_time <= 2.0:
                 status = self.capture_status

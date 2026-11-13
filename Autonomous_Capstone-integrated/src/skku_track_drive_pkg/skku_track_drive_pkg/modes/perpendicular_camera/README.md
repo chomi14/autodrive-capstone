@@ -2,7 +2,8 @@
 
 전방 주차 구역 추종과 후방 중심선·종료선 기반 후진 주차를 제공한다.
 기존 `perpendicular_parking.launch.py`의 시간 기반 주차와 독립적인 실행 모드다.
-기본 설정은 **예시이며 실측값이 아니다**. 전용 가중치와 카메라 보정이 필요하다.
+주차 전용 학습 가중치를 기본 경로로 사용한다. BEV·조향·정지 위치 설정은
+**예시이며 실측값이 아니다**. 실차 카메라 보정이 필요하다.
 
 ## 파일과 실행 연결
 
@@ -60,6 +61,23 @@ JSON으로 전송하고, **제어기 하나만** 기존 `interfaces_pkg/MotionCo
 주행 클래스, `mission/best_m.pt`는 lane1/lane2/obstacle/traffic_light 메타데이터를
 갖는다. 이 모델들을 주차 모델로 자동 대체하지 않는다.
 
+대신 제공된 `parking_front.v2i.yolov8.zip`, `parking_rear.v5i.yolov8.zip`으로
+각각 학습한 YOLO11n segmentation 모델을 사용한다. YOLOv8은 여기서 데이터셋
+라벨 형식이며, YOLO11도 같은 polygon 형식을 사용한다.
+
+| 역할 | 포함 가중치 (`skku_track_drive_pkg/models/parking/`) | 실제 ID → 클래스 |
+| --- | --- | --- |
+| 전방 | `parking_front.pt` | 0 → out_line, 1 → parking_lot, 2 → parking_space |
+| 후방 | `parking_rear.pt` | 0 → end_line, 1 → parking_lot, 2 → parking_space |
+
+후방의 `parking_lot`도 삭제·재번호 부여 없이 학습한다. 후방 제어에는
+`parking_space`, `end_line`만 사용하고 `parking_lot` 결과는 제외한다.
+YAML의 `package://skku_track_drive_pkg/models/parking/...` 경로는 설치된 ROS
+패키지 share에서 해석하므로 실행 디렉터리나 사용자 홈 이름에 의존하지 않는다.
+CLI의 `front_model`, `rear_model`로 별도 파일을 지정할 수도 있다.
+학습 설정·분할 중복 제거·평가 수치는 저장소의
+`reports/parking_training_2026-11-13/`와 `models/parking/README.md`를 확인한다.
+
 | 카메라 | 이 모드의 의미 키 | 원본 class_name | 원본 출력 | 이 구현 |
 | --- | --- | --- | --- | --- |
 | 전방 | parking_lot | parking_lot | ParkingLot: found, x 정규화, yaw rad | 합친 ROI의 왼쪽 경계 |
@@ -91,7 +109,13 @@ mkdir -p ~/.config/autodrive
 cp src/vehicle_bringup_pkg/config/perpendicular_camera.yaml ~/.config/autodrive/perpendicular_camera.yaml
 ```
 
-복사한 YAML에서 모델 경로, 장치, 회전/반전, BEV를 설정한다.
+복사한 YAML의 기본 모델 경로는 포함 가중치를 가리킨다.
+장치, 회전/반전, BEV는 차량에 맞춘다.
+기본 입력은 전·후방 모두 1280×720이며 후방은 시계방향 90도 회전 후
+720×1280으로 추론한다. 이는 데이터셋과 원본 실행 코드의 방향에 맞춘 것이며,
+실제 카메라 장착 방향은 preview에서 확인해야 한다.
+이미 회전된 후방 학습 이미지나 영상 토픽을 넣는 경우 `rear.rotate_deg: 0`으로
+별도 YAML을 만들어 두 번 회전하지 않게 한다.
 전·후방 장치는 가능한 `/dev/v4l/by-id/...`로 지정한다.
 `model_device: cpu`도 가능하지만 추론 시간이 `observation_timeout_s`를 넘으면 정지한다.
 지연 예산은 실제 처리 시간을 측정해 설정한다.

@@ -1,0 +1,7 @@
+{
+  "reason": "Increase batch size for GPU throughput; optimizer/effective target batch retained",
+  "checkpoint_epoch": 15,
+  "old_batch": 12,
+  "new_batch": 32,
+  "note": "Earlier command session also resumed from epoch 7 after SIGTERM."
+}

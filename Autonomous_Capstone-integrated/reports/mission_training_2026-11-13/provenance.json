@@ -3,5 +3,7 @@
   "ultralytics": "8.4.6",
   "baseline_sha256": "377b6a225e05ce3da6209b2dfdf0e129df034e8837d12861511e54267d258f15",
   "baseline": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/datasets/mission/autodrive_26_2_v1_20261113/original_best_m.pt",
-  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU"
+  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "candidate": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/src/skku_track_drive_pkg/models/mission/best_m_v2.pt",
+  "candidate_sha256": "2ff4193c4cc26c1b5fdf1590befc7128dcc38bc7e211bc24e2c61209e5320b73"
 }

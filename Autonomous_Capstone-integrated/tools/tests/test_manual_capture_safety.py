@@ -24,6 +24,7 @@ class ManualCaptureSafetyTests(unittest.TestCase):
         self.manual = object.__new__(ManualDriveCaptureNode)
         node = self.manual
         node.dry_run = False
+        node.use_rear_camera = False
         node.show_window = False
         node.should_quit = False
         node.calibration_ready = True
@@ -71,6 +72,42 @@ class ManualCaptureSafetyTests(unittest.TestCase):
             self.tick()
             self.assertTrue(self.sender.armed)
             self.assertEqual(self.bridge_case.port.events[-1], b's0l20r20\n')
+
+    def test_first_steering_key_arms_stationary_steering_without_drive(self):
+        for key, steering in (('a', -1), ('d', 1)):
+            self.manual.handle_key('x')
+            self.manual.handle_key(key)
+            self.tick()
+            self.assertTrue(self.sender.armed)
+            self.assertTrue(self.manual.armed)
+            self.assertEqual(self.bridge_case.port.events[-1], f's{steering}l0r0\n'.encode())
+
+    def test_steering_keeps_forward_and_reverse_speed_once_armed(self):
+        for drive, speed in (('w', 20), ('s', -20)):
+            self.manual.handle_key('x')
+            self.manual.handle_key(drive)
+            self.manual.handle_key('a')
+            self.tick()
+            self.assertEqual(self.bridge_case.port.events[-1], f's-1l{speed}r{speed}\n'.encode())
+
+    def test_steering_does_not_reuse_an_unaccepted_drive_request(self):
+        self.manual.request_pub.publish.side_effect = None
+        self.manual.handle_key('w')
+        self.assertFalse(self.manual.armed)
+        self.manual.request_pub.publish.side_effect = self.sender.on_arm_request
+        self.manual.handle_key('a')
+        self.tick()
+        self.assertTrue(self.manual.armed)
+        self.assertEqual(self.bridge_case.port.events[-1], b's-1l0r0\n')
+
+    def test_steering_stays_locked_without_ready_or_current_token(self):
+        self.manual.calibration_ready = False
+        self.manual.handle_key('a')
+        self.manual.calibration_ready = True
+        self.manual.arm_challenge = ''
+        self.manual.handle_key('d')
+        self.assertEqual(self.manual.steering_cmd, 0)
+        self.manual.request_pub.publish.assert_not_called()
 
     def test_motion_waits_for_actual_bridge_acceptance_and_does_not_capture(self):
         self.manual.request_pub.publish.side_effect = None

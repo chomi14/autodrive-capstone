@@ -301,6 +301,11 @@ ros2 launch vehicle_bringup_pkg sensor_check.launch.py \
 
 ## 6. 수동 WASD + 자동 startup calibration + 라벨링
 
+전후방 두 카메라를 함께 자동 촬영하는 평행주차 데이터 수집 방법은
+[전후방 수동 촬영 안내](docs/MANUAL_PARKING_CAPTURE_KR.md)를 참고한다.
+`use_rear_camera:=true rear_camera_device:=/dev/video0 auto_capture:=true`를 추가하면
+전후방 원본을 `images/front/`, `images/rear/`와 `pairs.csv`로 저장한다.
+
 현재 `manual_capture.launch.py`는 수동 창에서 새 출발 승인 토큰과 UI 생존 신호를
 시리얼 bridge에 전달한다. W/S는 속도 +20/-20의 누적 조절이고, **X/Space는
 정지/disarm**이다. ARM 표시는 bridge의 실제 승인 피드백을 따른다.

@@ -32,6 +32,7 @@ _CAL_APPLIED_RE = re.compile(
     r'CAL_APPLIED,left=(-?\d+),right=(-?\d+),center=(-?\d+)'
 )
 _STATUS_POT_RE = re.compile(r'STATUS,pot=(\d+)')
+_STATUS_RE = re.compile(r'STATUS,pot=(\d+),target=(-?\d+),left_speed=(-?\d+),right_speed=(-?\d+)')
 _CAL_ERROR_RE = re.compile(r'CAL_ERROR,reason=(.+)')
 
 # Both supported sketches stop PWM after 500 ms with no valid serial frame.
@@ -138,6 +139,9 @@ class SerialSenderNode(Node):
 
         self._rx = ''
         self.last_pot = None
+        self.last_serial_line = ''
+        self.last_firmware_status_time = None
+        self.firmware_status = None
         self.config_left = None
         self.config_right = None
         self.config_center = None
@@ -311,6 +315,13 @@ class SerialSenderNode(Node):
             self.send_stop(force=True)
 
     def handle_serial_line(self, line: str):
+        self.last_serial_line = line
+        status = _STATUS_RE.fullmatch(line)
+        if status:
+            self.firmware_status = dict(zip(
+                ('pot_adc', 'target', 'left_pwm', 'right_pwm'), map(int, status.groups())
+            ))
+            self.last_firmware_status_time = time.monotonic()
         pot_match = _STATUS_POT_RE.search(line)
         if pot_match:
             self.last_pot = int(pot_match.group(1))
@@ -601,6 +612,12 @@ class SerialSenderNode(Node):
             'armed': self.armed, 'steering': msg.steering,
             'left_pwm': msg.left_speed, 'right_pwm': msg.right_speed,
             'stop_reason': self.stop_reason,
+            # Distinguish a successful PC write from actual board feedback.
+            # Legacy firmware may provide no STATUS; keep that explicit.
+            'firmware': self.firmware_status,
+            'firmware_age_sec': (None if self.last_firmware_status_time is None
+                                 else round(now - self.last_firmware_status_time, 3)),
+            'serial_rx': self.last_serial_line,
             **(self.delay_guard.status(now) if self.delay_guard is not None else {})})))
 
     def write_gated_command(self, msg: MotionCommand):

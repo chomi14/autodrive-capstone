@@ -23,6 +23,8 @@ class MotionPlanner:
         red_light_confirm_frames=1,
     ):
         self.stanley_gain = stanley_gain
+        # A mission may temporarily lower the gain without changing saved tuning.
+        self.stanley_gain_override = None
         self.stanley_softening = stanley_softening
         self.max_steering = max_steering
         self.max_steering_angle_deg = max_steering_angle_deg
@@ -90,6 +92,10 @@ class MotionPlanner:
 
         return MotionCommand(steering=steering, left_speed=self.default_left_speed, right_speed=self.default_right_speed)
 
+    @property
+    def effective_stanley_gain(self):
+        return self.stanley_gain if self.stanley_gain_override is None else self.stanley_gain_override
+
     def compute_stanley_steering(self):
         if not self.path_data or len(self.path_data) < 2:
             self.last_reference_point = None
@@ -111,7 +117,7 @@ class MotionPlanner:
         cross_track_error = self.signed_cross_track_error(vehicle_pos, ref_idx)
 
         v = 1.0
-        stanley_term = -math.atan2(self.stanley_gain * cross_track_error, v + self.stanley_softening)
+        stanley_term = -math.atan2(self.effective_stanley_gain * cross_track_error, v + self.stanley_softening)
         # heading_gain: heading 오차 항의 가중치(실시간 튜닝 대상). 예전 고정값 0.7.
         steering = (heading_error + stanley_term) * self.heading_gain
 

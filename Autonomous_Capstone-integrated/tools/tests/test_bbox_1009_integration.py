@@ -8,6 +8,7 @@ from rclpy.parameter import Parameter
 from skku_track_drive_pkg.bbox_mission_controller_node import BboxMissionControllerNode
 from skku_track_drive_pkg.lane_processing import LaneInfoExtractor
 from skku_track_drive_pkg.mission_core import MissionCore
+from skku_track_drive_pkg.motion_planner import MotionPlanner
 from skku_track_drive_pkg.messages import (
     DetectionArray, Detection, BoundingBox2D, Pose2D, Point2D, Vector2,
     MotionCommand, PathPlanningResult, Mask,
@@ -18,6 +19,8 @@ def controller():
     node = object.__new__(BboxMissionControllerNode)
     node.lane = LaneInfoExtractor(show_image=False, bev_top_shift=-8, roi_cut=300)
     node.mission = MissionCore()
+    node.motion = MotionPlanner(stanley_gain=0.02)
+    node._lane_change_gain_remaining_s = 0.0
     node.status_pub = Mock()
     node._parameter_lock = RLock()
     node.allow_speed_tuning = True

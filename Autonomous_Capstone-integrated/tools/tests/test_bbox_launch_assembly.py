@@ -112,10 +112,14 @@ class LaunchTests(unittest.TestCase):
                     self.assertEqual(module.resolve_bbox_settings(context)['roi_cut'], 280)
                     self.assertEqual(module.resolve_bbox_settings(context)['car_center_reference_roi_cut'], 280)
                     context.launch_configurations.update(speed='', roi_cut='')
-                # An existing P-save must not silently defeat edits at the top.
+                # P-saved values load by default; opt-out restores code defaults.
                 import json
                 saved = Path(tmp)/'mission.yaml'
-                saved.write_text(json.dumps({'mission_controller_node': {'ros__parameters': {'speed': 55, 'obstacle_near_y': 350}}}))
+                saved.write_text(json.dumps({'mission_controller_node': {'ros__parameters': {
+                    'speed': 55, 'obstacle_near_y': 350, 'traffic_max_bottom_y': 85}}}))
+                self.assertEqual(context.launch_configurations['load_saved_tuning'], 'true')
+                self.assertEqual(module.resolve_bbox_settings(context)['obstacle_near_y'], 350)
+                self.assertEqual(module.resolve_bbox_settings(context)['traffic_max_bottom_y'], 85)
                 context.launch_configurations['load_saved_tuning'] = 'false'
                 self.assertEqual(module.resolve_bbox_settings(context)['speed'], 250)
                 self.assertEqual(module.resolve_bbox_settings(context)['obstacle_near_y'], 300)

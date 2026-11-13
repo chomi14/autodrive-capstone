@@ -3,7 +3,26 @@ from pathlib import Path
 
 
 def model_path(value):
-    path = Path(value).expanduser()
+    prefix = 'package://skku_track_drive_pkg/'
+    if value.startswith(prefix):
+        relative = Path(value[len(prefix):])
+        if relative.is_absolute() or '..' in relative.parts or relative.parts[:2] != ('models', 'parking'):
+            raise ValueError('Parking package model must be under models/parking')
+        # Installed ROS packages work from any cwd. Source fallback also permits
+        # offline evaluation before colcon build, without importing ROS eagerly.
+        source = Path(__file__).resolve().parents[3] / relative
+        try:
+            from ament_index_python.packages import get_package_share_directory, PackageNotFoundError
+            try:
+                path = Path(get_package_share_directory('skku_track_drive_pkg')) / relative
+            except PackageNotFoundError:
+                path = source
+        except ImportError:
+            path = source
+        if not path.is_file() and source.is_file():
+            path = source
+    else:
+        path = Path(value).expanduser()
     if not value or not path.is_file():
         raise FileNotFoundError('Parking segmentation model missing; set front/rear.model_path in camera YAML')
     if path.suffix.lower() not in ('.pt', '.onnx', '.engine'):
@@ -16,6 +35,8 @@ class SegmentModel:
         path = model_path(cfg['model_path'])
         from ultralytics import YOLO
         self.model = YOLO(path, task='segment')
+        if self.model.task != 'segment':
+            raise ValueError('Parking requires a segmentation model, not a box-only checkpoint')
         self.cfg = cfg
         # Accessing names may initialize an exported backend. It deliberately
         # fails early if runtime dependencies or metadata are unavailable.

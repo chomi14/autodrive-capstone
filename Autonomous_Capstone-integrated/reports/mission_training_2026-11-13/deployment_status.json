@@ -1,0 +1,30 @@
+{
+  "default_model": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/src/skku_track_drive_pkg/models/mission/best_m.pt",
+  "default_sha256": "377b6a225e05ce3da6209b2dfdf0e129df034e8837d12861511e54267d258f15",
+  "default_preserved": true,
+  "trained_model": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/src/skku_track_drive_pkg/models/mission/best_m_v3.pt",
+  "trained_sha256": "b857742722a7222aa1d96b1b27235ebba2ff7cd7667764dc288c5cf6d6080ef0",
+  "automatic_promotion": false,
+  "reason": "New model improves obstacle recall and lane masks, but the unchanged light position filter rejects one additional labeled controller-region light in the test capture. Preserve the current default pending position-filter and false-positive review.",
+  "original_backup": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/datasets/mission/autodrive_26_2_v1_20261113/original_best_m.pt",
+  "installed_default_resolves_to": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/src/skku_track_drive_pkg/models/mission/best_m.pt",
+  "cpu_inference": [
+    {
+      "shape": [
+        432,
+        432,
+        3
+      ],
+      "detections": 2
+    },
+    {
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "detections": 2
+    }
+  ],
+  "physical_drive_test": false
+}

@@ -4,6 +4,8 @@ mission_controller_node:
     speed: 250
     stanley_gain: 0.027
     heading_gain: 0.55
+    lane_change_gain: 0.014
+    lane_change_gain_duration_s: 1.5
     lookahead_index: 30
     car_center_x: 325.0
     confidence: 0.5

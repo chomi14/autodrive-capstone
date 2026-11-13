@@ -1,0 +1,8 @@
+{
+  "selected_model": "src/skku_track_drive_pkg/models/mission/best_m_v3.pt",
+  "run": "training_conservative",
+  "selected_epoch": 45,
+  "trained_epochs": 60,
+  "selection_basis": "Validation fixed-confidence recall: traffic_light and lane2 do not regress; obstacle recall and both lane mask IoUs improve over baseline. Final runtime test metrics not used to choose checkpoint.",
+  "validation_metrics": "conservative/runtime_val/runtime_comparison.json"
+}

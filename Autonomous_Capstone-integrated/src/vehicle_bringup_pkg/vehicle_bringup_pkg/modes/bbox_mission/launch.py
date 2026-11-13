@@ -16,7 +16,7 @@ from vehicle_bringup_pkg.tuning_configuration import tuning_launch_arguments, re
 # =========================
 # EDIT HERE: 실행 / 장치 / 저장
 # =========================
-DEFAULT_MODEL = ''                  # 빈 값: models/mission/best_m.pt 자동 선택
+DEFAULT_MODEL = ''                  # 빈 값: models/mission/best_m_v3.pt 자동 선택
 DEFAULT_CAMERA = '/dev/video0'       # 실제 전방 카메라 장치
 DEFAULT_PORT = '/dev/arduino'        # Arduino serial 장치
 DEFAULT_BAUDRATE = 115200            # 기존 차량 펌웨어 통신 속도
@@ -28,7 +28,7 @@ DEFAULT_CALIBRATION_TOLERANCE = 35    # 조향 보정 허용 ADC 오차
 DEFAULT_GUI = True                  # Mission Tuner 표시
 DEFAULT_SENSORS_ONLY = False         # True: 실제 카메라/GUI만, 모터 연결 제외
 DEFAULT_DRY_RUN = False              # True: 실제 센서/모터 모두 제외
-LOAD_SAVED_TUNING = False            # True: 이전 GUI P 저장값 자동 적용
+LOAD_SAVED_TUNING = True             # True: 이전 GUI P 저장값 자동 적용
 BBOX_TUNING_PATH = str(Path.home() / '.config/autodrive/mission_bbox_only_tuning.yaml')
 DEFAULT_TUNING_CONFIG = ''           # 명시 YAML 경로: 코드 상단값보다 우선
 DEFAULT_RECORD_DIR = ''              # 빈 값: rosbag 기록 안 함
@@ -92,6 +92,8 @@ START_ENABLED = True               # 계산 활성화; 실제 출발은 기존 W
 # 자동 전환 후 5초 고정 유지. GUI의 L로 즉시 반전 및 5초 유지 재시작.
 # 나머지 과거 회피값은 저장 YAML/실행 인자 호환용이며 전환·속도·정지에 사용하지 않습니다.
 BBOX_DEFAULTS = {
+    'lane_change_gain': 0.014,     # 차선 변경 중 Stanley gain 상한(평상시 gain 이하)
+    'lane_change_gain_duration_s': 1.5,  # 변경 요청 후 적용 시간(s), 0: 해제
     'obstacle_trigger_mode': 0,     # 기존 동작 유지. 면적 모드는 별도 launch 사용.
     'obstacle_min_area_ratio': 0.02, # 면적 모드: 화면 대비 bbox 최소 면적
     'lane_change_cooldown_s': 0.0, # 기존 모드 영향 없음
@@ -215,7 +217,7 @@ def bbox_assemble(context):
 
 def generate_launch_description():
     model = DEFAULT_MODEL or str(
-        Path(get_package_share_directory('skku_track_drive_pkg')) / 'models/mission/best_m.pt')
+        Path(get_package_share_directory('skku_track_drive_pkg')) / 'models/mission/best_m_v3.pt')
     overrides = {
         'camera_device': DEFAULT_CAMERA, 'arduino_port': DEFAULT_PORT,
         'arduino_baud': DEFAULT_BAUDRATE, 'device': DEFAULT_DEVICE,

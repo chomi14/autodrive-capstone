@@ -39,7 +39,8 @@ def test_size_launch_is_opt_in_and_has_one_command_owner(dry,sensors):
         base=module('size_base_launch','src/vehicle_bringup_pkg/launch/mission_bbox_only.launch.py')
         ctx=LaunchContext()
         ctx.launch_configurations.update(dry_run=dry,sensors_only=sensors,
-            speed='30',track_tuning_path=str(Path(tmp)/'no_track.yaml'))
+            speed='30',track_tuning_path=str(Path(tmp)/'no_track.yaml'),
+            saved_tuning_path=str(Path(tmp)/'mission_bbox_size_tuning.yaml'))
         actions=size.generate_launch_description().entities
         for action in actions:
             if isinstance(action,DeclareLaunchArgument):
@@ -57,6 +58,8 @@ def test_size_launch_is_opt_in_and_has_one_command_owner(dry,sensors):
         assert settings['obstacle_min_area_ratio']==.02
         assert settings['obstacle_near_y']==300
         assert settings['lane_change_cooldown_s']==2
+        assert settings['lane_change_gain']==.014
+        assert settings['lane_change_gain_duration_s']==1.5
         assert ctx.launch_configurations['saved_tuning_path'].endswith('mission_bbox_size_tuning.yaml')
         nodes=[a for a in base.bbox_assemble(ctx) if isinstance(a,Node)]
         names=[node.node_executable for node in nodes]
@@ -68,11 +71,25 @@ def test_size_launch_is_opt_in_and_has_one_command_owner(dry,sensors):
         params=evaluate_parameters(ctx,controller._Node__parameters)[0]
         assert params['obstacle_trigger_mode']==1 and params['speed']==30
         assert params['initial_target_lane']==2
+        # P-saved Y cuts load by default and reach the controller unchanged.
+        Path(ctx.launch_configurations['saved_tuning_path']).write_text(
+            'mission_controller_node:\n  ros__parameters:\n'
+            '    obstacle_near_y: 345\n    traffic_max_bottom_y: 85\n'
+            '    lane_change_gain: 0.018\n    lane_change_gain_duration_s: 2.3\n')
+        assert ctx.launch_configurations['load_saved_tuning']=='true'
+        nodes=[a for a in base.bbox_assemble(ctx) if isinstance(a,Node)]
+        controller=next(n for n in nodes if n.node_executable=='bbox_mission_controller_node')
+        params=evaluate_parameters(ctx,controller._Node__parameters)[0]
+        assert params['obstacle_near_y']==345 and params['traffic_max_bottom_y']==85
+        assert params['lane_change_gain']==.018 and params['lane_change_gain_duration_s']==2.3
         # Explicit command-line/GUI-compatible values override defaults.
         ctx.launch_configurations.update(obstacle_min_area_ratio='0.035',obstacle_near_y='320',
-                                         initial_target_lane='1')
+                                         initial_target_lane='1',lane_change_gain='0.028',
+                                         lane_change_gain_duration_s='0.8')
         assert base.resolve_bbox_settings(ctx)['obstacle_min_area_ratio']==.035
         assert base.resolve_bbox_settings(ctx)['obstacle_near_y']==320
         nodes=[a for a in base.bbox_assemble(ctx) if isinstance(a,Node)]
         controller=next(n for n in nodes if n.node_executable=='bbox_mission_controller_node')
-        assert evaluate_parameters(ctx,controller._Node__parameters)[0]['initial_target_lane']==1
+        params=evaluate_parameters(ctx,controller._Node__parameters)[0]
+        assert params['initial_target_lane']==1
+        assert params['lane_change_gain']==.028 and params['lane_change_gain_duration_s']==.8

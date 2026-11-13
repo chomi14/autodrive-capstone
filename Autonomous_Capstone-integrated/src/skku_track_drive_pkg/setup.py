@@ -9,6 +9,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name, 'models'), glob('models/*.pt')),
         (os.path.join('share', package_name, 'models/mission'), glob('models/mission/*.pt')),
+        (os.path.join('share', package_name, 'models/parking'), glob('models/parking/*.pt')),
     ],
     install_requires=['setuptools'], zip_safe=True,
     maintainer='skku', maintainer_email='noreply@example.com',

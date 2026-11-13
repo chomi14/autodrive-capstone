@@ -1,0 +1,148 @@
+{
+  "val": {
+    "aggregate": {
+      "metrics/precision(B)": 0.9235637785973961,
+      "metrics/recall(B)": 0.9047437179088303,
+      "metrics/mAP50(B)": 0.9445483848101427,
+      "metrics/mAP50-95(B)": 0.8022213731070869,
+      "metrics/precision(M)": 0.9249186450144856,
+      "metrics/recall(M)": 0.9061722893374018,
+      "metrics/mAP50(M)": 0.9446089630186989,
+      "metrics/mAP50-95(M)": 0.7579771310342193,
+      "fitness": 1.5601985041413062
+    },
+    "per_class": [
+      {
+        "Class": "lane1",
+        "Images": 131,
+        "Instances": 131,
+        "Box-P": 0.94607,
+        "Box-R": 0.93738,
+        "Box-F1": 0.94171,
+        "mAP50": 0.97898,
+        "mAP50-95": 0.77492,
+        "Mask-P": 0.94607,
+        "Mask-R": 0.93738,
+        "Mask-F1": 0.94171
+      },
+      {
+        "Class": "lane2",
+        "Images": 175,
+        "Instances": 175,
+        "Box-P": 0.93215,
+        "Box-R": 0.98286,
+        "Box-F1": 0.95683,
+        "mAP50": 0.98799,
+        "mAP50-95": 0.91967,
+        "Mask-P": 0.93757,
+        "Mask-R": 0.98857,
+        "Mask-F1": 0.96239
+      },
+      {
+        "Class": "obstacle",
+        "Images": 59,
+        "Instances": 67,
+        "Box-P": 0.92197,
+        "Box-R": 0.70547,
+        "Box-F1": 0.79932,
+        "mAP50": 0.8707,
+        "mAP50-95": 0.66242,
+        "Mask-P": 0.92197,
+        "Mask-R": 0.70547,
+        "Mask-F1": 0.79932
+      },
+      {
+        "Class": "traffic_light",
+        "Images": 17,
+        "Instances": 17,
+        "Box-P": 0.89407,
+        "Box-R": 0.99326,
+        "Box-F1": 0.94106,
+        "mAP50": 0.94053,
+        "mAP50-95": 0.85187,
+        "Mask-P": 0.89407,
+        "Mask-R": 0.99326,
+        "Mask-F1": 0.94106
+      }
+    ],
+    "speed": {
+      "preprocess": 0.8333086402118656,
+      "inference": 4.499685798939469,
+      "loss": 0.00447947089317798,
+      "postprocess": 0.5808266137618466
+    }
+  },
+  "test": {
+    "aggregate": {
+      "metrics/precision(B)": 0.9120771400957233,
+      "metrics/recall(B)": 0.9208950192437646,
+      "metrics/mAP50(B)": 0.9614171203515984,
+      "metrics/mAP50-95(B)": 0.786011451433173,
+      "metrics/precision(M)": 0.9099480989544966,
+      "metrics/recall(M)": 0.9188458389158958,
+      "metrics/mAP50(M)": 0.9610819381178115,
+      "metrics/mAP50-95(M)": 0.7878556018203648,
+      "fitness": 1.573867053253538
+    },
+    "per_class": [
+      {
+        "Class": "lane1",
+        "Images": 122,
+        "Instances": 122,
+        "Box-P": 0.97936,
+        "Box-R": 0.94262,
+        "Box-F1": 0.96064,
+        "mAP50": 0.9873,
+        "mAP50-95": 0.79537,
+        "Mask-P": 0.97084,
+        "Mask-R": 0.93443,
+        "Mask-F1": 0.95229
+      },
+      {
+        "Class": "lane2",
+        "Images": 163,
+        "Instances": 163,
+        "Box-P": 0.94254,
+        "Box-R": 0.9816,
+        "Box-F1": 0.96167,
+        "mAP50": 0.99225,
+        "mAP50-95": 0.86688,
+        "Mask-P": 0.94254,
+        "Mask-R": 0.9816,
+        "Mask-F1": 0.96167
+      },
+      {
+        "Class": "obstacle",
+        "Images": 64,
+        "Instances": 77,
+        "Box-P": 0.98318,
+        "Box-R": 0.75936,
+        "Box-F1": 0.8569,
+        "mAP50": 0.93204,
+        "mAP50-95": 0.71156,
+        "Mask-P": 0.98318,
+        "Mask-R": 0.75936,
+        "Mask-F1": 0.8569
+      },
+      {
+        "Class": "traffic_light",
+        "Images": 16,
+        "Instances": 16,
+        "Box-P": 0.74322,
+        "Box-R": 1.0,
+        "Box-F1": 0.8527,
+        "mAP50": 0.93407,
+        "mAP50-95": 0.77024,
+        "Mask-P": 0.74322,
+        "Mask-R": 1.0,
+        "Mask-F1": 0.8527
+      }
+    ],
+    "speed": {
+      "preprocess": 0.8792268938590465,
+      "inference": 4.475872849162041,
+      "loss": 0.0013829217934278595,
+      "postprocess": 0.741493374304337
+    }
+  }
+}

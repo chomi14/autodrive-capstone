@@ -1,0 +1,13 @@
+{
+  "resumed_utc": "2026-11-13T08:56:55.376772+00:00",
+  "reason": "Training interrupted during epoch 55; restore saved epoch 54 optimizer and EMA",
+  "checkpoint": "datasets/parking/20261113/rear/training/weights/last.pt",
+  "checkpoint_sha256": "8fc9541212d48b96ae4a7f5a595d85a9fab33fb7ec83ce1090c0b368180e4e10",
+  "completed_epochs_before_resume": 54,
+  "target_epochs": 60,
+  "optimizer_restored": true,
+  "batch": 32,
+  "device": "0",
+  "backup": "datasets/parking/20261113/rear/recovery_before_resume_epoch54",
+  "note": "results.csv time resets on resume; it is not total cumulative training time."
+}

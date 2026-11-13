@@ -36,11 +36,11 @@ control:
 front:
   device: /dev/video0
   image_topic: /parking_camera/front/image_raw
-  model_path: ''  # acquire/train a parking segment model; no weights bundled
+  model_path: package://skku_track_drive_pkg/models/parking/parking_front.pt
   model_device: cuda:0
   confidence: 0.5
-  width: 640
-  height: 480
+  width: 1280
+  height: 720  # matches the front training images' 16:9 aspect ratio
   fps: 15.0
   rotate_deg: 0  # clockwise, then optional horizontal flip, BEFORE inference
   flip_horizontal: false
@@ -60,13 +60,13 @@ front:
 rear:
   device: /dev/video2
   image_topic: /parking_camera/rear/image_raw
-  model_path: ''
+  model_path: package://skku_track_drive_pkg/models/parking/parking_rear.pt
   model_device: cuda:0
   confidence: 0.5
-  width: 640
-  height: 480
+  width: 1280
+  height: 720
   fps: 15.0
-  rotate_deg: 0  # reference rotates rear camera; determine YOUR mounting first
+  rotate_deg: 90  # reference clockwise rotation: 720x1280 rear training images
   flip_horizontal: false
   classes:
     parking_space: parking_space

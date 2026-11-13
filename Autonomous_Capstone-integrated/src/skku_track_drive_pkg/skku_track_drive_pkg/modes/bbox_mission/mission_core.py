@@ -139,7 +139,14 @@ class MissionCore:
         self.blocking_boxes = []
         self.status = {}
         self._lane_cooldown_until = None
+        self.last_lane_switch_at = None
         self.last_lane_switch_source = None
+
+    def lane_change_gain_remaining(self, now):
+        """Gain duration is independent of the automatic-switch cooldown."""
+        if self.last_lane_switch_at is None:
+            return 0.0
+        return max(0.0, self.last_lane_switch_at + self.p['lane_change_gain_duration_s'] - now)
 
     def cooldown_remaining(self, now):
         if self._lane_cooldown_until is None:
@@ -148,6 +155,7 @@ class MissionCore:
 
     def _switch_target_lane(self, now, source):
         self.target_lane = 1 if self.target_lane == 2 else 2
+        self.last_lane_switch_at = now
         self._lane_cooldown_until = now + LANE_CHANGE_COOLDOWN_S
         self.last_lane_switch_source = source
         self.state = 'AVOIDING'

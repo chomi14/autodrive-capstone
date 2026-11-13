@@ -15,11 +15,11 @@ SIZE_DEFAULTS = {
     'initial_target_lane': '2',         # 출발 차선: 1 또는 2. 현재 차선의 반대로 전환.
     'obstacle_trigger_mode': '1',       # 1: 면적 기준 / 0: 기존 하단 기준
     'obstacle_min_area_ratio': '0.02',  # 화면의 2% (640x480에서 6144px²)
-    'obstacle_near_y': '300',           # 기존 하단 근접 조건 유지. 480px 기준.
+    'obstacle_near_y': '',              # 저장값 우선. 저장값 없으면 기본 300(480px 기준).
     'obstacle_confirm_frames': '1',     # 면적 모드는 첫 프레임에 전환 요청
     'avoid_speed': '250',               # 회피 PWM 상한
     'lane_change_cooldown_s': '2.0',     # 책의 쿨다운 구조. 최초 전환은 대기 없음.
-    'load_saved_tuning': 'false',       # 예전 bbox 저장값의 자동 개입 방지
+    'load_saved_tuning': 'true',        # 이전 GUI P 저장값 자동 적용
     'saved_tuning_path': str(Path.home() / '.config/autodrive/mission_bbox_size_tuning.yaml'),
 }
 

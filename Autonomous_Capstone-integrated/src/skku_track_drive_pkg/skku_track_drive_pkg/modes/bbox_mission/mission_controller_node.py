@@ -44,6 +44,7 @@ class MissionControllerNode(TrackControllerNode):
         self.mission = MissionCore({name: self.get_parameter(name).value for name in MISSION})
         self.status_pub = self.create_publisher(String, '/mission/status', 1)
         self._processed_lane = 2
+        self._lane_change_gain_remaining_s = 0.0
         self._mission_lane_valid = False
         self.last_mission_frame = time.monotonic()
         self.get_logger().info(f'Mission model classes verified: {sorted(names)}')
@@ -67,6 +68,13 @@ class MissionControllerNode(TrackControllerNode):
             self.mission.red_latched = True
 
     def prepare_lane(self, detections, frame):
+        # Compute this before motion.plan: the switch decision at the end of
+        # the preceding frame selects the path/gain for this frame.
+        self._lane_change_gain_remaining_s = self.mission.lane_change_gain_remaining(time.monotonic())
+        self.motion.stanley_gain_override = (
+            min(self.motion.stanley_gain, self.mission.p['lane_change_gain'])
+            if self._lane_change_gain_remaining_s > 0.0 else None
+        )
         target = self.mission.target_lane
         self.lane.lane_class_name = f'lane{target}'
         if self._processed_lane != target:
@@ -90,6 +98,13 @@ class MissionControllerNode(TrackControllerNode):
         # selected lane mask and never pauses for an unavailable path.
         valid = len(points) >= 2 and self.lane.missed_frames == 0
         stop, limit = self.mission.decide(detections, frame, camera_path, self.last_mission_frame, valid)
+        # Report the gain actually used for this command, including the frame
+        # whose obstacle decision requests the next lane.
+        self.mission.status.update(
+            effective_stanley_gain=self.motion.effective_stanley_gain,
+            lane_change_gain_active=self.motion.stanley_gain_override is not None,
+            lane_change_gain_remaining_s=self._lane_change_gain_remaining_s,
+        )
         self.mission.status['traffic_boxes'] = describe_traffic_boxes(frame, self.mission.status, self.mission.p)
         self.mission.status['traffic_limits'] = {
             name: self.mission.p[name] for name in (
@@ -142,7 +157,14 @@ class MissionControllerNode(TrackControllerNode):
             if 'sample_xy' in evidence:
                 sx, sy = evidence['sample_xy']
                 cv2.drawMarker(debug, (sx, sy+camera_y), color, cv2.MARKER_CROSS, 7, 1)
-        return add_traffic_light_panel(debug, status, camera_frame=frame)
+        debug = add_traffic_light_panel(debug, status, camera_frame=frame)
+        gain = self.motion.effective_stanley_gain
+        remaining = status.get('lane_change_gain_remaining_s', 0.0)
+        band = np.full((28, debug.shape[1], 3), 20, dtype=np.uint8)
+        cv2.putText(band, f'Stanley gain={gain:.3f}  lane-change gain={self.mission.p["lane_change_gain"]:.3f}'
+                    f' / {self.mission.p["lane_change_gain_duration_s"]:.1f}s  remaining={remaining:.1f}s',
+                    (10, 19), cv2.FONT_HERSHEY_SIMPLEX, .48, (0, 255, 255), 1, cv2.LINE_AA)
+        return np.vstack((band, debug))
 
 
 def main(args=None):

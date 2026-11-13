@@ -19,6 +19,8 @@ MISSION = {
     'obstacle_confirm_frames': (3, 1, 30, 1),
     'obstacle_clear_frames': (5, 1, 60, 1),
     'obstacle_near_y': (300, 0, 480, 1),
+    'lane_change_gain': (0.014, 0.0, 0.2, 0.001),  # 차선 변경 중 Stanley gain 상한
+    'lane_change_gain_duration_s': (1.5, 0.0, 10.0, 0.1),  # 0이면 임시 gain 해제
     'path_margin_px': (35, 0, 200, 1),
     'alternate_min_area_px': (250, 50, 20000, 50),
     'image_timeout_s': (0.75, 0.1, 3.0, 0.05),
@@ -115,10 +117,15 @@ def limits(specs):
 
 def trackbars(specs):
     result = {}
+    labels = {
+        'obstacle_near_y': 'Obstacle Cut (Y px)',
+        'lane_change_gain': 'Lane Change Gain',
+        'lane_change_gain_duration_s': 'Lane Change Gain Time (s)',
+    }
     for name, (default, minimum, maximum, step) in specs.items():
         value_type = type(default)
         result[name] = (
-            'Obstacle Cut (Y px)' if name == 'obstacle_near_y' else name,
+            labels.get(name, name),
             int(round((maximum - minimum) / step)),
             lambda pos, lo=minimum, inc=step, typ=value_type: typ(round(lo + pos * inc, 6)),
             lambda val, lo=minimum, inc=step: int(round((val - lo) / inc)),

@@ -128,7 +128,7 @@ def test_model_adapter_maps_actual_nonfixed_ids_and_rejects_box_only(monkeypatch
         def __len__(self):
             return 1
     output = SimpleNamespace(boxes=Boxes(), masks=SimpleNamespace(xy=[[[1, 1], [3, 1], [3, 3]]]))
-    model = SimpleNamespace(names={9: 'slot', 17: 'finish'}, predict=lambda *a, **kw: [output])
+    model = SimpleNamespace(task='segment', names={9: 'slot', 17: 'finish'}, predict=lambda *a, **kw: [output])
     monkeypatch.setitem(sys.modules, 'ultralytics', SimpleNamespace(YOLO=lambda *a, **kw: model))
     cfg = {'model_path': str(weights), 'classes': {'parking_space': 'slot', 'end_line': 'finish'},
            'model_device': 'cpu', 'confidence': .5}
@@ -139,6 +139,9 @@ def test_model_adapter_maps_actual_nonfixed_ids_and_rejects_box_only(monkeypatch
         adapter.predict(None)
     cfg['classes']['parking_space'] = 'missing'
     with pytest.raises(ValueError, match='missing required'):
+        SegmentModel(cfg)
+    model.task = 'detect'
+    with pytest.raises(ValueError, match='segmentation model'):
         SegmentModel(cfg)
 
 

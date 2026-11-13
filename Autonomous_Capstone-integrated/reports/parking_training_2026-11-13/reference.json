@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/ksk192830/ROS2_AutonomousVehicle",
+  "commit": "9c657d6007354e9bad319eb2f55f44d75a1dc43c",
+  "subdirectory": "projects/4th_skku_contest",
+  "rear_rotation": "image_publisher.py rotate_mode=1 -> cv2.ROTATE_90_CLOCKWISE"
+}

@@ -45,7 +45,7 @@ def fusion_assemble(context):
 
 
 def generate_launch_description():
-    model = str(Path(get_package_share_directory('skku_track_drive_pkg'), 'models/mission/best_m.pt'))
+    model = str(Path(get_package_share_directory('skku_track_drive_pkg'), 'models/mission/best_m_v3.pt'))
     tuning = tuning_launch_arguments('mission')
     # Override the new launch default without changing the original mission tuning.
     tuning = [a for a in tuning if a.name not in ('speed', 'saved_tuning_path')]

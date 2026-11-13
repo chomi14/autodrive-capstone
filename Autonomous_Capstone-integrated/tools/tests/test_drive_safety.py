@@ -80,6 +80,25 @@ class DriveSafetyTests(unittest.TestCase):
         self.node.on_ui_heartbeat(String(data=self.node.challenge))
         self.node.on_tuner_heartbeat(String(data=self.node.challenge))
 
+    def test_command_status_distinguishes_serial_write_from_board_feedback(self):
+        self.node.handle_serial_line('STATUS,pot=355,target=-4,left_speed=0,right_speed=0')
+        self.clock += 0.2
+        self.node.publish_command_status(self.clock)
+        status = json.loads(self.node.command_status_pub.publish.call_args.args[0].data)
+        self.assertEqual(status['firmware'], dict(pot_adc=355, target=-4, left_pwm=0, right_pwm=0))
+        self.assertEqual(status['firmware_age_sec'], 0.2)
+        self.assertEqual(self.node.last_pot, 355)
+        self.assertFalse(self.node.armed)
+        self.assertEqual(self.port.events, [b'X\n'])  # Reading feedback never enables motion.
+
+    def test_legacy_firmware_does_not_invent_an_acknowledgement(self):
+        self.node.handle_serial_line('STOPPED')
+        self.node.publish_command_status(self.clock)
+        status = json.loads(self.node.command_status_pub.publish.call_args.args[0].data)
+        self.assertIsNone(status['firmware'])
+        self.assertIsNone(status['firmware_age_sec'])
+        self.assertEqual(status['serial_rx'], 'STOPPED')
+
     def feed_controller(self, active=True, instance='controller-a', token=None):
         self.node.on_controller_heartbeat(String(data=json.dumps({
             'challenge': token or self.node.challenge, 'instance': instance, 'active': active})))

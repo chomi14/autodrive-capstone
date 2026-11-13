@@ -57,7 +57,7 @@ def description(mode):
     arguments = [config_argument(), *common_arguments('0.75' if camera else '0.25', camera=camera)]
     if camera:
         arguments.extend(perception_arguments('mission'))
-        default_model = str(Path(get_package_share_directory('skku_track_drive_pkg'), 'models/mission/best_m.pt'))
+        default_model = str(Path(get_package_share_directory('skku_track_drive_pkg'), 'models/mission/best_m_v3.pt'))
         arguments.append(DeclareLaunchArgument('model_path', default_value=default_model,
                                              description='Segmentation model with lane1, lane2, obstacle, traffic_light'))
     arguments.extend(tuning_launch_arguments(mode))

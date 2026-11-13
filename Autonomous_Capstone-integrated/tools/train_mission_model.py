@@ -29,7 +29,13 @@ def sha256(path):
 
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + '\n')
+    def encode(item):
+        if isinstance(item, np.generic):
+            return item.item()
+        if isinstance(item, np.ndarray):
+            return item.tolist()
+        raise TypeError(f'Cannot serialize {type(item).__name__}')
+    path.write_text(json.dumps(value, indent=2, ensure_ascii=False, default=encode) + '\n')
 
 
 def prepare(archive, work):
@@ -132,15 +138,26 @@ def evaluate(model_path, data, work, name, device):
 
 
 def main():
+    global REPORT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', type=Path, default=Path('/home/autolab/Downloads/autodrive_26-2.v1i.yolov8.zip'))
     parser.add_argument('--work', type=Path, default=DEFAULT_WORK)
     parser.add_argument('--device', default='0')
     parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--patience', type=int, default=25)
+    parser.add_argument('--lr0', type=float, default=0.0003)
+    parser.add_argument('--freeze', type=int, default=None)
+    parser.add_argument('--run-name', default='training')
+    parser.add_argument('--report', type=Path, default=REPORT)
+    parser.add_argument('--output-model', type=Path,
+                        default=ROOT / 'src/skku_track_drive_pkg/models/mission/best_m_v2.pt')
+    parser.add_argument('--initial-model', type=Path, default=None)
     parser.add_argument('--prepare-only', action='store_true')
     parser.add_argument('--resume', action='store_true')
     args = parser.parse_args()
+    REPORT = args.report.resolve()
     work = args.work.resolve()
+    run = work / args.run_name
     REPORT.mkdir(parents=True, exist_ok=True)
     data = prepare(args.archive.resolve(), work)
     print('DATA_AUDIT', (REPORT / 'dataset_audit.json').read_text().split('"manifest"')[0], flush=True)
@@ -152,8 +169,10 @@ def main():
         raise RuntimeError('CUDA unavailable. Run outside the device-restricted sandbox.')
     torch.set_num_threads(4)
     baseline = work / 'original_best_m.pt'
+    if args.initial_model and baseline.exists() and sha256(args.initial_model) != sha256(baseline):
+        raise ValueError('Initial model differs from preserved baseline; use a new --work directory')
     if not baseline.exists():
-        shutil.copy2(ROOT / 'src/skku_track_drive_pkg/models/mission/best_m.pt', baseline)
+        shutil.copy2(args.initial_model or ROOT / 'src/skku_track_drive_pkg/models/mission/best_m.pt', baseline)
     existing = YOLO(str(baseline))
     if existing.task != 'segment' or list(existing.names.values()) != CLASSES:
         raise ValueError('Mission model task/classes do not match dataset')
@@ -161,14 +180,14 @@ def main():
                       baseline_sha256=sha256(baseline), baseline=str(baseline),
                       gpu=torch.cuda.get_device_name(0) if args.device != 'cpu' else 'cpu')
     write_json(REPORT / 'provenance.json', provenance)
-    if not (REPORT / 'baseline_metrics.json').exists():
-        evaluate(baseline, data, work, 'baseline', args.device)
-    config = dict(data=str(data), epochs=args.epochs, patience=25, imgsz=640,
+    # Recompute to avoid reusing metrics from another --work directory/model.
+    evaluate(baseline, data, work, 'baseline', args.device)
+    config = dict(data=str(data), epochs=args.epochs, patience=args.patience, imgsz=640,
                   batch=8, device=args.device, workers=2, cache=False,
-                  project=str(work), name='training', exist_ok=False,
-                  optimizer='AdamW', lr0=0.0003, lrf=0.05, cos_lr=True,
+                  project=str(work), name=args.run_name, exist_ok=False,
+                  optimizer='AdamW', lr0=args.lr0, lrf=0.05, cos_lr=True,
                   weight_decay=0.0005, warmup_epochs=3.0, warmup_bias_lr=0.0,
-                  seed=42, deterministic=True, amp=False, freeze=None,
+                  seed=42, deterministic=True, amp=False, freeze=args.freeze,
                   hsv_h=0.0, hsv_s=0.20, hsv_v=0.30,
                   degrees=2.0, translate=0.06, scale=0.20,
                   shear=0.0, perspective=0.0, flipud=0.0, fliplr=0.0,
@@ -177,18 +196,18 @@ def main():
                   val=True, plots=True, save=True, save_period=10)
     write_json(REPORT / 'training_config.json', config)
     if args.resume:
-        model = YOLO(str(work / 'training/weights/last.pt'))
+        model = YOLO(str(run / 'weights/last.pt'))
         model.train(resume=True, device=args.device)
     else:
         model = YOLO(str(baseline))
         model.train(**config)
-    best = work / 'training/weights/best.pt'
-    candidate = ROOT / 'src/skku_track_drive_pkg/models/mission/best_m_v2.pt'
+    best = run / 'weights/best.pt'
+    candidate = args.output_model.resolve()
     evaluate(best, data, work, 'candidate', args.device)
     shutil.copy2(best, candidate)
-    shutil.copy2(work / 'training/results.csv', REPORT / 'results.csv')
+    shutil.copy2(run / 'results.csv', REPORT / 'results.csv')
     for filename in ['results.png', 'train_batch0.jpg', 'val_batch0_pred.jpg']:
-        source = work / 'training' / filename
+        source = run / filename
         if source.exists():
             shutil.copy2(source, REPORT / filename)
     provenance.update(candidate=str(candidate), candidate_sha256=sha256(candidate))
