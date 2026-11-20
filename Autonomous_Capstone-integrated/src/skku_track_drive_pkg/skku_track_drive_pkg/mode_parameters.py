@@ -119,6 +119,7 @@ def trackbars(specs):
     result = {}
     labels = {
         'obstacle_near_y': 'Obstacle Cut (Y px)',
+        'traffic_max_bottom_y': 'Traffic Light Cut (Y px)',
         'lane_change_gain': 'Lane Change Gain',
         'lane_change_gain_duration_s': 'Lane Change Gain Time (s)',
     }

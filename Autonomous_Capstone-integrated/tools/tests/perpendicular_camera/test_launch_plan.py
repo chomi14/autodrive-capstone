@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-from skku_track_drive_pkg.modes.perpendicular_camera.configuration import load_config
+from skku_track_drive_pkg.modes.perpendicular_camera.configuration import TUNING_TOPIC, load_config
 from skku_track_drive_pkg.modes.perpendicular_camera.core import ControlConfig
 from skku_track_drive_pkg.modes.perpendicular_camera.model import model_path
 
@@ -38,7 +38,7 @@ def plan(tmp_path, preview=True, **options):
     definitions = [node for node in ast.parse(FILE.read_text()).body
                    if isinstance(node, ast.FunctionDef) and node.name in ('_bool', 'assemble')]
     ns = dict(Path=Path, os=os, json=json, LaunchConfiguration=FakeLaunchConfiguration,
-              load_config=load_config, ControlConfig=ControlConfig, model_path=model_path,
+              load_config=load_config, TUNING_TOPIC=TUNING_TOPIC, ControlConfig=ControlConfig, model_path=model_path,
               Node=Action, EmitEvent=Action, Shutdown=Action, RegisterEventHandler=Action, OnProcessExit=Action,
               vehicle_remappings=lambda prefix: [('vehicle/drive_key', prefix+'/vehicle/drive_key')],
               vehicle_io_nodes=lambda: [Action(executable='serial_sender_node_v2'), Action(executable='drive_arm_node')])
@@ -69,6 +69,7 @@ def test_preview_isolates_commands_observations_services_and_hardware(tmp_path):
         assert node['namespace'] == 'parking_camera_preview'
         mappings = dict(node['remappings'])
         assert mappings['/parking_camera/front/observation'] == '/parking_camera_preview/front/observation'
+        assert mappings[TUNING_TOPIC] == '/parking_camera_preview/tuning'
         assert mappings['/perpendicular_camera_controller/reset'].startswith('/parking_camera_preview/')
         assert mappings['/parking_camera/front/image_raw'] == '/parking_camera_preview/front/image_raw'
     controller = next(n for n in nodes if n['executable'] == 'camera_parking_controller_node')

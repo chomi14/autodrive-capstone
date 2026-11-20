@@ -5,28 +5,32 @@ control:
   calibration_confirmed: false
   observation_timeout_s: 0.5
   observation_loss_fault_s: 5.0
-  confirm_frames: 3
+  confirm_frames: 1
+  space_missing_frames: 5
+  align_confirm_frames: 4
   forward_pwm: 70
   reverse_pwm: 60
+  exit_pwm: 70
   max_steering: 7
   steering_sign: 1
   front_target_x: 0.7
   rear_target_x: 0.5
-  front_position_gain: 20.0
-  front_angle_gain: 5.0
-  rear_position_gain: 10.0
-  rear_angle_gain: 8.0
-  end_angle_gain: 10.0
-  exit_position_gain: 5.0
-  exit_angle_gain: 5.0
+  front_position_gain: 135.0
+  front_angle_gain: 8.771929824561404
+  rear_position_gain: 14.0
+  rear_angle_gain: 16.0
+  end_angle_gain: 50.0
+  exit_position_gain: 0.5
+  exit_angle_gain: 10.0
   steering_deadband: 0.3
   align_steering: -7
+  align_yaw_min_rad: 0.65
   align_yaw_error_max_rad: 0.65
   direction_pause_s: 0.7
-  end_steering_y: 0.70
-  end_stop_y: 0.88
+  end_steering_y: 0.78125  # reference 1000 pixels / 1280
+  end_stop_y: 0.9765625  # reference 1250 pixels / 1280; tune on the vehicle
   stopped_hold_s: 3.0
-  exit_enabled: false
+  exit_enabled: true
   escape_s: 1.5
   outline_finish_y: 0.90
   final_straight_s: 2.5
@@ -66,7 +70,7 @@ rear:
   width: 1280
   height: 720
   fps: 15.0
-  rotate_deg: 90  # reference clockwise rotation: 720x1280 rear training images
+  rotate_deg: 0  # normal landscape mounting; keep the scene upright before inference
   flip_horizontal: false
   classes:
     parking_space: parking_space
@@ -76,8 +80,9 @@ rear:
   min_area_ratio: 0.001
   morph_kernel: 3
   parking_width_ratio: 0.40  # calibrate BEV slot width / BEV image width
-  pair_min_separation_ratio: 0.15
-  pair_max_angle_rad: 0.65
-  min_longitudinal_span_ratio: 0.05
+  roi_band_ratio: 0.02  # boundary band kernel / short image dimension
+  pair_min_separation_ratio: 0.2777777777777778  # reference 200 pixels / 720
+  pair_max_angle_rad: 0.6981317007977318  # reference 40 degrees
+  min_longitudinal_span_ratio: 0.0234375
 
 save_path: ~/.config/autodrive/perpendicular_camera.yaml

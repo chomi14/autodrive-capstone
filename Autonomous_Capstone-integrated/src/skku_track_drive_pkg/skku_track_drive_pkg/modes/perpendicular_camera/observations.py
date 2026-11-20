@@ -30,12 +30,15 @@ class Observation:
     end: Line = field(default_factory=Line)
     outline: Line = field(default_factory=Line)
     error: str = ''
+    tuning_revision: int = 0
 
     def __post_init__(self):
         if self.camera not in ('front', 'rear') or type(self.stamp_ns) is not int or self.stamp_ns <= 0:
             raise ValueError('Observation needs front/rear and a positive source stamp')
         if type(self.valid) is not bool or type(self.space_found) is not bool:
             raise ValueError('Observation flags must be booleans')
+        if type(self.tuning_revision) is not int or self.tuning_revision < 0:
+            raise ValueError('Invalid camera tuning revision')
         if not all(isinstance(getattr(self, k), Line) for k in ('line', 'space', 'end', 'outline')):
             raise ValueError('Invalid observation geometry')
 

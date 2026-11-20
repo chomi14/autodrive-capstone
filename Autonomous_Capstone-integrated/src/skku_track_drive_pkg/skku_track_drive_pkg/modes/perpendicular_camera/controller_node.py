@@ -13,10 +13,10 @@ from interfaces_pkg.msg import MotionCommand
 
 from skku_track_drive_pkg.command_lease import CommandLease
 from skku_track_drive_pkg.controller_liveness import ControllerLiveness, run_controller
-from .configuration import load_config, save_config_atomic, validate_config
+from .configuration import (CAPTURE_FIELDS, VISION_FIELDS, REAR_VISION_FIELDS, TUNING_TOPIC,
+                            load_config, save_config_atomic, validate_config)
 from .core import CameraParkingCore, ControlConfig
 from .observations import Observation
-
 
 class CameraParkingController(Node):
     def __init__(self):
@@ -35,6 +35,11 @@ class CameraParkingController(Node):
                 raise ValueError('Only front/rear device and model_path session overrides are allowed')
             self.data[role].update(values)
         validate_config(self.data)
+        self.active_capture = {
+            role: {key: self.data[role][key] for key in CAPTURE_FIELDS} for role in ('front', 'rear')
+        }
+        self.tuning_revision = 0
+        self.declare_parameter('camera_tuning_json', '')
         defaults = ControlConfig(**self.data['control'])
         for item in fields(defaults):
             self.declare_parameter(item.name, getattr(defaults, item.name))
@@ -48,6 +53,9 @@ class CameraParkingController(Node):
         self.command_lease = CommandLease(topic, self.get_name())
         self.cmd_pub = self.create_publisher(MotionCommand, topic, 1)
         self.status_pub = self.create_publisher(String, '/parking_camera/status', 1)
+        latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                             durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.tuning_pub = self.create_publisher(String, TUNING_TOPIC, latched)
         self.observations = {'front': None, 'rear': None}
         self.received = {'front': 0.0, 'rear': 0.0}
         self.pipeline_seen = set()
@@ -61,20 +69,30 @@ class CameraParkingController(Node):
         if self.preview:
             self.create_subscription(Bool, '/parking_camera/preview_enabled', self.on_arm, 1)
         else:
-            latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
-                                 durability=DurabilityPolicy.TRANSIENT_LOCAL)
             self.create_subscription(Bool, 'vehicle/drive_state', self.on_arm, latched)
         self.create_service(Trigger, '~/reset', self.on_reset)
         self.create_service(Trigger, '~/save', self.on_save)
         self.add_on_set_parameters_callback(self.on_parameters)
         self.timer = self.create_timer(.05, self.on_timer)
         self.liveness = ControllerLiveness(self)
+        self.publish_tuning()
+
+    def capture_restart_pending(self):
+        return any(self.data[role][key] != value for role, settings in self.active_capture.items()
+                   for key, value in settings.items())
+
+    def publish_tuning(self):
+        data = dict(self.data, control=vars(self.core.p))
+        self.tuning_pub.publish(String(data=json.dumps({
+            'revision': self.tuning_revision, 'config': data, 'active_capture': self.active_capture,
+        }, allow_nan=False)))
 
     def on_observation(self, role, message):
         try:
             obs = Observation.from_json(message.data)
             previous = self.observations[role]
-            if obs.camera != role or (previous is not None and obs.stamp_ns <= previous.stamp_ns):
+            if (obs.camera != role or obs.tuning_revision != self.tuning_revision
+                    or (previous is not None and obs.stamp_ns <= previous.stamp_ns)):
                 return
             if obs.stamp_ns > self.get_clock().now().nanoseconds:
                 return
@@ -118,14 +136,37 @@ class CameraParkingController(Node):
                 raise ValueError('S/disarm before changing camera parking parameters')
             allowed = {item.name for item in fields(ControlConfig)}
             values = {name: getattr(self.core.p, name) for name in allowed}
+            data = dict(self.data)
             for parameter in parameters:
-                if parameter.name not in allowed:
+                if parameter.name == 'camera_tuning_json':
+                    edit = json.loads(parameter.value)
+                    if edit['revision'] != self.tuning_revision:
+                        raise ValueError('Settings changed since editing. Reload and try again.')
+                    cameras = edit['cameras']
+                    if not isinstance(cameras, dict) or set(cameras) - {'front', 'rear'}:
+                        raise ValueError('Expected front or rear camera settings')
+                    for role, updates in cameras.items():
+                        keys = CAPTURE_FIELDS + VISION_FIELDS
+                        if role == 'rear':
+                            keys += REAR_VISION_FIELDS
+                        if not isinstance(updates, dict) or set(updates) - set(keys):
+                            raise ValueError(f'{role}: unknown camera tuning field')
+                        data[role] = dict(data[role], **updates)
+                elif parameter.name in allowed:
+                    values[parameter.name] = parameter.value
+                else:
                     raise ValueError(f'{parameter.name} requires restart')
-                values[parameter.name] = parameter.value
-            self.core.p = ControlConfig(**values)
+            data['control'] = values
+            control = ControlConfig(**values)
+            validate_config(data)
+            self.data, self.core.p = data, control
             self.core.reset(self.get_clock().now().nanoseconds)
+            self.tuning_revision += 1
+            self.observations = {'front': None, 'rear': None}
+            self.pipeline_seen.clear()
+            self.publish_tuning()
             return SetParametersResult(successful=True)
-        except (TypeError, ValueError) as exc:
+        except (KeyError, TypeError, ValueError) as exc:
             return SetParametersResult(successful=False, reason=str(exc))
 
     def on_timer(self):
@@ -141,13 +182,15 @@ class CameraParkingController(Node):
         usable = {role: obs if now-self.received[role] <= self.core.p.observation_timeout_s else None
                   for role, obs in self.observations.items()}
         ready = self.pipeline_seen == {'front', 'rear'}
-        command = self.core.step(dt, stamp, self.armed and ready, **usable)
+        restart = self.capture_restart_pending()
+        command = self.core.step(dt, stamp, self.armed and ready and (self.preview or not restart), **usable)
         self.cmd_pub.publish(MotionCommand(steering=command.steering,
                                            left_speed=command.left_speed, right_speed=command.right_speed))
         status = {
             'state': self.core.state, 'reason': self.core.reason if ready else 'WAIT_BOTH_PERCEPTION_PIPELINES',
             'transition': self.core.transition, 'fault': self.core.fault,
             'armed': self.armed, 'preview': self.preview,
+            'tuning_revision': self.tuning_revision, 'capture_restart_pending': restart,
             'calibration_confirmed': self.core.p.calibration_confirmed,
             'active_elapsed_s': self.core.elapsed, 'loss_watchdog_s': self.core.loss_elapsed,
             'seen_space': self.core.seen_space, 'seen_count': self.core.seen_count,
@@ -161,6 +204,8 @@ class CameraParkingController(Node):
                 'end': vars(obs.end), 'outline': vars(obs.outline)}
                 for role, obs in self.observations.items()},
         }
+        if restart and not self.preview:
+            status['reason'] = 'SAVE_AND_RESTART_FOR_CAMERA_CAPTURE_SETTINGS'
         self.status_pub.publish(String(data=json.dumps(status, allow_nan=False)))
 
     def destroy_node(self):

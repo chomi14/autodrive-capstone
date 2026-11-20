@@ -12,7 +12,7 @@ from .mission_core import MissionCore
 from skku_track_drive_pkg.mode_parameters import MISSION, limits
 from skku_track_drive_pkg.messages import DetectionArray
 from skku_track_drive_pkg.controller_liveness import run_controller
-from skku_track_drive_pkg.traffic_light_display import add_traffic_light_panel, describe_traffic_boxes
+from skku_track_drive_pkg.traffic_light_display import BBOX_CUT_COLORS, add_traffic_light_panel, describe_traffic_boxes
 
 
 class MissionControllerNode(TrackControllerNode):
@@ -147,7 +147,11 @@ class MissionControllerNode(TrackControllerNode):
                         (x1, max(15, y1-5)), cv2.FONT_HERSHEY_SIMPLEX, .4, color, 1)
         debug = super()._make_debug(marked, detections, *args)
         # The parent adds a header above the untouched camera coordinates.
-        camera_y = debug.shape[0] - frame.shape[0]
+        height, width = frame.shape[:2]
+        camera_y = debug.shape[0] - height
+        for name, color in BBOX_CUT_COLORS.items():
+            y = camera_y + min(height - 1, round(self.mission.p[name] * height / 480))
+            cv2.line(debug, (0, y), (width - 1, y), color, 1, cv2.LINE_AA)
         for index, evidence in enumerate(status.get('traffic_boxes', [])):
             x1, y1, x2, y2 = map(int, evidence['box'])
             color = (255, 255, 0) if evidence.get('eligible') else (128, 128, 128)

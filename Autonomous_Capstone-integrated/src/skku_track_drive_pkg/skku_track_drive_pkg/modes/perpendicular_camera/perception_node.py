@@ -1,14 +1,16 @@
 """One camera/model process, preserving the exact image stamp end to end."""
+from dataclasses import replace
+import json
 import time
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, qos_profile_sensor_data
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
-from .configuration import load_config
+from .configuration import VISION_FIELDS, REAR_VISION_FIELDS, TUNING_TOPIC, load_config
 from .model import SegmentModel
 from .observations import Observation
 from .perception import extract, orient_image
@@ -28,6 +30,7 @@ class ParkingPerceptionNode(Node):
         if self.get_parameter('model_override').value:
             self.cfg['model_path'] = self.get_parameter('model_override').value
         self.timeout = data['control'].get('observation_timeout_s', .5)
+        self.tuning_revision = 0
         self.model = SegmentModel(self.cfg)
         self.bridge = CvBridge()
         self.last_stamp = 0
@@ -38,7 +41,25 @@ class ParkingPerceptionNode(Node):
         self.views = {name: self.create_publisher(Image, root + '/' + name, qos_profile_sensor_data)
                       for name in ('oriented', 'segmentation', 'bev')}
         self.create_subscription(Image, self.cfg['image_topic'], self.on_image, qos_profile_sensor_data)
+        latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                             durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.create_subscription(String, TUNING_TOPIC, self.on_tuning, latched)
         self.get_logger().info(f'{self.role}: model classes {self.model.names}; input {self.cfg["image_topic"]}')
+
+    def on_tuning(self, message):
+        try:
+            payload = json.loads(message.data)
+            revision = payload['revision']
+            if type(revision) is not int or revision <= self.tuning_revision:
+                return
+            config = payload['config']
+            keys = VISION_FIELDS + (REAR_VISION_FIELDS if self.role == 'rear' else ())
+            values = {key: config[self.role][key] for key in keys}
+            self.timeout = config['control']['observation_timeout_s']
+            self.cfg.update(values)  # the model adapter shares this dictionary
+            self.tuning_revision = revision
+        except (KeyError, TypeError, ValueError) as exc:
+            self.get_logger().error(f'Invalid camera tuning update: {exc}')
 
     def on_image(self, message):
         stamp = message.header.stamp.sec*1000000000 + message.header.stamp.nanosec
@@ -72,6 +93,7 @@ class ParkingPerceptionNode(Node):
             obs = Observation(stamp, self.role, message.header.frame_id, valid=False, error=str(exc))
             self.status_pub.publish(String(data='ERROR: ' + str(exc)))
             self.get_logger().error(f'{self.role} perception: {exc}')
+        obs = replace(obs, tuning_revision=self.tuning_revision)
         self.obs_pub.publish(String(data=obs.to_json()))
 
 

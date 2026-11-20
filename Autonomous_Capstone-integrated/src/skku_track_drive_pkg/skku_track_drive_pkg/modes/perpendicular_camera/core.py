@@ -15,28 +15,32 @@ class ControlConfig:
     calibration_confirmed: bool = False
     observation_timeout_s: float = 0.5
     observation_loss_fault_s: float = 5.0
-    confirm_frames: int = 3
+    confirm_frames: int = 1
+    space_missing_frames: int = 5
+    align_confirm_frames: int = 4
     forward_pwm: int = 70
     reverse_pwm: int = 60
+    exit_pwm: int = 70
     max_steering: int = 7
     steering_sign: int = 1
     front_target_x: float = 0.7
     rear_target_x: float = 0.5
-    front_position_gain: float = 20.0
-    front_angle_gain: float = 5.0
-    rear_position_gain: float = 10.0
-    rear_angle_gain: float = 8.0
-    end_angle_gain: float = 10.0
-    exit_position_gain: float = 5.0
-    exit_angle_gain: float = 5.0
+    front_position_gain: float = 135.0
+    front_angle_gain: float = 8.771929824561404
+    rear_position_gain: float = 14.0
+    rear_angle_gain: float = 16.0
+    end_angle_gain: float = 50.0
+    exit_position_gain: float = 0.5
+    exit_angle_gain: float = 10.0
     steering_deadband: float = 0.3
     align_steering: int = -7
-    align_yaw_error_max_rad: float = 0.65
+    align_yaw_min_rad: float = 0.65
+    align_yaw_error_max_rad: float = 0.65  # used by legacy symmetric alignment
     direction_pause_s: float = 0.7
-    end_steering_y: float = 0.70
-    end_stop_y: float = 0.88
+    end_steering_y: float = 1000 / 1280
+    end_stop_y: float = 1250 / 1280
     stopped_hold_s: float = 3.0
-    exit_enabled: bool = False
+    exit_enabled: bool = True
     escape_s: float = 1.5
     outline_finish_y: float = 0.90
     final_straight_s: float = 2.5
@@ -49,9 +53,12 @@ class ControlConfig:
             value = getattr(self, item.name)
             if type(value) is not type(item.default) or (type(value) in (int, float) and not math.isfinite(value)):
                 raise ValueError(f'Invalid type/value for control.{item.name}')
-        if not (1 <= self.confirm_frames <= 100 and 1 <= self.max_steering <= 7 and self.steering_sign in (-1, 1)):
+        if not all(1 <= n <= 100 for n in (self.confirm_frames, self.space_missing_frames,
+                                           self.align_confirm_frames)):
+            raise ValueError('Confirmation counts must be in 1..100')
+        if not (1 <= self.max_steering <= 7 and self.steering_sign in (-1, 1)):
             raise ValueError('Invalid confirmation or steering limits')
-        if not (1 <= self.forward_pwm <= 255 and 1 <= self.reverse_pwm <= 255):
+        if not all(1 <= pwm <= 255 for pwm in (self.forward_pwm, self.reverse_pwm, self.exit_pwm)):
             raise ValueError('PWM must be in 1..255')
         if not -self.max_steering <= self.align_steering <= self.max_steering:
             raise ValueError('align_steering outside output range')
@@ -62,6 +69,8 @@ class ControlConfig:
             raise ValueError('Require 0 <= end_steering_y < end_stop_y <= 1')
         if not 0 < self.align_yaw_error_max_rad < math.pi / 2:
             raise ValueError('Invalid alignment angular tolerance')
+        if not 0 <= self.align_yaw_min_rad < math.pi / 2:
+            raise ValueError('Minimum alignment yaw must be in [0, pi/2)')
         if self.steering_deadband < 0:
             raise ValueError('steering_deadband must be nonnegative')
         for item in fields(self):
@@ -188,7 +197,7 @@ class CameraParkingCore:
                 else:
                     self.seen_count = 0
                     self.missing_count = self.missing_count + 1 if self.seen_space else 0
-                if self.missing_count >= p.confirm_frames:
+                if self.missing_count >= p.space_missing_frames:
                     self.enter('ALIGN_TO_SPACE', now_ns, 'seen space then consecutive missing frames')
                     return MotionCommand()
             ex, ea = obs.line.x - p.front_target_x, axis_error(obs.line.yaw)
@@ -197,10 +206,13 @@ class CameraParkingCore:
 
         if self.state == 'ALIGN_TO_SPACE':
             error = axis_error(obs.space.yaw)
-            self.errors = {'center': obs.space.x - p.rear_target_x, 'yaw': error}
+            yaw = obs.space.yaw % math.pi  # same line direction whether fitLine points up or down
+            self.errors = {'center': obs.space.x - p.rear_target_x, 'yaw': error, 'alignment_yaw': yaw}
             if new_frame:
-                self.align_count = self.align_count + 1 if abs(error) <= p.align_yaw_error_max_rad else 0
-                if self.align_count >= p.confirm_frames:
+                aligned = (yaw >= p.align_yaw_min_rad if p.align_yaw_min_rad
+                           else abs(error) <= p.align_yaw_error_max_rad)
+                self.align_count = self.align_count + 1 if aligned else 0
+                if self.align_count >= p.align_confirm_frames:
                     self.enter('DIRECTION_PAUSE', now_ns, 'rear line angle within tolerance')
                     return MotionCommand()
             return self.command(p.align_steering, p.forward_pwm)
@@ -228,7 +240,7 @@ class CameraParkingCore:
             if self.elapsed >= p.escape_s:
                 self.enter('TURN_RIGHT', now_ns, 'bounded straight escape complete')
                 return MotionCommand()
-            return self.command(speed=p.forward_pwm)
+            return self.command(speed=p.exit_pwm)
 
         if self.state == 'TURN_RIGHT':
             if obs.outline.y >= p.outline_finish_y:
@@ -236,11 +248,11 @@ class CameraParkingCore:
                 return MotionCommand()
             ex, ea = obs.outline.x - .5, axis_error(obs.outline.yaw, 0.0)
             self.errors = {'center': ex, 'yaw': ea}
-            return self.command(p.exit_position_gain * ex + p.exit_angle_gain * ea, p.forward_pwm)
+            return self.command(p.exit_position_gain * ex + p.exit_angle_gain * ea, p.exit_pwm)
 
         if self.state == 'FINAL_STRAIGHT':
             if self.elapsed >= p.final_straight_s:
                 self.enter('FINISHED', now_ns, 'bounded final straight complete')
                 return MotionCommand()
-            return self.command(speed=p.forward_pwm)
+            return self.command(speed=p.exit_pwm)
         return self.fail('UNKNOWN_STATE', now_ns)

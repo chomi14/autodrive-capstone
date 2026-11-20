@@ -15,7 +15,7 @@
 | `perception_node.py` | 카메라 하나당 인식 프로세스 하나 |
 | `core.py` | ROS가 없는 상태 전이와 조향 계산 |
 | `controller_node.py` | 20 Hz 명령 발행, 관측 검사, W/S 상태, reset/save |
-| `viewer_node.py` | 전·후방 6개 영상, 상태 표시, W/S/R/P |
+| `viewer_node.py`, `tuning_panel.py` | 전·후방 6개 영상, 상태·BEV 기준표시, 설정 편집과 저장 |
 | `configuration.py` | 이 모드 전용 설정 검증·원자적 저장 |
 | `src/vehicle_bringup_pkg/config/perpendicular_camera.yaml` | 제어·카메라·모델·BEV 전체 설정 |
 | `src/vehicle_bringup_pkg/vehicle_bringup_pkg/modes/perpendicular_camera/launch.py` | 이 모드 전용 실행 조립 |
@@ -96,7 +96,8 @@ engine은 해당 GPU·TensorRT 환경에 맞게 준비한다. 박스 전용 모�
 ## 설치와 모터 없는 확인
 
 ROS 2 Humble/Ubuntu 22.04 작업공간에서 기존 의존성에 더해 `ultralytics`,
-NumPy, OpenCV, PyYAML이 필요하다. ROS의 `cv_bridge`와 호환되는 Python·NumPy
+NumPy, OpenCV, PyYAML이 필요하다. GUI는 Tk와 Pillow ImageTk를 사용한다.
+ROS의 `cv_bridge`와 호환되는 Python·NumPy
 환경을 사용한다. 이 변경만을 위해 NumPy/OpenCV 시스템 버전을 임의로 올리지 않는다.
 
 아래 명령은 `Autonomous_Capstone-integrated`에서 실행한다.
@@ -111,11 +112,13 @@ cp src/vehicle_bringup_pkg/config/perpendicular_camera.yaml ~/.config/autodrive/
 
 복사한 YAML의 기본 모델 경로는 포함 가중치를 가리킨다.
 장치, 회전/반전, BEV는 차량에 맞춘다.
-기본 입력은 전·후방 모두 1280×720이며 후방은 시계방향 90도 회전 후
-720×1280으로 추론한다. 이는 데이터셋과 원본 실행 코드의 방향에 맞춘 것이며,
-실제 카메라 장착 방향은 preview에서 확인해야 한다.
-이미 회전된 후방 학습 이미지나 영상 토픽을 넣는 경우 `rear.rotate_deg: 0`으로
-별도 YAML을 만들어 두 번 회전하지 않게 한다.
+기본 입력은 전·후방 모두 1280×720이며 일반 가로 장착 기준으로
+전·후방 `rotate_deg: 0`을 사용한다. 영상의 위아래가 정상인 상태로 추론한다.
+후방 학습 이미지는 720×1280 세로 시야이므로 일반 가로 장착에서의 인식 성능은
+실제 영상으로 확인해야 한다. 가로 영상을 단순히 90도 회전하거나 세로로
+늘리는 것으로 학습 당시의 시야를 재현할 수 없다.
+물리적으로 회전해 장착한 카메라만 preview에서 확인하여 `rotate_deg`를 조정한다.
+이미 방향이 보정된 영상 토픽이나 학습 이미지는 다시 회전하지 않는다.
 전·후방 장치는 가능한 `/dev/v4l/by-id/...`로 지정한다.
 `model_device: cpu`도 가능하지만 추론 시간이 `observation_timeout_s`를 넘으면 정지한다.
 지연 예산은 실제 처리 시간을 측정해 설정한다.
@@ -153,9 +156,19 @@ live launch에서는 replay와 simulated clock을 허용하지 않는다.
 
 ## 설정 변경과 저장
 
-기존 숫자형 주차 튜너와 별도의 YAML 스키마다. 카메라·모델·BEV 변경에는
-재시작이 필요하다. 제어 파라미터는 정지 후 ROS 파라미터로 수정할 수 있으며
-수정하면 FSM이 초기화된다. 타입을 유지해야 한다.
+미리보기에서 **Stop(S/Esc)** 후 **Front / Rear / Control** 탭을 편집한다.
+Front/Rear는 시계 방향 회전, 수평 반전, 모델 신뢰도, BEV 원본·목적 네 점,
+마스크와 주차선 검출 설정을 다룬다. 영상과 BEV의 네 점은 같은 번호로 표시한다.
+Control 탭에는 탐색·정렬 확인 횟수, 조향 게인·부호, 단계별 PWM,
+종료선 y, 출차 기준과 대기시간이 있다. BEV 화면에서 종료선과 출차 기준을
+가로선으로 비교할 수 있다.
+
+**Apply**는 비활성 상태에서 검증된 값을 함께 적용하고 FSM을 초기화한다.
+회전·반전·BEV·신뢰도와 제어값은 다음 프레임부터 반영된다.
+장치 경로·해상도·FPS는 **Save YAML(P)** 후 그 파일로 다시 실행하면 반영된다.
+**Reload**는 편집 중인 값을 버리고 현재 적용된 설정을 다시 읽는다.
+모델이나 영상 토픽은 YAML 또는 launch 인자로 지정한다.
+제어 파라미터는 정지 상태에서 ROS 명령으로도 수정할 수 있다.
 
 ```bash
 ros2 param set /parking_camera_preview/perpendicular_camera_controller rear_position_gain 8.0
@@ -186,11 +199,11 @@ BEV는 +x가 화면 오른쪽, +y가 아래이며 yaw는 `atan2(dy, dx)` rad다.
 
 | 상태 | 움직임에 필요한 정보·전이 |
 | --- | --- |
-| SEARCHING_SPACE | 새 전방 경계가 있어야 전진. 주차공간을 confirm_frames번 본 뒤 confirm_frames번 사라져야 진입 |
-| ALIGN_TO_SPACE | 최신 후방 중심선이 있어야 전진 회전. 각도 오차 절댓값이 허용치 이내인 새 프레임이 누적되면 정지 |
+| SEARCHING_SPACE | 새 전방 경계로 전진. 주차공간을 1회 본 뒤 5개 새 프레임에서 연속 미검출되면 정렬로 전환 |
+| ALIGN_TO_SPACE | 최신 후방 중심선으로 전진 회전. 0~π 방향으로 정규화한 yaw ≥ 0.65 rad인 새 프레임을 4장 확인하면 정지 |
 | DIRECTION_PAUSE | 후방 중심선을 유지하며 전후진 전환 정지시간 확보 |
 | PARKING_IN | 후방 중심선으로 후진. 종료선이 지정 y 이후면 종료선 방향 사용. 정지 y 도달 시 같은 주기에 0 출력 |
-| STOPPED | 주차 상태 유지. 출차는 기본 비활성화 |
+| STOPPED | 3초간 정지한 뒤 자동 출차. Control 탭에서 자동 출차를 끄면 계속 정지 |
 | ESCAPE | 출차 활성화 시 최신 전방 관측과 함께 제한 시간 직진 |
 | TURN_RIGHT | 최신 전방 출차선을 따라 진행. 출차선 상실 시 정지 |
 | FINAL_STRAIGHT | 최신 전방 관측과 함께 제한 시간 직진 후 FINISHED |
@@ -213,8 +226,9 @@ geometry를 계산하므로 서로 다른 프레임을 결합하지 않는다.
 원본에서 수정한 부분은 초기 미검출 진입, timer 기반 중복 확인,
 방향 부호가 뒤집히는 fitLine, 미초기화 중심값, 종료선 판정 후 한 주기 후진,
 인식 상실 시 전진 복구, 전후진 즉시 전환, 제한 없는 출차다.
-원본의 ALIGN yaw `>=0.65`와 반대 의미 로그는 폐기하고
-**수직 목표 방향 오차의 절댓값**으로 조건을 정의했다.
+원본 코드의 ALIGN 비교식 `yaw >= 0.65`는 중심선 방향을 0~π로 정규화해 적용한다.
+종료선 기준은 원본 1000px와 1250px를 원본 영상 높이 1280px로 나눈 값으로
+시작한다. 카메라 설치와 BEV에 맞는 정지 위치는 현장에서 보정한다.
 
 ## 실차 보정 순서와 한계
 
@@ -227,10 +241,10 @@ geometry를 계산하므로 서로 다른 프레임을 결합하지 않는다.
    기본 0.40은 원본 528px를 환산한 측정값이 아니다.
 5. preview에서 좌우 위치·차체 방향을 바꿔 예상 조향 부호와 포화를 확인한다.
 6. 실제 정지시킬 범퍼 위치에서 종료선 y를 측정해 end_steering_y/end_stop_y를 설정한다.
-   원본 1000/1250px는 그대로 이식하지 않았다.
+   GUI의 Rear BEV에서 두 기준과 현재 종료선 y를 비교한다.
 7. 조향/카메라 부호와 구동 PWM을 확인하고 낮은 속도부터 gain을 조정한다.
 8. 확인 후에만 calibration_confirmed를 true로 설정하고 live launch를 사용한다.
-9. 출차는 주차 검증 후 별도로 exit_enabled를 켜서 확인한다.
+9. 주차만 검증할 때는 Control 탭의 Automatic exit를 끈다.
 
 ALIGN 진입 시 후방 선이 아직 안 보이면 자동으로 전진하며 찾지 않고 정지한다.
 이 경우 후방 카메라 시야·진입 위치를 먼저 맞춰야 한다. 영상 없이 진행하는

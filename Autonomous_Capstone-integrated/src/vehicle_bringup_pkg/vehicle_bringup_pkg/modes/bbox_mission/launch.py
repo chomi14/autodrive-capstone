@@ -16,7 +16,7 @@ from vehicle_bringup_pkg.tuning_configuration import tuning_launch_arguments, re
 # =========================
 # EDIT HERE: 실행 / 장치 / 저장
 # =========================
-DEFAULT_MODEL = ''                  # 빈 값: models/mission/best_m_v3.pt 자동 선택
+DEFAULT_MODEL = ''                  # 빈 값: models/mission/best_m_s_curve.pt 자동 선택
 DEFAULT_CAMERA = '/dev/video0'       # 실제 전방 카메라 장치
 DEFAULT_PORT = '/dev/arduino'        # Arduino serial 장치
 DEFAULT_BAUDRATE = 115200            # 기존 차량 펌웨어 통신 속도
@@ -217,7 +217,7 @@ def bbox_assemble(context):
 
 def generate_launch_description():
     model = DEFAULT_MODEL or str(
-        Path(get_package_share_directory('skku_track_drive_pkg')) / 'models/mission/best_m_v3.pt')
+        Path(get_package_share_directory('skku_track_drive_pkg')) / 'models/mission/best_m_s_curve.pt')
     overrides = {
         'camera_device': DEFAULT_CAMERA, 'arduino_port': DEFAULT_PORT,
         'arduino_baud': DEFAULT_BAUDRATE, 'device': DEFAULT_DEVICE,

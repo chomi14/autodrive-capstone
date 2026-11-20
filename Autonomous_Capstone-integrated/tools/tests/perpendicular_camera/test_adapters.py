@@ -4,7 +4,7 @@ This does NOT claim ROS middleware/launch validation. Imports are omitted by
 AST so the control adapter can be checked on a machine without ROS installed.
 """
 import ast
-from dataclasses import fields
+from dataclasses import fields, replace
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -13,11 +13,14 @@ from unittest.mock import Mock
 import pytest
 
 from skku_track_drive_pkg.messages import MotionCommand
+from skku_track_drive_pkg.modes.perpendicular_camera.configuration import (
+    CAPTURE_FIELDS, REAR_VISION_FIELDS, VISION_FIELDS, load_config, validate_config)
 from skku_track_drive_pkg.modes.perpendicular_camera.core import CameraParkingCore, ControlConfig
 from skku_track_drive_pkg.modes.perpendicular_camera.observations import Line, Observation
 
 ROOT = Path(__file__).resolve().parents[3]
 MODULE = ROOT/'src/skku_track_drive_pkg/skku_track_drive_pkg/modes/perpendicular_camera/controller_node.py'
+CONFIG = ROOT/'src/vehicle_bringup_pkg/config/perpendicular_camera.yaml'
 
 
 def adapter():
@@ -26,6 +29,8 @@ def adapter():
     fake_time.monotonic = lambda: fake_time.value
     ns = dict(Node=object, time=fake_time, json=json, MotionCommand=MotionCommand,
               Observation=Observation, ControlConfig=ControlConfig, fields=fields,
+              CAPTURE_FIELDS=CAPTURE_FIELDS, VISION_FIELDS=VISION_FIELDS, REAR_VISION_FIELDS=REAR_VISION_FIELDS,
+              validate_config=validate_config,
               String=lambda **kw: SimpleNamespace(**kw),
               SetParametersResult=lambda **kw: SimpleNamespace(**kw))
     exec(compile(ast.Module(body=[definition], type_ignores=[]), str(MODULE), 'exec'), ns)
@@ -35,6 +40,12 @@ def adapter():
     obj.get_logger = lambda: Mock()
     obj.cmd_pub = Mock()
     obj.status_pub = Mock()
+    obj.tuning_pub = Mock()
+    obj.tuning_revision = 0
+    obj.data = load_config(CONFIG)
+    obj.active_capture = {
+        role: {key: obj.data[role][key] for key in CAPTURE_FIELDS} for role in ('front', 'rear')
+    }
     obj.core = CameraParkingCore(ControlConfig(calibration_confirmed=True))
     obj.core.was_armed = True
     obj.core.state = 'PARKING_IN'
@@ -117,6 +128,38 @@ def test_live_parameter_updates_are_rejected_and_disarmed_update_resets():
     assert not obj.on_parameters([SimpleNamespace(name='rear_position_gain', value=6)]).successful
 
 
+def test_tuning_is_atomic_and_motion_waits_for_both_new_perception_revisions():
+    obj, _ = adapter()
+    obj.armed = False
+    obj.pipeline_seen.update(('front', 'rear'))
+
+    def change(revision, updates):
+        return SimpleNamespace(name='camera_tuning_json', value=json.dumps({
+            'revision': revision, 'cameras': {'rear': updates},
+        }))
+
+    gain = SimpleNamespace(name='rear_position_gain', value=9.0)
+    assert not obj.on_parameters([gain, change(0, {'rotate_deg': 45})]).successful
+    assert obj.core.p.rear_position_gain == 14.0 and obj.tuning_revision == 0
+    assert obj.on_parameters([gain, change(0, {'rotate_deg': 90, 'width': 640})]).successful
+    assert obj.core.p.rear_position_gain == 9.0 and obj.capture_restart_pending()
+    applied = json.loads(obj.tuning_pub.publish.call_args.args[0].data)
+    assert applied['revision'] == 1 and applied['config']['rear']['rotate_deg'] == 90
+    assert applied['active_capture']['rear']['width'] == 1280
+    assert not obj.on_parameters([change(0, {'rotate_deg': 180})]).successful
+    for role in ('front', 'rear'):
+        send(obj, role, obj.clock.ns-2, tuning_revision=0)
+    assert not obj.pipeline_seen
+    send(obj, 'front', obj.clock.ns-1, tuning_revision=1)
+    assert obj.pipeline_seen == {'front'}
+    send(obj, 'rear', obj.clock.ns-1, tuning_revision=1)
+    assert obj.pipeline_seen == {'front', 'rear'}
+    obj.preview, obj.armed = False, True
+    obj.on_timer()
+    assert obj.cmd_pub.publish.call_args.args[0].left_speed == 0
+    assert json.loads(obj.status_pub.publish.call_args.args[0].data)['capture_restart_pending']
+
+
 def test_model_adapter_maps_actual_nonfixed_ids_and_rejects_box_only(monkeypatch, tmp_path):
     from skku_track_drive_pkg.modes.perpendicular_camera.model import SegmentModel
     import sys
@@ -149,6 +192,7 @@ def test_perception_preserves_stamp_rejects_duplicate_and_accepts_replay_clock_r
     file = MODULE.with_name('perception_node.py')
     definition = next(n for n in ast.parse(file.read_text()).body if isinstance(n, ast.ClassDef))
     ns = dict(Node=object, Observation=Observation, time=SimpleNamespace(monotonic=lambda: 1.0),
+              replace=replace, json=json, VISION_FIELDS=VISION_FIELDS, REAR_VISION_FIELDS=REAR_VISION_FIELDS,
               String=lambda **kw: SimpleNamespace(**kw),
               orient_image=lambda frame, *a: frame,
               extract=lambda frame, polygons, cfg, role, stamp, frame_id:
@@ -156,6 +200,7 @@ def test_perception_preserves_stamp_rejects_duplicate_and_accepts_replay_clock_r
     exec(compile(ast.Module(body=[definition], type_ignores=[]), str(file), 'exec'), ns)
     obj = ns['ParkingPerceptionNode'].__new__(ns['ParkingPerceptionNode'])
     obj.role, obj.timeout = 'rear', .5
+    obj.tuning_revision = 0
     obj.last_stamp, obj.last_clock_ns = 0, 2_000_000_000
     clock = SimpleNamespace(ns=2_000_000_000)
     obj.get_clock = lambda: SimpleNamespace(now=lambda: SimpleNamespace(nanoseconds=clock.ns))
@@ -173,8 +218,14 @@ def test_perception_preserves_stamp_rejects_duplicate_and_accepts_replay_clock_r
     assert first.stamp_ns == 1_900_000_000 and first.frame_id == 'rear-camera'
     obj.on_image(message)
     assert obj.model.predict.call_count == 1
+    config = load_config(CONFIG)
+    config['rear']['rotate_deg'] = 90
+    config['rear']['confidence'] = .7
+    obj.on_tuning(SimpleNamespace(data=json.dumps({'revision': 1, 'config': config})))
+    assert obj.cfg['rotate_deg'] == 90 and obj.cfg['confidence'] == .7
     clock.ns = 1_000_000_000
     header.stamp.sec, header.stamp.nanosec = 0, 900_000_000
     obj.on_image(message)
     assert obj.model.predict.call_count == 2
-    assert Observation.from_json(obj.obs_pub.publish.call_args.args[0].data).stamp_ns == 900_000_000
+    latest = Observation.from_json(obj.obs_pub.publish.call_args.args[0].data)
+    assert latest.stamp_ns == 900_000_000 and latest.tuning_revision == 1

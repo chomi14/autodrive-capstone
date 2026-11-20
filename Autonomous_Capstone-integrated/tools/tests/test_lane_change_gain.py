@@ -2,6 +2,7 @@
 import json
 from unittest.mock import Mock, patch
 
+import cv2
 import numpy as np
 import pytest
 from rclpy.parameter import Parameter
@@ -13,7 +14,7 @@ from skku_track_drive_pkg.messages import (
 )
 from skku_track_drive_pkg.mission_controller_node import MissionControllerNode
 from skku_track_drive_pkg.track_controller_node import TrackControllerNode
-from skku_track_drive_pkg.track_tuner_node import TrackTunerNode, MISSION_PRIMARY_CONTROLS
+from skku_track_drive_pkg.track_tuner_node import TrackTunerNode, TRACKBARS
 from vehicle_bringup_pkg.tuning_configuration import _profile, _validate_parameter_file
 from test_tuning_revision import bare_controller
 
@@ -116,26 +117,51 @@ def test_invalid_gain_settings_are_rejected_atomically(name, value):
     assert node.mission.p == original
 
 
-def test_gui_places_both_controls_on_main_panel_and_saves_reloadable_values(tmp_path):
+def test_gui_separates_mission_controls_from_track_controls_and_saves_both(tmp_path):
     tuner = object.__new__(TrackTunerNode)
-    tuner.tuner_window = 'Mission Tuner'
-    tuner.mode_controls_separate = True
-    tuner.trackbars = trackbars({name: MISSION[name] for name in MISSION_PRIMARY_CONTROLS})
-    tuner.current_values = tuner.desired_values = {
-        'obstacle_near_y': 300, 'lane_change_gain': .028, 'lane_change_gain_duration_s': 1.7,
+    tuner.parameter_root = 'mission_controller_node'
+    tuner.tuner_window = 'Track Tuner'
+    tuner.mode_controls_separate = False
+    mission_values = {
+        'obstacle_near_y': 300, 'traffic_max_bottom_y': 65,
+        'lane_change_gain': .028, 'lane_change_gain_duration_s': 1.7,
     }
+    tuner.trackbars = {
+        'stanley_gain': TRACKBARS['stanley_gain'],
+        **trackbars({name: MISSION[name] for name in (*mission_values, 'hsv_s_min')}),
+    }
+    tuner.current_values = {
+        'stanley_gain': .031, **mission_values, 'hsv_s_min': 100,
+    }
+    tuner.desired_values = tuner.current_values.copy()
+    tuner.mode_status = tuner.command_status = {}
     tuner.control_windows, tuner.parameter_windows = [], {}
-    with patch('cv2.namedWindow'), patch('cv2.resizeWindow'), patch('cv2.createTrackbar') as create:
+    with patch('cv2.namedWindow'), patch('cv2.resizeWindow'), patch('cv2.imshow'), \
+         patch('cv2.setMouseCallback'), patch('cv2.createTrackbar') as create:
         tuner._create_ui()
-    assert create.call_count == 3
-    for call in create.call_args_list:
-        assert call.args[1] == 'Mission Tuner'
+    assert create.call_count == 2
+    assert tuner.parameter_windows == {
+        'stanley_gain': 'Track Tuner',
+        'hsv_s_min': 'Track Tuner Advanced 1',
+    }
+    assert 'Mission Tuner' in tuner.control_windows
+    assert tuner.mission_panel is not None
+    # The canvas buttons adjust the intended typed parameter by a single step.
+    tuner.mission_panel.on_mouse(cv2.EVENT_LBUTTONDOWN, 1040, 264, 0, None)
+    assert tuner.desired_values['obstacle_near_y'] == 301
+    tuner.mission_panel.on_mouse(cv2.EVENT_LBUTTONDOWN, 890, 474, 0, None)
+    tuner.mission_panel.on_mouse(cv2.EVENT_MOUSEMOVE, 1100, 474, cv2.EVENT_FLAG_LBUTTON, None)
+    tuner.mission_panel.on_mouse(cv2.EVENT_LBUTTONUP, 1100, 474, 0, None)
+    assert tuner.desired_values['lane_change_gain'] == .2
+    tuner.forward_drive_key = Mock()
+    tuner.mission_panel.on_mouse(cv2.EVENT_LBUTTONDOWN, 195, 94, 0, None)
+    tuner.forward_drive_key.assert_called_once_with('s')
+    tuner.current_values.update(tuner.desired_values)  # Controller accepted the live edits.
     for name, (_, _, decode, encode) in tuner.trackbars.items():
         assert decode(encode(tuner.current_values[name])) == tuner.current_values[name]
     tuner._set_future = None
     tuner.managed_parameters = tuple(tuner.trackbars)
     tuner.loaded_config_path = ''
-    tuner.parameter_root = 'mission_controller_node'
     tuner.save_path = tmp_path/'mission.yaml'
     tuner.get_logger = Mock(return_value=Mock())
     tuner.save()
@@ -152,7 +178,10 @@ def test_debug_image_shows_effective_gain_and_remaining_time():
     node.adjust_command(MotionCommand(1, 250, 250), DetectionArray(), path, frame)
     with patch.object(TrackControllerNode, '_make_debug', return_value=frame), \
          patch('skku_track_drive_pkg.modes.bbox_mission.mission_controller_node.add_traffic_light_panel', return_value=frame):
-        image = node._make_debug(frame, DetectionArray())
+        image = node._make_debug(frame.copy(), DetectionArray())
     assert image.shape == (508, 640, 3)
     assert np.any(image[:28] != 20)  # Text is drawn into the gain status band.
-    np.testing.assert_array_equal(image[28:], frame)
+    for name in ('traffic_max_bottom_y', 'obstacle_near_y'):
+        y = node.mission.p[name]
+        assert np.any(image[y + 28, 20] != 0)
+    assert not image[29].any()

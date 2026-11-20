@@ -1,0 +1,24 @@
+{
+  "verified_utc": "2026-11-13T09:08:30.731398+00:00",
+  "status": "complete",
+  "completed_epochs": 60,
+  "model": "src/skku_track_drive_pkg/models/parking/parking_rear.pt",
+  "size_bytes": 5983325,
+  "sha256": "72098a15687b8661338a8233420f996ed04de30a89c4b3ec75e93006bd76845a",
+  "installed_model": "install/skku_track_drive_pkg/share/skku_track_drive_pkg/models/parking/parking_rear.pt",
+  "installed_matches_training_best": true,
+  "model_task": "segment",
+  "model_classes": {
+    "0": "end_line",
+    "1": "parking_lot",
+    "2": "parking_space"
+  },
+  "tests": {
+    "passed": 66,
+    "skipped": 1
+  },
+  "ros_package_build": "passed",
+  "offline_inference_images": 80,
+  "report_output_note": "Post-completion console JSON serialization error only; persisted metrics, model, hashes and inference independently verified.",
+  "scope": "Rear training, split evaluation, ROS package installation and offline perception; no vehicle actuation or physical parking validation."
+}

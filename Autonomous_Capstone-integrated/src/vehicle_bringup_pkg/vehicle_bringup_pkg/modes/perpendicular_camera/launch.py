@@ -12,7 +12,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, SetParameter
 
 from vehicle_bringup_pkg.mode_launch import vehicle_remappings, vehicle_io_nodes
-from skku_track_drive_pkg.modes.perpendicular_camera.configuration import load_config
+from skku_track_drive_pkg.modes.perpendicular_camera.configuration import TUNING_TOPIC, load_config
 from skku_track_drive_pkg.modes.perpendicular_camera.core import ControlConfig
 from skku_track_drive_pkg.modes.perpendicular_camera.model import model_path
 
@@ -63,6 +63,7 @@ def assemble(context, preview):
                 remappings.append((data[role]['image_topic'], f'/parking_camera_preview/{role}/image_raw'))
         for suffix in ('status', 'preview_enabled'):
             remappings.append(('/parking_camera/' + suffix, '/parking_camera_preview/' + suffix))
+        remappings.append((TUNING_TOPIC, '/parking_camera_preview/tuning'))
         for suffix in ('reset', 'save'):
             remappings.append((f'/perpendicular_camera_controller/{suffix}',
                                f'/parking_camera_preview/perpendicular_camera_controller/{suffix}'))

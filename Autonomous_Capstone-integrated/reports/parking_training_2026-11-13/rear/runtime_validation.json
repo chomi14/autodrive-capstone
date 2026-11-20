@@ -1,0 +1,44 @@
+{
+  "role": "rear",
+  "model_path": "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/src/skku_track_drive_pkg/models/parking/parking_rear.pt",
+  "model_names": {
+    "0": "end_line",
+    "1": "parking_lot",
+    "2": "parking_space"
+  },
+  "used_class_mapping": {
+    "parking_space": "parking_space",
+    "end_line": "end_line"
+  },
+  "device": "cuda:0",
+  "confidence": 0.5,
+  "inference_images": 80,
+  "input_orientation": "Dataset orientation; not rotated twice",
+  "detected_frames": {
+    "parking_space": 63,
+    "end_line": 55
+  },
+  "geometry_found_frames": {
+    "line": 0,
+    "space": 24,
+    "end": 41,
+    "outline": 0
+  },
+  "example_source_images": [
+    "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/datasets/parking/20261113/rear/original/test/images/frame_000309_20251222_191613_147616_png.rf.43b62b4ed9bf121e6ee112380ce1acd4.jpg",
+    "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/datasets/parking/20261113/rear/original/test/images/frame_000492_20251222_191631_421229_png.rf.a7c14bbd1c2b397dfb982fe16e25dde2.jpg",
+    "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/datasets/parking/20261113/rear/original/test/images/frame_000507_20251222_191633_394478_png.rf.b7907e00d4ff89e517ea244ff9de2a87.jpg",
+    "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/datasets/parking/20261113/rear/original/test/images/frame_000642_20251222_191647_330475_png.rf.04d3dfcf92378071114e170392708724.jpg",
+    "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/datasets/parking/20261113/rear/original/test/images/frame_000720_20251222_191654_546235_png.rf.20a045c9f5376dd90b7eb6f8da4bb9be.jpg",
+    "/home/autolab/autodrive_ws/Autonomous_Capstone-integrated/datasets/parking/20261113/rear/original/test/images/frame_000747_20251222_191656_914631_png.rf.45782436abc55ec4299994ca19d94635.jpg"
+  ],
+  "first_pipeline_ms": 2350.285643999996,
+  "pipeline_ms": {
+    "mean": 32.6853806962108,
+    "p50": 32.22323800014237,
+    "p95": 47.26948190011626,
+    "max": 58.935944999802814
+  },
+  "samples_over_observation_timeout": 0,
+  "scope": "Sequential offline inference+geometry; no USB capture/DDS/vehicle actuation. Geometry counts are availability, not steering or localization accuracy."
+}

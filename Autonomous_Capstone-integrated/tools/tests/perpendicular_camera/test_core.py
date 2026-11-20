@@ -33,13 +33,16 @@ def rear_line(x=.5, yaw=math.pi/2):
 
 
 def enter_reverse(s):
-    for _ in range(3):
-        s.tick(line=front_line(), space_found=True)
-    for _ in range(3):
+    s.tick(line=front_line(), space_found=True)
+    for _ in range(4):
         s.tick(line=front_line(), space_found=False)
+        assert s.core.state == 'SEARCHING_SPACE'
+    s.tick(line=front_line(), space_found=False)
     assert s.core.state == 'ALIGN_TO_SPACE'
     for _ in range(3):
         s.tick('rear', space=rear_line())
+        assert s.core.state == 'ALIGN_TO_SPACE'
+    s.tick('rear', space=rear_line())
     assert s.core.state == 'DIRECTION_PAUSE'
     for _ in range(8):
         cmd = s.tick('rear', space=rear_line())
@@ -50,11 +53,12 @@ def enter_reverse(s):
 
 
 def test_full_parking_stops_on_same_tick_and_holds_without_exit():
-    s = Scenario()
+    s = Scenario(exit_enabled=False)
     enter_reverse(s)
     cmd = s.tick('rear', space=rear_line())
     assert cmd.left_speed == cmd.right_speed == -60
-    cmd = s.tick('rear', end=Line(True, .5, .9, 0.0))
+    assert s.tick('rear', end=Line(True, .5, .97, 0.0)).left_speed == -60
+    cmd = s.tick('rear', end=Line(True, .5, .98, 0.0))
     assert s.core.state == 'STOPPED' and cmd.left_speed == 0
     for _ in range(50):
         assert s.tick('rear').left_speed == 0
@@ -64,7 +68,7 @@ def test_full_parking_stops_on_same_tick_and_holds_without_exit():
 def test_optional_exit_finishes_in_zero_command():
     s = Scenario(exit_enabled=True, stopped_hold_s=.8, escape_s=.3, final_straight_s=.3)
     enter_reverse(s)
-    s.tick('rear', end=Line(True, .5, .9, 0.0))
+    s.tick('rear', end=Line(True, .5, .98, 0.0))
     for _ in range(9):
         s.tick()
     assert s.core.state == 'ESCAPE'
@@ -87,7 +91,7 @@ def test_initial_missing_never_selects_space():
 
 
 def test_same_frame_never_counts_more_than_once():
-    s = Scenario(observation_timeout_s=2.0)
+    s = Scenario(observation_timeout_s=2.0, confirm_frames=3)
     s.tick(line=front_line(), space_found=True)
     same = s.ns-1
     for _ in range(5):
@@ -113,7 +117,7 @@ def test_noise_breaks_missing_confirmation_and_state_barrier_rejects_old_frame()
 def test_alignment_uses_pi_periodic_angle_error(yaw):
     s = Scenario()
     s.enter('ALIGN_TO_SPACE')
-    for _ in range(3):
+    for _ in range(4):
         s.tick('rear', space=rear_line(yaw=yaw))
     assert s.core.state == 'DIRECTION_PAUSE'
 
@@ -162,7 +166,7 @@ def test_end_only_can_control_when_in_end_zone_without_uninitialized_space():
     s = Scenario()
     s.enter('PARKING_IN')
     cmd = s.tick('rear', end=Line(True, .5, .8, .2))
-    assert cmd.left_speed < 0 and cmd.steering == -2
+    assert cmd.left_speed < 0 and cmd.steering == -7
 
 
 def test_stale_and_future_sources_freeze_timers():
@@ -173,7 +177,7 @@ def test_stale_and_future_sources_freeze_timers():
     assert s.core.elapsed == 0
 
 
-@pytest.mark.parametrize('x,expected', [(.7, -2), (.3, 2), (.5, 0)])
+@pytest.mark.parametrize('x,expected', [(.7, -3), (.3, 3), (.5, 0)])
 def test_reverse_center_sign(x, expected):
     s = Scenario()
     s.enter('PARKING_IN')

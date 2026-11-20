@@ -36,7 +36,9 @@ scale and ±2° shear. No flipping, mosaic, mixup or copy-paste is used, to pres
 camera direction and continuous thin parking/stop lines. Validation/test images
 receive only deterministic inference resizing/letterboxing.
 
-Native datasets are front 1280×720, rear 720×1280. Camera configuration captures
-1280×720 and rotates the rear image 90° clockwise before inference. Already
-oriented dataset images must not be rotated again during offline evaluation.
-BEV, steering sign and stop position still require vehicle calibration.
+Native datasets are front 1280×720, rear 720×1280. The default camera configuration
+uses normal landscape mounting: both cameras capture 1280×720 with rotate_deg=0.
+Keep the scene upright; rotating a landscape view does not reproduce the portrait
+training field of view. Rear recognition must be checked on actual mounted-camera
+images. Already oriented dataset images must not be rotated again during offline
+evaluation. BEV, steering sign and stop position still require vehicle calibration.

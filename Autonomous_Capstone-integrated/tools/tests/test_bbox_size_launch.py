@@ -71,6 +71,9 @@ def test_size_launch_is_opt_in_and_has_one_command_owner(dry,sensors):
         params=evaluate_parameters(ctx,controller._Node__parameters)[0]
         assert params['obstacle_trigger_mode']==1 and params['speed']==30
         assert params['initial_target_lane']==2
+        default_model = Path(share('skku_track_drive_pkg')) / 'models/mission/best_m_s_curve.pt'
+        assert default_model.is_file()
+        assert params['model_path'] == str(default_model)
         # P-saved Y cuts load by default and reach the controller unchanged.
         Path(ctx.launch_configurations['saved_tuning_path']).write_text(
             'mission_controller_node:\n  ros__parameters:\n'
@@ -85,7 +88,8 @@ def test_size_launch_is_opt_in_and_has_one_command_owner(dry,sensors):
         # Explicit command-line/GUI-compatible values override defaults.
         ctx.launch_configurations.update(obstacle_min_area_ratio='0.035',obstacle_near_y='320',
                                          initial_target_lane='1',lane_change_gain='0.028',
-                                         lane_change_gain_duration_s='0.8')
+                                         lane_change_gain_duration_s='0.8',
+                                         model_path=str(default_model.with_name('best_m_v3.pt')))
         assert base.resolve_bbox_settings(ctx)['obstacle_min_area_ratio']==.035
         assert base.resolve_bbox_settings(ctx)['obstacle_near_y']==320
         nodes=[a for a in base.bbox_assemble(ctx) if isinstance(a,Node)]
@@ -93,3 +97,4 @@ def test_size_launch_is_opt_in_and_has_one_command_owner(dry,sensors):
         params=evaluate_parameters(ctx,controller._Node__parameters)[0]
         assert params['initial_target_lane']==1
         assert params['lane_change_gain']==.028 and params['lane_change_gain_duration_s']==.8
+        assert params['model_path'] == str(default_model.with_name('best_m_v3.pt'))

@@ -67,6 +67,16 @@ def test_no_visual_edges_does_not_invent_center_from_space_mask():
     assert obs.space_found and not obs.space.found
 
 
+def test_rear_boundary_roi_fits_slot_sides_instead_of_paint_inside_slot():
+    w, h = 640, 480
+    frame = np.full((h, w, 3), 40, np.uint8)
+    for x in (.30, .70, .52):
+        cv2.line(frame, (int(x*w), 50), (int(x*w), 450), (255, 255, 255), 4)
+    polygons = {'parking_space': [rectangle(.30, .1, .70, .95, w, h)]}
+    obs, _, _ = extract(frame, polygons, cfg('rear'), 'rear', 123)
+    assert obs.space.found and abs(obs.space.x - .5) < .02
+
+
 def test_rotation_then_flip_is_explicit_and_applies_before_geometry():
     frame = np.zeros((2, 3, 3), np.uint8)
     frame[0, 0] = (1, 2, 3)

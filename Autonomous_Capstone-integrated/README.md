@@ -66,7 +66,7 @@ bbox 미션은 기존 트랙 제어기를 상속하므로 트랙의 차선·경�
 ## 모델 파일
 
 - 트랙 모델 선택과 기존 `models/` 파일은 유지했다.
-- bbox 미션의 기본 모델은 `src/skku_track_drive_pkg/models/mission/best_m_v3.pt`다.
+- bbox 미션의 기본 모델은 S자 코스 데이터로 추가 학습한 `src/skku_track_drive_pkg/models/mission/best_m_s_curve.pt`다.
 - 다른 미션 모델은 실행 인자 `model_path:=/절대경로/모델.pt`로 지정할 수 있다.
 - 미션 모델은 `lane1`, `lane2`, `obstacle`(또는 `obstacles`), `traffic_light` 클래스가 있는 segmentation 모델이어야 한다.
 
@@ -94,15 +94,19 @@ ros2 launch vehicle_bringup_pkg parallel_parking.launch.py
 전환 후 5초간은 추가 자동 회피를 막고 새 목표 차선을 유지한다. 쿨다운 때문에 정지하지 않는다.
 미션 GUI 또는 디버그 창에 포커스를 두고 **L**을 누르면 목표 차선을 `1↔2`로
 강제 전환한다. L은 쿨다운 중에도 동작하며 누른 시점부터 다시 5초간 자동 회피를 막는다.
-목표 차선과 남은 쿨다운은 GUI/디버그에 표시된다. `obstacle_near_y`는
-`Mission Tuner` 메인 창 상단에서 조절한다. 같은 위치의 **Lane Change Gain**
+`Mission Tuner`에는 장애물 bbox 하단 Y 컷라인 (`obstacle_near_y`),
+신호등 bbox 하단 Y 컷라인 (`traffic_max_bottom_y`), 회피 중 게인과 적용 시간만 모았다.
+왼쪽 영상에는 적용된 컷라인이 표시된다. 상단 버튼이나 기존 단축키로 시작·정지·저장을
+할 수 있고, **V**로 상세 디버그 창을 열 수 있다.
+속도, 평상시 조향, ROI와 BEV는 `Track Tuner`에서 조절하고 나머지 고급 설정은
+`Track Tuner Advanced` 창에 있다. `Mission Tuner`의 **Lane Change Gain**
 (`lane_change_gain`, 기본 0.014)과 **Lane Change Gain Time (s)**
 (`lane_change_gain_duration_s`, 기본 1.5초)로 차선 변경 중의 Stanley gain과 적용 시간을 조절한다.
 자동 회피 또는 L 전환 요청 시 타이머를 다시 시작하며 새 차선 경로를 계산할 때 적용한다.
 설정 시간 동안 평상시 gain과 변경 gain 중 작은 값을 사용하고, 시간이 지나면
 현재 평상시 gain으로 복귀한다. 적용 시간을 0으로 하면 임시 gain을 끈다.
-heading gain은 유지하며, 실제 적용 gain과 남은 시간은 GUI/디버그에 표시한다.
-두 값도 실시간 반영되고 P로 저장된다. 이전 YAML의 `lane_change_cooldown_s`와
+heading gain은 유지하며, 실제 적용 gain과 남은 시간은 `Mission Tuner`와 디버그에 표시한다.
+컷라인과 게인 설정은 실시간 반영되고 P로 함께 저장된다. 이전 YAML의 `lane_change_cooldown_s`와
 무관하게 현재 bbox 미션의 쿨다운은 5초로 고정한다.
 새 목표 차선 경로는 다음 영상 프레임에서 계산하며, 경로 미검출 시 마지막 조향 명령을 유지한다.
 신호등 빨강 정지·노랑 감속과 W/S·통신 정지는 유지한다.

@@ -10,6 +10,13 @@ import yaml
 
 from .core import ControlConfig
 
+CAPTURE_FIELDS = ('device', 'width', 'height', 'fps')
+TUNING_TOPIC = '/parking_camera/tuning'
+VISION_FIELDS = ('rotate_deg', 'flip_horizontal', 'confidence', 'persp_src', 'persp_dst',
+                 'min_area_ratio', 'morph_kernel', 'min_longitudinal_span_ratio')
+REAR_VISION_FIELDS = ('roi_band_ratio', 'parking_width_ratio', 'pair_min_separation_ratio',
+                      'pair_max_angle_rad')
+
 
 def _finite(values):
     return all(type(x) in (int, float) and math.isfinite(x) for x in values)
@@ -19,6 +26,10 @@ def load_config(path):
     with Path(path).expanduser().open(encoding='utf-8') as stream:
         data = yaml.safe_load(stream)
     validate_config(data)
+    control = data['control']
+    if 'align_yaw_error_max_rad' in control and 'align_yaw_min_rad' not in control:
+        control['align_yaw_min_rad'] = 0.0
+    data['rear'].setdefault('roi_band_ratio', 0.0)
     return data
 
 
@@ -35,8 +46,12 @@ def validate_config(data):
             'min_longitudinal_span_ratio'}
     for role in ('front', 'rear'):
         view = data[role]
-        if not isinstance(view, dict) or set(view) != keys:
+        optional = {'roi_band_ratio'} if role == 'rear' else set()
+        if not isinstance(view, dict) or not keys <= set(view) <= keys | optional:
             raise ValueError(f'{role}: missing/unknown camera configuration keys')
+        band = view.get('roi_band_ratio', 0.0)
+        if not _finite([band]) or not 0 <= band < 1:
+            raise ValueError('rear.roi_band_ratio must be in [0,1)')
         for key in ('device', 'image_topic', 'model_device'):
             if not isinstance(view[key], str) or not view[key]:
                 raise ValueError(f'{role}.{key} must be a nonempty string')
@@ -69,6 +84,12 @@ def validate_config(data):
                 crosses.append((b[0]-a[0])*(c[1]-b[1]) - (b[1]-a[1])*(c[0]-b[0]))
             if not (all(x > 1e-5 for x in crosses) or all(x < -1e-5 for x in crosses)):
                 raise ValueError(f'{role}.{key}: corners must be convex and ordered')
+        # A homography which reverses winding would also invert steering.
+        def winding(points):
+            a, b, c = zip(points[:6:2], points[1:6:2])
+            return (b[0]-a[0])*(c[1]-b[1]) - (b[1]-a[1])*(c[0]-b[0])
+        if winding(view['persp_src']) * winding(view['persp_dst']) < 0:
+            raise ValueError(f'{role}: BEV source and destination must have the same corner order')
         expected = {'parking_lot', 'parking_space', 'out_line'} if role == 'front' else {'parking_space', 'end_line'}
         if not isinstance(view['classes'], dict) or set(view['classes']) != expected:
             raise ValueError(f'{role}.classes must map {sorted(expected)} to model class NAMES')

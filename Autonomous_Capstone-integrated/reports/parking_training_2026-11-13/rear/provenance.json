@@ -56,5 +56,9 @@
     "Additional mild photometric/geometric augmentation applies only to training.",
     "No flipping/mosaic/mixup: preserve parking-side orientation and thin continuous lines.",
     "No vehicle calibration or independent-site performance is implied."
-  ]
+  ],
+  "completed_utc": "2026-11-13T09:06:27.458877+00:00",
+  "deployed_model": "src/skku_track_drive_pkg/models/parking/parking_rear.pt",
+  "deployed_sha256": "72098a15687b8661338a8233420f996ed04de30a89c4b3ec75e93006bd76845a",
+  "resume_history": "resume_history.json"
 }

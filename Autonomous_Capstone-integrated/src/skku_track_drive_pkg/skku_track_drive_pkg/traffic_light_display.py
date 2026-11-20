@@ -72,6 +72,9 @@ def describe_traffic_boxes(frame, status, settings):
     return result
 
 
+BBOX_CUT_COLORS = {'obstacle_near_y': (85, 185, 251), 'traffic_max_bottom_y': (243, 209, 99)}
+
+
 def add_traffic_light_panel(image, status, camera_frame=None):
     """Prepend a status strip, keeping camera/BEV pixels unobscured.
 
@@ -117,7 +120,7 @@ def add_traffic_light_panel(image, status, camera_frame=None):
             'No eligible bbox: check size/position limits' if not any(b.get('eligible') for b in boxes)
             else 'RGB: 0..255 | OpenCV HSV: H 0..179, S/V 0..255')
     if len(boxes) > len(shown):
-        note += f' | Showing {len(shown)}/{len(boxes)}; all in Tuner details'
+        note += f' | Showing {len(shown)}/{len(boxes)}'
     cv2.putText(panel, note, (12, 126), cv2.FONT_HERSHEY_SIMPLEX,
                 .45, (220, 220, 220), 1, cv2.LINE_AA)
     limits = status.get('traffic_limits', {})

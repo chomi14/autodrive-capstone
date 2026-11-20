@@ -29,14 +29,12 @@ from std_msgs.msg import String
 
 from interfaces_pkg.msg import MotionCommand
 from .bev_geometry import BEV_SOURCE_DEFAULTS
+from .modes.bbox_mission.tuning_panel import MISSION_PRIMARY_CONTROLS, MISSION_WINDOW_NAME, MissionTuningPanel
 from .stop_history import StopHistory
-from .traffic_light_display import add_traffic_light_panel
 
 
 TUNER_WINDOW_NAME = 'Track Tuner'
 DEBUG_WINDOW_NAME = 'Track Debug View'
-
-MISSION_PRIMARY_CONTROLS = ('obstacle_near_y', 'lane_change_gain', 'lane_change_gain_duration_s')
 
 # label, maximum trackbar position, position -> value, value -> position
 TRACKBARS = {
@@ -102,19 +100,23 @@ class TrackTunerNode(Node):
     tuner_window = TUNER_WINDOW_NAME
     debug_window = DEBUG_WINDOW_NAME
     control_windows = ()
+    mission_panel = None
     parking = False
 
     def __init__(self, node_name='track_tuner_node', extra_trackbars=None, parameter_root='track_controller_node', window_prefix='Track', parking=False, only_extra_controls=False):
         super().__init__(node_name)
         self.parameter_root = parameter_root
-        self.tuner_window = window_prefix + ' Tuner'
+        self.tuner_window = (
+            TUNER_WINDOW_NAME if parameter_root == 'mission_controller_node' else window_prefix + ' Tuner'
+        )
         self.debug_window = window_prefix + ' Debug View'
         self.control_windows = []
         self.parameter_windows = {}
+        self._mission_detail_open = False
         self.mode_status = {}
         self.stop_history = StopHistory()
         self.parking = parking
-        self.mode_controls_separate = window_prefix != 'Track'
+        self.mode_controls_separate = self.tuner_window != TUNER_WINDOW_NAME
         self.declare_parameter('target_node', '/track_controller_node')
         self.declare_parameter('cmd_topic', '/topic_control_signal')
         self.declare_parameter('debug_topic', '/track_debug_image')
@@ -224,6 +226,7 @@ class TrackTunerNode(Node):
         self._window_closed = False
         self._debug_window_open = False
         self._latest_debug_frame = None
+        self._last_debug_image_at = float('-inf')
         self._last_command_time = None
         self.processing_fps = 0.0
         self.current_steering = 0
@@ -309,6 +312,7 @@ class TrackTunerNode(Node):
             self._latest_debug_frame = self.bridge.imgmsg_to_cv2(
                 message, desired_encoding='bgr8'
             )
+            self._last_debug_image_at = time.monotonic()
         except Exception as exc:
             self.get_logger().error(f'Failed to convert debug image: {exc}')
 
@@ -336,8 +340,10 @@ class TrackTunerNode(Node):
                 ).value
         if not changed:
             return
+        for name, value in changed.items():
+            if self.desired_values.get(name) == self.current_values.get(name):
+                self.desired_values[name] = value
         self.current_values.update(changed)
-        self.desired_values.update(changed)
         self._set_trackbar_positions()
 
     def _request_initial_values(self):
@@ -375,22 +381,31 @@ class TrackTunerNode(Node):
             cv2.resizeWindow(self.tuner_window, 900, 720)
             self._initializing_ui = True
             regular_index = 0
+            advanced_index = 0
+            mission = self.parameter_root == 'mission_controller_node'
+            if mission:
+                self.mission_panel = MissionTuningPanel(self.trackbars, self._on_trackbar, self._handle_key)
+                cv2.namedWindow(MISSION_WINDOW_NAME, cv2.WINDOW_AUTOSIZE | cv2.WINDOW_GUI_NORMAL)
+                self.control_windows.append(MISSION_WINDOW_NAME)
+                self._draw_mission_status()
+                cv2.setMouseCallback(MISSION_WINDOW_NAME, self.mission_panel.on_mouse)
             for name, (label, maximum, _decode, _encode) in self.trackbars.items():
                 window = self.tuner_window
                 if name in BEV_SOURCE_DEFAULTS:
                     window = f'{self.tuner_window} BEV Source Points'
-                elif name in MISSION_PRIMARY_CONTROLS:
-                    # Keep obstacle avoidance controls together on the main panel.
-                    window = self.tuner_window
-                elif extra := (regular_index // 12 + int(self.mode_controls_separate)):
-                    window = f'{self.tuner_window} Controls {extra}'
-                if name not in BEV_SOURCE_DEFAULTS:
+                elif mission and name in MISSION_PRIMARY_CONTROLS:
+                    continue
+                elif mission and name not in TRACKBARS:
+                    window = f'{self.tuner_window} Advanced {advanced_index // 12 + 1}'
+                    advanced_index += 1
+                else:
+                    if extra := (regular_index // 12 + int(self.mode_controls_separate)):
+                        window = f'{self.tuner_window} Controls {extra}'
                     regular_index += 1
-                if window != self.tuner_window:
-                    if window not in self.control_windows:
-                        cv2.namedWindow(window, cv2.WINDOW_NORMAL)
-                        cv2.resizeWindow(window, 620, 650)
-                        self.control_windows.append(window)
+                if window != self.tuner_window and window not in self.control_windows:
+                    cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+                    cv2.resizeWindow(window, 620, 650)
+                    self.control_windows.append(window)
                 self.parameter_windows[name] = window
                 position = self._position_for(name, self.current_values[name])
                 cv2.createTrackbar(
@@ -418,11 +433,11 @@ class TrackTunerNode(Node):
         if not self._ui_ready:
             return
         self._initializing_ui = True
-        for name in self.trackbars:
+        for name, window in self.parameter_windows.items():
             value = self.desired_values[name]
             cv2.setTrackbarPos(
                 self.trackbars[name][0],
-                self.parameter_windows[name],
+                window,
                 self._position_for(name, value),
             )
         self._initializing_ui = False
@@ -552,12 +567,6 @@ class TrackTunerNode(Node):
             f'save to: {self.save_path}',
             f'Focus {self.tuner_window}, its control/debug windows or vehicle_start_gate for W/S.',
         ]
-        if self.parameter_root == 'mission_controller_node':
-            lines.insert(1, 'L: toggle target lane 1 <-> 2 (overrides cooldown; holds new lane for 5s)')
-            lines.insert(2, f"Obstacle Cut (Y px)={self.desired_values.get('obstacle_near_y', '-')}  slider: top of {self.tuner_window}")
-            lines.insert(3, f"Lane Change Gain={self.desired_values.get('lane_change_gain', '-')}  Time={self.desired_values.get('lane_change_gain_duration_s', '-')}s (0s=off)")
-            if 'effective_stanley_gain' in self.mode_status:
-                lines.insert(4, f"Stanley gain active={self.mode_status['effective_stanley_gain']:.3f}  lane change={self.mode_status.get('lane_change_gain_active', False)}  remaining={self.mode_status.get('lane_change_gain_remaining_s', 0):.1f}s")
         if not self.parking:
             if time.monotonic() - self.capture_status_time <= 2.0:
                 status = self.capture_status
@@ -571,30 +580,8 @@ class TrackTunerNode(Node):
                     lines.append(f'CAPTURE ERROR: {status["error"]}')
             else:
                 lines.append('RAW CAPTURE unavailable: launch with capture:=true')
-        if 'traffic_boxes' in self.mode_status:
-            status = self.mode_status
-            lines.extend([
-                f"MISSION {status.get('state')} reason={status.get('reason')} stop={status.get('stop')}",
-                f"path lane={status.get('path_lane')} target(next)={status.get('target_lane')} valid={status.get('path_valid')}",
-                f"path blocked={status.get('path_blocked')} confirm={status.get('obstacle_confirm_count')}/{status.get('obstacle_confirm_required')}",
-                f"alternative lane={status.get('alternate_lane')} visible={status.get('alternate_visible')} blocked={status.get('alternate_blocked')} valid={status.get('alternate_valid')}",
-                f"alternative mask area={status.get('alternate_mask_area_px')}px (mask evidence, not a planned path)",
-                f"LIGHT {status.get('traffic_color')} red_latched={status.get('red_latched')} selected_ratio={status.get('selected_color_ratio')} max_candidate_ratio={status.get('color_ratio')}",
-                f"red={status.get('red_count')}/{status.get('red_confirm_required')} green={status.get('green_count')}/{status.get('green_confirm_required')}",
-                f"system={status.get('system_state', 'NORMAL')} image_age_s={status.get('image_age_s', '-')}",
-            ])
-            if 'lane_change_cooldown_s' in status:
-                lines.append(f"TARGET lane{status.get('target_lane')}  auto cooldown={status.get('lane_change_cooldown_remaining_s', 0):.1f}s  last switch={status.get('last_lane_switch_source', '-')}")
-        else:
+        if self.parameter_root != 'mission_controller_node':
             lines.extend(f'{k}: {v}' for k, v in self.mode_status.items())
-        for index, light in enumerate(self.mode_status.get('traffic_boxes', [])):
-            ratios = light.get('ratios', {})
-            lines.append(f"light#{index} box={light['box']} eligible={light['eligible']} used={light.get('used_for_color')} "
-                         f"color={light.get('color', 'rejected')} R/G/Y=" +
-                         '/'.join(f"{ratios.get(k, 0):.3f}" for k in ('Red', 'Green', 'Yellow')))
-            if 'rgb_sample' in light:
-                lines.append(f"TL#{index} ROI mean RGB={light['rgb_mean']} sample RGB={light['rgb_sample']} HSV={light['hsv_sample']}")
-                lines.append(f"TL#{index} S/V pass={light['sv_valid_ratio']:.1%} {light.get('sample_reason', '')}")
         canvas = np.zeros((max(300, 45 + len(lines) * 33), 1100, 3), dtype=np.uint8)
         for index, line in enumerate(lines):
             # Preserve the filename and latest values when a long path exceeds
@@ -614,9 +601,9 @@ class TrackTunerNode(Node):
                 1,
                 cv2.LINE_AA,
             )
-        if 'traffic_boxes' in self.mode_status:
-            canvas = add_traffic_light_panel(canvas, self.mode_status)
         cv2.imshow(self.tuner_window, canvas)
+        if MISSION_WINDOW_NAME in self.control_windows:
+            self._draw_mission_status()
         source_window = f'{self.tuner_window} BEV Source Points'
         if source_window in self.control_windows:
             point_canvas = np.zeros((150, 620, 3), dtype=np.uint8)
@@ -631,8 +618,23 @@ class TrackTunerNode(Node):
                             cv2.FONT_HERSHEY_SIMPLEX, .48, (220, 220, 220), 1, cv2.LINE_AA)
             cv2.imshow(source_window, point_canvas)
 
+    def _draw_mission_status(self):
+        frame = None
+        message = 'Debug feed is off. Press D to show it.'
+        if self.desired_values.get('publish_debug'):
+            message = 'Waiting for a fresh debug frame'
+            if time.monotonic() - self._last_debug_image_at <= 1.0:
+                frame = self._latest_debug_frame
+        syncing = any(self.desired_values[name] != self.current_values[name]
+                      for name in MISSION_PRIMARY_CONTROLS)
+        canvas = self.mission_panel.render(self.desired_values, self.mode_status,
+                                           self.command_status, frame, message, syncing)
+        cv2.imshow(MISSION_WINDOW_NAME, canvas)
+
     def _draw_debug(self):
         enabled = bool(self.desired_values.get('publish_debug', False))
+        if self.mission_panel is not None:
+            enabled = enabled and self._mission_detail_open
         if not enabled:
             if self._debug_window_open:
                 cv2.destroyWindow(self.debug_window)
@@ -660,16 +662,20 @@ class TrackTunerNode(Node):
         cv2.imshow(self.debug_window, display)
 
     def _close_gui_windows(self, log_continues=True):
-        self.forward_drive_key('s')
-        if self._debug_window_open:
-            cv2.destroyWindow(self.debug_window)
-            self._debug_window_open = False
+        windows = list(self.control_windows)
         if self._ui_ready and not self._window_closed:
-            cv2.destroyWindow(self.tuner_window)
-        for window in self.control_windows:
-            cv2.destroyWindow(window)
-        self.control_windows = []
+            windows.append(self.tuner_window)
+        if self._debug_window_open:
+            windows.append(self.debug_window)
         self._window_closed = True
+        self._debug_window_open = False
+        self.control_windows = []
+        self.forward_drive_key('s')
+        for window in windows:
+            try:
+                cv2.destroyWindow(window)
+            except cv2.error:
+                pass  # The window manager may have already removed it.
         if log_continues:
             self.get_logger().info(
                 'GUI windows closed; disarm requested. Camera/controller remain running; '
@@ -741,14 +747,21 @@ class TrackTunerNode(Node):
         if not self._ui_ready or self._window_closed:
             return
 
-        if any(cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) < 1 for window in [self.tuner_window, *self.control_windows]):
+        try:
+            windows_visible = all(cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) >= 1
+                                  for window in [self.tuner_window, *self.control_windows])
+        except cv2.error:
+            windows_visible = False
+        if not windows_visible:
             self._close_gui_windows()
             return
 
         self._send_pending_parameters()
         self._draw_status()
         self._draw_debug()
-        key = cv2.waitKey(1) & 0xFF
+        self._handle_key(cv2.waitKey(1) & 0xFF)
+
+    def _handle_key(self, key):
         if key in (ord('w'), ord('W'), ord('s'), ord('S'), ord('x'), ord('X'), 32):
             self.forward_drive_key(chr(key).lower())
         elif key in (ord('l'), ord('L')) and self.parameter_root == 'mission_controller_node':
@@ -781,6 +794,8 @@ class TrackTunerNode(Node):
             self.get_logger().info(
                 f'BEV panel {"enabled" if enabled else "disabled"}'
             )
+        elif key in (ord('v'), ord('V')) and self.parameter_root == 'mission_controller_node':
+            self._mission_detail_open = not self._mission_detail_open
         elif key in (ord('q'), ord('Q'), 27):
             self._close_gui_windows()
 

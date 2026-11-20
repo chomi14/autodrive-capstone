@@ -1,0 +1,122 @@
+{
+  "val": {
+    "aggregate": {
+      "metrics/precision(B)": 0.9782262773374919,
+      "metrics/recall(B)": 0.9740642749590416,
+      "metrics/mAP50(B)": 0.9896538755581655,
+      "metrics/mAP50-95(B)": 0.9014764880974516,
+      "metrics/precision(M)": 0.9335677518196466,
+      "metrics/recall(M)": 0.920689058258207,
+      "metrics/mAP50(M)": 0.9210503432949307,
+      "metrics/mAP50-95(M)": 0.7707562883586477,
+      "fitness": 1.6722327764560994
+    },
+    "per_class": [
+      {
+        "Class": "end_line",
+        "Images": 279,
+        "Instances": 279,
+        "Box-P": 0.98461,
+        "Box-R": 0.95699,
+        "Box-F1": 0.9706,
+        "mAP50": 0.98721,
+        "mAP50-95": 0.82792,
+        "Mask-P": 0.95022,
+        "Mask-R": 0.91039,
+        "Mask-F1": 0.92988
+      },
+      {
+        "Class": "parking_lot",
+        "Images": 338,
+        "Instances": 338,
+        "Box-P": 0.96484,
+        "Box-R": 0.97438,
+        "Box-F1": 0.96959,
+        "mAP50": 0.98949,
+        "mAP50-95": 0.93746,
+        "Mask-P": 0.86363,
+        "Mask-R": 0.86391,
+        "Mask-F1": 0.86377
+      },
+      {
+        "Class": "parking_space",
+        "Images": 326,
+        "Instances": 327,
+        "Box-P": 0.98522,
+        "Box-R": 0.99083,
+        "Box-F1": 0.98802,
+        "mAP50": 0.99226,
+        "mAP50-95": 0.93905,
+        "Mask-P": 0.98685,
+        "Mask-R": 0.98777,
+        "Mask-F1": 0.98731
+      }
+    ],
+    "speed": {
+      "preprocess": 0.38507310537802425,
+      "inference": 2.8358201322881205,
+      "loss": 0.0006163385658901911,
+      "postprocess": 0.54776017488688
+    }
+  },
+  "test": {
+    "aggregate": {
+      "metrics/precision(B)": 0.9786828877046164,
+      "metrics/recall(B)": 0.969796280663873,
+      "metrics/mAP50(B)": 0.9852924401455532,
+      "metrics/mAP50-95(B)": 0.9020932622224903,
+      "metrics/precision(M)": 0.9474979186929423,
+      "metrics/recall(M)": 0.9127453512328457,
+      "metrics/mAP50(M)": 0.9258438369654862,
+      "metrics/mAP50-95(M)": 0.782326509123579,
+      "fitness": 1.6844197713460693
+    },
+    "per_class": [
+      {
+        "Class": "end_line",
+        "Images": 167,
+        "Instances": 167,
+        "Box-P": 0.97258,
+        "Box-R": 0.9521,
+        "Box-F1": 0.96223,
+        "mAP50": 0.97764,
+        "mAP50-95": 0.82539,
+        "Mask-P": 0.96247,
+        "Mask-R": 0.89222,
+        "Mask-F1": 0.92601
+      },
+      {
+        "Class": "parking_lot",
+        "Images": 191,
+        "Instances": 191,
+        "Box-P": 0.96371,
+        "Box-R": 0.97334,
+        "Box-F1": 0.9685,
+        "mAP50": 0.98334,
+        "mAP50-95": 0.93138,
+        "Mask-P": 0.88552,
+        "Mask-R": 0.87958,
+        "Mask-F1": 0.88254
+      },
+      {
+        "Class": "parking_space",
+        "Images": 186,
+        "Instances": 187,
+        "Box-P": 0.99976,
+        "Box-R": 0.98396,
+        "Box-F1": 0.99179,
+        "mAP50": 0.99489,
+        "mAP50-95": 0.94952,
+        "Mask-P": 0.9945,
+        "Mask-R": 0.96644,
+        "Mask-F1": 0.98027
+      }
+    ],
+    "speed": {
+      "preprocess": 0.5612946180260064,
+      "inference": 2.728936961373487,
+      "loss": 0.0006228712464795426,
+      "postprocess": 0.8049950514996141
+    }
+  }
+}
