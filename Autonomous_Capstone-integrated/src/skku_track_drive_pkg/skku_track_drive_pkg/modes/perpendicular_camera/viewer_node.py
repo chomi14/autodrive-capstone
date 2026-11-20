@@ -18,6 +18,7 @@ from std_msgs.msg import Bool, String
 from std_srvs.srv import Trigger
 
 from .configuration import CAPTURE_FIELDS, TUNING_TOPIC
+from .status import gate_reason_text, reason_text
 from .tuning_panel import TuningPanel
 
 
@@ -33,6 +34,7 @@ class CameraParkingViewer(Node):
         self.bridge = CvBridge()
         self.images = {}
         self.status = {}
+        self.gate_status = {}
         self.snapshot = None
         self.dirty = False
         self.pending_revision = None
@@ -46,6 +48,8 @@ class CameraParkingViewer(Node):
                              durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.create_subscription(String, 'vehicle/arm_challenge', self.on_challenge, latched)
         self.create_subscription(String, '/parking_camera/status', self.on_status, 1)
+        if not self.preview:
+            self.create_subscription(String, 'vehicle/command_status', self.on_gate_status, 1)
         self.create_subscription(String, TUNING_TOPIC, self.on_tuning, latched)
         for role in ROLES:
             for view in VIEWS:
@@ -96,6 +100,9 @@ class CameraParkingViewer(Node):
 
     def on_status(self, message):
         self.status = json.loads(message.data)
+
+    def on_gate_status(self, message):
+        self.gate_status = json.loads(message.data)
 
     def on_tuning(self, message):
         snapshot = json.loads(message.data)
@@ -220,11 +227,20 @@ class CameraParkingViewer(Node):
                     cv2.putText(frame, str(index), (min(px+5, nw-11), max(12, min(py, nh-4))),
                                 cv2.FONT_HERSHEY_SIMPLEX, .42, (255, 230, 50), 1)
                 if view == 'bev':
-                    limits = [('outline_finish_y', (60, 190, 255))] if role == 'front' else [
-                        ('end_steering_y', (60, 190, 255)), ('end_stop_y', (70, 80, 255))]
-                    for key, color in limits:
+                    if role == 'front':
+                        limits = [('outline_finish_y', (60, 190, 255), 0, nw-1)]
+                        left, right = (round(cfg['front'][key] * (nw-1))
+                                       for key in ('limit_x_min', 'limit_x_max'))
+                        top, bottom = (round(cfg['front'][key] * (nh-1))
+                                       for key in ('limit_y_min', 'limit_y_max'))
+                        cv2.rectangle(frame, (left, top), (right, bottom), (180, 220, 120), 1)
+                        limits.append(('front_limit_stop_y', (180, 220, 120), left, right))
+                    else:
+                        limits = [('end_steering_y', (60, 190, 255), 0, nw-1),
+                                  ('end_stop_y', (70, 80, 255), 0, nw-1)]
+                    for key, color, left, right in limits:
                         row = round(cfg['control'][key] * (nh-1))
-                        cv2.line(frame, (0, row), (nw-1, row), color, 1)
+                        cv2.line(frame, (left, row), (right, row), color, 1)
                         cv2.putText(frame, key, (4, max(12, row-4)), cv2.FONT_HERSHEY_SIMPLEX, .35, color, 1)
             panel[y:y+nh, x:x+nw] = frame
             age = time.monotonic()-arrived
@@ -248,15 +264,25 @@ class CameraParkingViewer(Node):
         obs = s.get('observations', {})
         rear = obs.get('rear') or {}
         front = obs.get('front') or {}
-        end, outline = rear.get('end', {}), front.get('outline', {})
+        end, outline, limit = rear.get('end', {}), front.get('outline', {}), front.get('front_limit', {})
         end_y = f"{end['y']:.3f}" if end.get('found') else '—'
         exit_y = f"{outline['y']:.3f}" if outline.get('found') else '—'
+        limit_y = f"{limit['y']:.3f}" if limit.get('found') else '미검출'
+        reason = reason_text(s.get('reason', ''))
+        pwm = s.get('pwm', '—')
+        armed = s.get('armed', '—')
+        if self.gate_status.get('armed') is False and self.gate_status.get('stop_reason'):
+            reason = gate_reason_text(self.gate_status['stop_reason'])
+            pwm = self.gate_status['left_pwm']
+            armed = False
         lines = [
-            f"{'PREVIEW' if self.preview else 'LIVE'}  {s.get('state', 'WAITING')}  {s.get('reason', '')}     "
-            f"Armed {s.get('armed', '—')}   Steer {s.get('steering', '—')}   PWM {s.get('pwm', '—')}",
-            f"Seen / missing / aligned  {s.get('seen_count', 0)} / {s.get('missing_count', 0)} / {s.get('align_count', 0)}"
-            f"     End y {end_y}    Exit y {exit_y}    Errors {s.get('errors', {})}",
+            f"{'PREVIEW' if self.preview else 'LIVE'}  {s.get('state', 'WAITING')}   "
+            f"PWM {pwm}   조향 {s.get('steering', '—')}   Armed {armed}   {reason}",
+            f"전방 칸 연속 미검출 {s.get('missing_count', 0)}회   평행주차선 y {limit_y}   "
+            f"종료선 y {end_y}   출차선 y {exit_y}   오차 {s.get('errors', {})}",
         ]
+        if s.get('transition'):
+            lines.append(s['transition'])
         if self.snapshot:
             active = self.snapshot['active_capture']
             lines.append('Capture  ' + '  |  '.join(f"{role} {active[role]['device']} "

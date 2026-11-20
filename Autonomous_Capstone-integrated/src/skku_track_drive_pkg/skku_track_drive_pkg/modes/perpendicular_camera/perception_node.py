@@ -10,7 +10,7 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
-from .configuration import VISION_FIELDS, REAR_VISION_FIELDS, TUNING_TOPIC, load_config
+from .configuration import VISION_FIELDS, FRONT_VISION_FIELDS, REAR_VISION_FIELDS, TUNING_TOPIC, load_config
 from .model import SegmentModel
 from .observations import Observation
 from .perception import extract, orient_image
@@ -53,7 +53,7 @@ class ParkingPerceptionNode(Node):
             if type(revision) is not int or revision <= self.tuning_revision:
                 return
             config = payload['config']
-            keys = VISION_FIELDS + (REAR_VISION_FIELDS if self.role == 'rear' else ())
+            keys = VISION_FIELDS + (FRONT_VISION_FIELDS if self.role == 'front' else REAR_VISION_FIELDS)
             values = {key: config[self.role][key] for key in keys}
             self.timeout = config['control']['observation_timeout_s']
             self.cfg.update(values)  # the model adapter shares this dictionary

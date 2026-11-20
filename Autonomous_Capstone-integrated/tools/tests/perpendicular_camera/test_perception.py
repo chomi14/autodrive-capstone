@@ -28,6 +28,22 @@ def rectangle(x1, y1, x2, y2, w, h):
     return np.float32([[x1*w, y1*h], [x2*w, y1*h], [x2*w, y2*h], [x1*w, y2*h]])
 
 
+def test_front_limit_uses_paint_in_corridor_and_excludes_the_exit_mask():
+    w, h = 640, 480
+    frame = np.full((h, w, 3), 40, np.uint8)
+    exit_poly = rectangle(.3, .85, .73, .88, w, h)
+    cv2.fillPoly(frame, [exit_poly.astype(np.int32)], (255, 255, 255))
+    cv2.line(frame, (20, 400), (165, 400), (255, 255, 255), 4)  # outside the bumper corridor
+    obs, _, _ = extract(frame, {'out_line': [exit_poly]}, cfg('front'), 'front', 123)
+    assert obs.outline.found and not obs.front_limit.found
+
+    cv2.line(frame, (180, 330), (460, 350), (255, 255, 255), 5)
+    obs, _, bev = extract(frame, {'out_line': [exit_poly]}, cfg('front'), 'front', 124)
+    assert obs.front_limit.found
+    assert .71 < obs.front_limit.y < .75
+    assert ((bev == (140, 255, 65)).all(axis=2)).any()
+
+
 @pytest.mark.parametrize('w,h', [(640, 480), (1280, 960), (320, 240)])
 def test_normalized_front_edge_and_end_stripe_across_resolutions(w, h):
     frame = np.full((h, w, 3), 40, np.uint8)
@@ -89,9 +105,28 @@ def test_save_load_preserves_whole_camera_schema(tmp_path):
     data = load_config(CONFIG)
     data['rear']['rotate_deg'] = 180
     data['front']['model_path'] = '/tmp/my front.pt'
+    data['control']['align_fallback_s'] = 2.75
     path = tmp_path/'settings.yaml'
     save_config_atomic(path, data, ControlConfig(**data['control']))
     assert load_config(path) == data
+
+
+def test_legacy_yaml_without_front_limit_fields_receives_tunable_defaults(tmp_path):
+    import yaml
+    data = load_config(CONFIG)
+    path = tmp_path/'old.yaml'
+    for key in list(data['front']):
+        if key.startswith('limit_'):
+            data['front'].pop(key)
+    data['control'].pop('front_limit_stop_y')
+    data['control'].pop('align_fallback_s')
+    data['control'].update(confirm_frames=1, align_confirm_frames=4, align_yaw_min_rad=.65)
+    path.write_text(yaml.safe_dump(data))
+    loaded = load_config(path)
+    assert loaded == load_config(CONFIG)
+    loaded['control']['front_limit_stop_y'] = .96
+    with pytest.raises(ValueError, match='front limit'):
+        validate_config(loaded)
 
 
 @pytest.mark.parametrize('mutation', ['classes', 'bev', 'types', 'topic'])

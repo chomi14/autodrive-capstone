@@ -3,17 +3,15 @@ import math
 import tkinter as tk
 from tkinter import ttk
 
-from .configuration import CAPTURE_FIELDS, REAR_VISION_FIELDS, VISION_FIELDS
+from .configuration import CAPTURE_FIELDS, FRONT_VISION_FIELDS, REAR_VISION_FIELDS, VISION_FIELDS
 
 
 CONTROL_GROUPS = {
     'Search and alignment': {
-        'confirm_frames': 'Space detections (frames)',
         'space_missing_frames': 'Space lost (frames)',
-        'align_confirm_frames': 'Alignment confirmation (frames)',
-        'align_yaw_min_rad': 'Minimum alignment yaw (rad, 0 = legacy)',
-        'align_yaw_error_max_rad': 'Legacy vertical tolerance (rad)',
-        'align_steering': 'Alignment steering step',
+        'align_steering': '좌회전 전진 조향 (음수)',
+        'align_fallback_s': '좌회전 전진 시간 (초, 제한선 미검출)',
+        'front_limit_stop_y': '평행주차선 접근 정지 y (0–1)',
         'direction_pause_s': 'Pause before reverse (s)',
         'front_target_x': 'Front target x (0–1)',
         'front_position_gain': 'Front position gain',
@@ -63,6 +61,12 @@ CAMERA_LABELS = {
     'min_area_ratio': 'Minimum mask area (0–1)',
     'morph_kernel': 'Mask closing kernel (odd px)',
     'min_longitudinal_span_ratio': 'Minimum line height (0–1)',
+    'limit_x_min': '제한선 검출 범위 왼쪽 x (0–1)',
+    'limit_x_max': '제한선 검출 범위 오른쪽 x (0–1)',
+    'limit_y_min': '제한선 검출 범위 위쪽 y (0–1)',
+    'limit_y_max': '제한선 검출 범위 아래쪽 y (0–1)',
+    'limit_white_min': '도색 밝기 하한 (1–255)',
+    'limit_min_span': '가로선 최소 폭 / BEV 너비',
     'roi_band_ratio': 'Rear boundary kernel (0 = entire mask)',
     'parking_width_ratio': 'Estimated slot width / BEV width',
     'pair_min_separation_ratio': 'Minimum side separation / BEV width',
@@ -144,7 +148,7 @@ class TuningPanel:
                 self._group(control, title, 'control', labels)
             for role in ('front', 'rear'):
                 tab = self._tab(role.title())
-                keys = VISION_FIELDS + (REAR_VISION_FIELDS if role == 'rear' else ())
+                keys = VISION_FIELDS + (FRONT_VISION_FIELDS if role == 'front' else REAR_VISION_FIELDS)
                 self._group(tab, 'Image and BEV', role, {key: CAMERA_LABELS[key] for key in keys})
                 self._group(tab, 'Capture (save and restart)', role, {key: CAMERA_LABELS[key] for key in CAPTURE_FIELDS})
         else:

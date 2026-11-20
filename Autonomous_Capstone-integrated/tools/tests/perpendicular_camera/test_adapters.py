@@ -14,9 +14,10 @@ import pytest
 
 from skku_track_drive_pkg.messages import MotionCommand
 from skku_track_drive_pkg.modes.perpendicular_camera.configuration import (
-    CAPTURE_FIELDS, REAR_VISION_FIELDS, VISION_FIELDS, load_config, validate_config)
+    CAPTURE_FIELDS, FRONT_VISION_FIELDS, REAR_VISION_FIELDS, VISION_FIELDS, load_config, validate_config)
 from skku_track_drive_pkg.modes.perpendicular_camera.core import CameraParkingCore, ControlConfig
 from skku_track_drive_pkg.modes.perpendicular_camera.observations import Line, Observation
+from skku_track_drive_pkg.modes.perpendicular_camera.status import gate_reason_text, reason_text
 
 ROOT = Path(__file__).resolve().parents[3]
 MODULE = ROOT/'src/skku_track_drive_pkg/skku_track_drive_pkg/modes/perpendicular_camera/controller_node.py'
@@ -29,7 +30,8 @@ def adapter():
     fake_time.monotonic = lambda: fake_time.value
     ns = dict(Node=object, time=fake_time, json=json, MotionCommand=MotionCommand,
               Observation=Observation, ControlConfig=ControlConfig, fields=fields,
-              CAPTURE_FIELDS=CAPTURE_FIELDS, VISION_FIELDS=VISION_FIELDS, REAR_VISION_FIELDS=REAR_VISION_FIELDS,
+              CAPTURE_FIELDS=CAPTURE_FIELDS, VISION_FIELDS=VISION_FIELDS,
+              FRONT_VISION_FIELDS=FRONT_VISION_FIELDS, REAR_VISION_FIELDS=REAR_VISION_FIELDS,
               validate_config=validate_config,
               String=lambda **kw: SimpleNamespace(**kw),
               SetParametersResult=lambda **kw: SimpleNamespace(**kw))
@@ -50,6 +52,7 @@ def adapter():
     obj.core.was_armed = True
     obj.core.state = 'PARKING_IN'
     obj.armed, obj.preview = True, True
+    obj.operator_stopped = False
     obj.observations = {'front': None, 'rear': None}
     obj.received = {'front': 0.0, 'rear': 0.0}
     obj.pipeline_seen = set()
@@ -93,19 +96,70 @@ def test_both_pipelines_are_required_and_paused_clock_arrival_age_stops_output()
     obj.on_timer()
     assert obj.cmd_pub.publish.call_args.args[0].left_speed == 0
     assert obj.core.elapsed == elapsed
+    assert reason_text(json.loads(obj.status_pub.publish.call_args.args[0].data)['reason']) == '후방 영상 지연'
 
 
 def test_fast_s_w_cannot_keep_old_confirmation_or_move_on_old_capture():
     obj, timer = adapter()
-    obj.core.state = 'ALIGN_TO_SPACE'
-    obj.core.align_count = 2
+    obj.core.state = 'SEARCHING_SPACE'
+    obj.core.missing_count = 2
     obj.pipeline_seen = {'front', 'rear'}
-    send(obj, 'rear', obj.clock.ns-1, space=Line(True, .5, 1., 1.57))
+    send(obj, 'front', obj.clock.ns-1)
     obj.on_arm(SimpleNamespace(data=False))
     obj.on_arm(SimpleNamespace(data=True))
     obj.on_timer()
-    assert obj.core.align_count == 0 and obj.core.state == 'ALIGN_TO_SPACE'
+    assert obj.core.missing_count == 0 and obj.core.state == 'SEARCHING_SPACE'
     assert obj.cmd_pub.publish.call_args.args[0].left_speed == 0
+
+
+def test_detection_between_timer_ticks_breaks_the_missing_run():
+    obj, _ = adapter()
+    obj.core.state = 'SEARCHING_SPACE'
+    obj.pipeline_seen = {'front', 'rear'}
+    for i in range(1, 5):
+        send(obj, 'front', 1_900_000_000 + i)
+    send(obj, 'front', 1_900_000_005, space_found=True)
+    send(obj, 'front', 1_900_000_006)
+    obj.on_timer()
+    assert obj.core.state == 'SEARCHING_SPACE' and obj.core.missing_count == 1
+
+
+def test_preview_operator_stop_is_shown_even_before_first_images():
+    obj, _ = adapter()
+    obj.on_arm(SimpleNamespace(data=False))
+    obj.on_timer()
+    status = json.loads(obj.status_pub.publish.call_args.args[0].data)
+    assert status['pwm'] == 0
+    assert reason_text(status['reason']) == 'S 입력으로 정지'
+
+
+@pytest.mark.parametrize('raw,text', [
+    ('operator/UI disarm', 'S 입력으로 정지'),
+    ('UI heartbeat timeout', 'GUI heartbeat 시간 초과'),
+    ('control command timeout', '제어 명령 수신 시간 초과'),
+])
+def test_live_gate_stop_reasons(raw, text):
+    assert gate_reason_text(raw) == text
+
+
+def test_viewer_summary_keeps_approach_reason_visible_during_pause():
+    file = MODULE.with_name('viewer_node.py')
+    definition = next(n for n in ast.parse(file.read_text()).body if isinstance(n, ast.ClassDef))
+    draw = next(n for n in definition.body if isinstance(n, ast.FunctionDef) and n.name == 'draw')
+    namespace = dict(reason_text=reason_text, gate_reason_text=gate_reason_text,
+                     time=SimpleNamespace(monotonic=lambda: 0.0))
+    exec(compile(ast.Module(body=[draw], type_ignores=[]), str(file), 'exec'), namespace)
+    viewer = SimpleNamespace(
+        video=SimpleNamespace(winfo_width=lambda: 0, winfo_height=lambda: 0),
+        preview=True, gate_status={}, summary=Mock(), snapshot=None, closed=False, challenge='',
+        status={'state': 'DIRECTION_PAUSE', 'pwm': 0, 'reason': 'DIRECTION_PAUSE',
+                'transition': 'ALIGN_TO_SPACE → DIRECTION_PAUSE / ' + reason_text('FRONT_LIMIT_REACHED')},
+    )
+    namespace['draw'](viewer)
+    displayed = viewer.summary.set.call_args.args[0]
+    assert 'DIRECTION_PAUSE   PWM 0' in displayed
+    assert '전진→후진 전환 대기' in displayed
+    assert '전방 평행주차선 접근 — 후진 전환을 위해 정지' in displayed
 
 
 def test_backwards_clock_fault_requires_explicit_reset():
@@ -119,13 +173,15 @@ def test_backwards_clock_fault_requires_explicit_reset():
 
 def test_live_parameter_updates_are_rejected_and_disarmed_update_resets():
     obj, timer = adapter()
-    p = [SimpleNamespace(name='rear_position_gain', value=6.0)]
+    p = [SimpleNamespace(name='align_fallback_s', value=2.5)]
     assert not obj.on_parameters(p).successful
     obj.armed = False
     assert obj.on_parameters(p).successful
-    assert obj.core.p.rear_position_gain == 6.0
+    assert obj.core.p.align_fallback_s == 2.5
     assert obj.core.state == 'SEARCHING_SPACE'
-    assert not obj.on_parameters([SimpleNamespace(name='rear_position_gain', value=6)]).successful
+    applied = json.loads(obj.tuning_pub.publish.call_args.args[0].data)
+    assert applied['config']['control']['align_fallback_s'] == 2.5
+    assert not obj.on_parameters([SimpleNamespace(name='align_fallback_s', value=0.0)]).successful
 
 
 def test_tuning_is_atomic_and_motion_waits_for_both_new_perception_revisions():
@@ -192,7 +248,8 @@ def test_perception_preserves_stamp_rejects_duplicate_and_accepts_replay_clock_r
     file = MODULE.with_name('perception_node.py')
     definition = next(n for n in ast.parse(file.read_text()).body if isinstance(n, ast.ClassDef))
     ns = dict(Node=object, Observation=Observation, time=SimpleNamespace(monotonic=lambda: 1.0),
-              replace=replace, json=json, VISION_FIELDS=VISION_FIELDS, REAR_VISION_FIELDS=REAR_VISION_FIELDS,
+              replace=replace, json=json, VISION_FIELDS=VISION_FIELDS,
+              FRONT_VISION_FIELDS=FRONT_VISION_FIELDS, REAR_VISION_FIELDS=REAR_VISION_FIELDS,
               String=lambda **kw: SimpleNamespace(**kw),
               orient_image=lambda frame, *a: frame,
               extract=lambda frame, polygons, cfg, role, stamp, frame_id:

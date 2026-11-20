@@ -31,6 +31,7 @@ class Observation:
     outline: Line = field(default_factory=Line)
     error: str = ''
     tuning_revision: int = 0
+    front_limit: Line = field(default_factory=Line)
 
     def __post_init__(self):
         if self.camera not in ('front', 'rear') or type(self.stamp_ns) is not int or self.stamp_ns <= 0:
@@ -39,7 +40,7 @@ class Observation:
             raise ValueError('Observation flags must be booleans')
         if type(self.tuning_revision) is not int or self.tuning_revision < 0:
             raise ValueError('Invalid camera tuning revision')
-        if not all(isinstance(getattr(self, k), Line) for k in ('line', 'space', 'end', 'outline')):
+        if not all(isinstance(getattr(self, k), Line) for k in ('line', 'space', 'end', 'outline', 'front_limit')):
             raise ValueError('Invalid observation geometry')
 
     def to_json(self):
@@ -50,6 +51,8 @@ class Observation:
         values = json.loads(payload)
         for key in ('line', 'space', 'end', 'outline'):
             values[key] = Line(**values[key])
+        if 'front_limit' in values:
+            values['front_limit'] = Line(**values['front_limit'])
         return cls(**values)
 
 

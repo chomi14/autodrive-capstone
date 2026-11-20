@@ -13,7 +13,7 @@ from interfaces_pkg.msg import MotionCommand
 
 from skku_track_drive_pkg.command_lease import CommandLease
 from skku_track_drive_pkg.controller_liveness import ControllerLiveness, run_controller
-from .configuration import (CAPTURE_FIELDS, VISION_FIELDS, REAR_VISION_FIELDS, TUNING_TOPIC,
+from .configuration import (CAPTURE_FIELDS, VISION_FIELDS, FRONT_VISION_FIELDS, REAR_VISION_FIELDS, TUNING_TOPIC,
                             load_config, save_config_atomic, validate_config)
 from .core import CameraParkingCore, ControlConfig
 from .observations import Observation
@@ -44,7 +44,8 @@ class CameraParkingController(Node):
         for item in fields(defaults):
             self.declare_parameter(item.name, getattr(defaults, item.name))
         settings = {item.name: self.get_parameter(item.name).value for item in fields(defaults)}
-        self.core = CameraParkingCore(ControlConfig(**settings), require_calibration=not self.preview)
+        self.core = CameraParkingCore(ControlConfig(**settings), require_calibration=not self.preview,
+                                      on_transition=self.get_logger().info)
         topic = self.get_parameter('cmd_topic').value
         if self.preview and not topic.startswith(('/dry_run/', '/sensors_only/')):
             raise ValueError('Preview commands must use an isolated preview topic')
@@ -60,6 +61,7 @@ class CameraParkingController(Node):
         self.received = {'front': 0.0, 'rear': 0.0}
         self.pipeline_seen = set()
         self.armed = False
+        self.operator_stopped = False
         self.last_tick = time.monotonic()
         self.last_ros_ns = self.get_clock().now().nanoseconds
         self.core.reset(self.last_ros_ns)
@@ -94,17 +96,22 @@ class CameraParkingController(Node):
             if (obs.camera != role or obs.tuning_revision != self.tuning_revision
                     or (previous is not None and obs.stamp_ns <= previous.stamp_ns)):
                 return
-            if obs.stamp_ns > self.get_clock().now().nanoseconds:
+            now_ns = self.get_clock().now().nanoseconds
+            if obs.stamp_ns > now_ns:
                 return
             self.observations[role] = obs
             self.received[role] = time.monotonic()
             if obs.valid:
                 self.pipeline_seen.add(role)
+            if role == 'front' and self.armed:
+                self.core.observe_front(obs, now_ns)
         except (ValueError, TypeError, KeyError) as exc:
             self.get_logger().error(f'Invalid {role} observation: {exc}')
 
     def on_arm(self, message):
         self.armed = bool(message.data)
+        if self.preview:
+            self.operator_stopped = not self.armed
         if not self.armed:
             # Requiring a fresh capture on the next W also handles S/W between
             # consecutive timer callbacks, without losing paused state/time.
@@ -146,9 +153,8 @@ class CameraParkingController(Node):
                     if not isinstance(cameras, dict) or set(cameras) - {'front', 'rear'}:
                         raise ValueError('Expected front or rear camera settings')
                     for role, updates in cameras.items():
-                        keys = CAPTURE_FIELDS + VISION_FIELDS
-                        if role == 'rear':
-                            keys += REAR_VISION_FIELDS
+                        keys = CAPTURE_FIELDS + VISION_FIELDS + (
+                            FRONT_VISION_FIELDS if role == 'front' else REAR_VISION_FIELDS)
                         if not isinstance(updates, dict) or set(updates) - set(keys):
                             raise ValueError(f'{role}: unknown camera tuning field')
                         data[role] = dict(data[role], **updates)
@@ -160,7 +166,7 @@ class CameraParkingController(Node):
             control = ControlConfig(**values)
             validate_config(data)
             self.data, self.core.p = data, control
-            self.core.reset(self.get_clock().now().nanoseconds)
+            self.core.reset(self.get_clock().now().nanoseconds, 'TUNING_APPLIED')
             self.tuning_revision += 1
             self.observations = {'front': None, 'rear': None}
             self.pipeline_seen.clear()
@@ -179,33 +185,40 @@ class CameraParkingController(Node):
             self.core.fail('ROS_CLOCK_MOVED_BACKWARD_RESET_REQUIRED', stamp)
         self.last_ros_ns = stamp
         # Arrival-age ALSO bounds results when a simulated ROS clock is paused.
-        usable = {role: obs if now-self.received[role] <= self.core.p.observation_timeout_s else None
-                  for role, obs in self.observations.items()}
+        stale_cameras = {role for role, received in self.received.items()
+                         if now-received > self.core.p.observation_timeout_s}
         ready = self.pipeline_seen == {'front', 'rear'}
         restart = self.capture_restart_pending()
-        command = self.core.step(dt, stamp, self.armed and ready and (self.preview or not restart), **usable)
+        command = self.core.step(dt, stamp, self.armed and ready and (self.preview or not restart),
+                                 **self.observations, stale_cameras=stale_cameras)
         self.cmd_pub.publish(MotionCommand(steering=command.steering,
                                            left_speed=command.left_speed, right_speed=command.right_speed))
+        reason = self.core.reason
+        if not self.armed and self.preview:
+            reason = 'OPERATOR_STOP' if self.operator_stopped else 'AWAITING_START'
+        elif self.armed and self.core.fault:
+            reason = self.core.fault
+        elif self.armed and restart and not self.preview:
+            reason = 'SAVE_AND_RESTART_FOR_CAMERA_CAPTURE_SETTINGS'
+        elif self.armed and not ready:
+            reason = 'WAIT_BOTH_PERCEPTION_PIPELINES'
         status = {
-            'state': self.core.state, 'reason': self.core.reason if ready else 'WAIT_BOTH_PERCEPTION_PIPELINES',
+            'state': self.core.state, 'reason': reason,
             'transition': self.core.transition, 'fault': self.core.fault,
             'armed': self.armed, 'preview': self.preview,
             'tuning_revision': self.tuning_revision, 'capture_restart_pending': restart,
             'calibration_confirmed': self.core.p.calibration_confirmed,
             'active_elapsed_s': self.core.elapsed, 'loss_watchdog_s': self.core.loss_elapsed,
-            'seen_space': self.core.seen_space, 'seen_count': self.core.seen_count,
-            'missing_count': self.core.missing_count, 'align_count': self.core.align_count,
+            'missing_count': self.core.missing_count,
             'errors': self.core.errors, 'steering': command.steering, 'pwm': command.left_speed,
             'observations': {role: None if obs is None else {
                 'stamp_ns': obs.stamp_ns, 'frame_id': obs.frame_id, 'valid': obs.valid,
                 'source_age_s': (stamp-obs.stamp_ns)/1e9,
                 'arrival_age_s': now-self.received[role], 'error': obs.error,
                 'space_found': obs.space_found, 'line': vars(obs.line), 'space': vars(obs.space),
-                'end': vars(obs.end), 'outline': vars(obs.outline)}
+                'end': vars(obs.end), 'outline': vars(obs.outline), 'front_limit': vars(obs.front_limit)}
                 for role, obs in self.observations.items()},
         }
-        if restart and not self.preview:
-            status['reason'] = 'SAVE_AND_RESTART_FOR_CAMERA_CAPTURE_SETTINGS'
         self.status_pub.publish(String(data=json.dumps(status, allow_nan=False)))
 
     def destroy_node(self):

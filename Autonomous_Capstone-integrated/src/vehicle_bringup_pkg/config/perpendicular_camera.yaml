@@ -5,9 +5,7 @@ control:
   calibration_confirmed: false
   observation_timeout_s: 0.5
   observation_loss_fault_s: 5.0
-  confirm_frames: 1
   space_missing_frames: 5
-  align_confirm_frames: 4
   forward_pwm: 70
   reverse_pwm: 60
   exit_pwm: 70
@@ -24,8 +22,8 @@ control:
   exit_angle_gain: 10.0
   steering_deadband: 0.3
   align_steering: -7
-  align_yaw_min_rad: 0.65
-  align_yaw_error_max_rad: 0.65
+  align_fallback_s: 5.0
+  front_limit_stop_y: 0.80  # front BEV row; tune with the parking bay and bumper in preview
   direction_pause_s: 0.7
   end_steering_y: 0.78125  # reference 1000 pixels / 1280
   end_stop_y: 0.9765625  # reference 1250 pixels / 1280; tune on the vehicle
@@ -60,6 +58,12 @@ front:
   pair_min_separation_ratio: 0.15
   pair_max_angle_rad: 0.65
   min_longitudinal_span_ratio: 0.05
+  limit_x_min: 0.32
+  limit_x_max: 0.68
+  limit_y_min: 0.45
+  limit_y_max: 0.92
+  limit_white_min: 165
+  limit_min_span: 0.12
 
 rear:
   device: /dev/video2

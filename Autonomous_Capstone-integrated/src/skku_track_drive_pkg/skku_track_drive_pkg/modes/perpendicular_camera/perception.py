@@ -147,6 +147,40 @@ def stripe(mask, gray=None):
     return Line(True, float(xs[bottom]/w), float(ys[bottom]/h), math.atan2(vy, vx))
 
 
+def front_limit_geometry(bev, exit_mask, cfg):
+    """Find transverse white paint in the front bumper's BEV corridor."""
+    h, w = bev.shape[:2]
+    left, right = (round(cfg[key] * (w - 1)) for key in ('limit_x_min', 'limit_x_max'))
+    top, bottom = (round(cfg[key] * (h - 1)) for key in ('limit_y_min', 'limit_y_max'))
+    roi = np.s_[top:bottom+1, left:right+1]
+    minimum_white = (cfg['limit_white_min'],) * 3
+    white = cv2.inRange(bev[roi], minimum_white, (255, 255, 255))
+    edges = cv2.Canny(white, 50, 150)
+    # The model labels a separate exit stripe. Its painted edges are not
+    # candidates for the parallel-parking bay boundary.
+    exit_region = cv2.dilate(exit_mask[roi], np.ones((5, 5), np.uint8))
+    edges[exit_region > 0] = 0
+    min_span = max(2, round(w * cfg['limit_min_span']))
+    segments = cv2.HoughLinesP(edges, 1, math.pi / 180, max(8, min_span // 3),
+                              minLineLength=min_span, maxLineGap=max(2, round(w * .02)))
+    nearest = Line()
+    endpoints = None
+    if segments is not None:
+        for raw_segment in segments.reshape(-1, 4):
+            x1, y1, x2, y2 = map(int, raw_segment)
+            if x1 > x2:
+                x1, y1, x2, y2 = x2, y2, x1, y1
+            dx, dy = x2-x1, y2-y1
+            if dx < min_span or abs(dy) > dx:
+                continue
+            x, y = (x2, y2) if y2 >= y1 else (x1, y1)
+            depth = (y+top) / (h-1)
+            if not nearest.found or depth > nearest.y:
+                nearest = Line(True, (x+left)/(w-1), depth, math.atan2(dy, dx))
+                endpoints = ((x1+left, y1+top), (x2+left, y2+top))
+    return nearest, endpoints
+
+
 def extract(frame, polygons, cfg, role, stamp_ns, frame_id=''):
     """polygons: canonical class -> list of polygons in this oriented image."""
     h, w = frame.shape[:2]
@@ -168,12 +202,15 @@ def extract(frame, polygons, cfg, role, stamp_ns, frame_id=''):
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
         masks[name] = _largest(mask, cfg['min_area_ratio'])
     space_found = bool(np.any(masks['parking_space']))
+    limit_segment = None
     if role == 'front':
         # Joining the space to the lot follows the reference's left-wall ROI.
         lot = cv2.bitwise_or(masks['parking_lot'], masks['parking_space'])
+        limit, limit_segment = front_limit_geometry(bev, masks['out_line'], cfg)
         obs = Observation(stamp_ns, role, frame_id, space_found=space_found,
                           line=front_boundary(lot, cfg),
-                          outline=stripe(masks['out_line'], cv2.cvtColor(bev, cv2.COLOR_BGR2GRAY)))
+                          outline=stripe(masks['out_line'], cv2.cvtColor(bev, cv2.COLOR_BGR2GRAY)),
+                          front_limit=limit)
     else:
         roi = masks['parking_space']
         if cfg.get('roi_band_ratio', 0):
@@ -199,4 +236,6 @@ def extract(frame, polygons, cfg, role, stamp_ns, frame_id=''):
         if geometry.found:
             y = int(geometry.y*h)
             cv2.line(overlay, (0, y), (w-1, y), (0, 0, 255), 2)
+    if limit_segment is not None:
+        cv2.line(overlay, *limit_segment, (140, 255, 65), 3)
     return obs, segmentation, overlay
