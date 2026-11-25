@@ -25,6 +25,7 @@ control:
   align_fallback_s: 5.0
   front_limit_stop_y: 0.80  # front BEV row; tune with the parking bay and bumper in preview
   direction_pause_s: 0.7
+  reverse_right_s: 3.0
   end_steering_y: 0.78125  # reference 1000 pixels / 1280
   end_stop_y: 0.9765625  # reference 1250 pixels / 1280; tune on the vehicle
   stopped_hold_s: 3.0

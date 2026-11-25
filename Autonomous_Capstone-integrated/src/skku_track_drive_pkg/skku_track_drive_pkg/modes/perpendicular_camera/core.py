@@ -36,6 +36,7 @@ class ControlConfig:
     align_fallback_s: float = 5.0
     front_limit_stop_y: float = 0.80
     direction_pause_s: float = 0.7
+    reverse_right_s: float = 3.0
     end_steering_y: float = 1000 / 1280
     end_stop_y: float = 1250 / 1280
     stopped_hold_s: float = 3.0
@@ -98,7 +99,7 @@ class CameraParkingCore:
         self.barrier_ns = now_ns if observation_stamp_ns is None else observation_stamp_ns - 1
         self.elapsed = self.loss_elapsed = 0.0
         self.missing_count = 0
-        self.last_parking_command = None
+        self.last_reverse_command = None
         self.reason = reason
         if previous != state:
             self.transition = f'{previous} → {state} / {reason_text(reason)}'
@@ -122,7 +123,7 @@ class CameraParkingCore:
 
     def _wait(self, reason, dt, now_ns):
         self.reason = reason
-        self.last_parking_command = None
+        self.last_reverse_command = None
         # Maneuver elapsed freezes. A separate loss watchdog prevents a hidden
         # indefinite wait while the operator believes a maneuver is active.
         self.loss_elapsed += dt
@@ -164,7 +165,7 @@ class CameraParkingCore:
             # A W/resume must wait for captures made AFTER W, including after S.
             self.barrier_ns = max(self.barrier_ns, now_ns)
             self.missing_count = 0
-            self.last_parking_command = None
+            self.last_reverse_command = None
             self.was_armed = True
         if self.state in ('FAULT_STOP', 'FINISHED'):
             self.reason = self.fault or 'FINISHED'
@@ -186,6 +187,18 @@ class CameraParkingCore:
         if problem:
             return self._wait(problem, dt, now_ns)
 
+        if self.state == 'REVERSE_RIGHT':
+            # After a stop, the first usable frame starts commanding reverse
+            # again. Count only intervals that followed a reverse command.
+            if self.last_reverse_command is None:
+                dt = 0.0
+            if self.elapsed + dt + 1e-9 >= p.reverse_right_s:
+                last_command = self.last_reverse_command
+                self.enter('PARKING_IN', now_ns, f'RIGHT_REVERSE_COMPLETE: {p.reverse_right_s:g}',
+                           observation_stamp_ns=obs.stamp_ns)
+                self.last_reverse_command = last_command
+                dt = 0.0
+
         end_can_steer = obs.end.found and obs.end.y >= p.end_steering_y
         if self.state == 'SEARCHING_SPACE':
             self.observe_front(obs, now_ns)
@@ -195,7 +208,7 @@ class CameraParkingCore:
                 dt = 0.0
             elif not obs.line.found:
                 return self._wait('FRONT_BOUNDARY_MISSING', dt, now_ns)
-        elif (self.state == 'PARKING_IN' and self.last_parking_command is None
+        elif (self.state == 'PARKING_IN' and self.last_reverse_command is None
               and not (obs.space.found or end_can_steer)):
             return self._wait('REAR_PARKING_GEOMETRY_MISSING', dt, now_ns)
         elif self.state == 'TURN_RIGHT' and not obs.outline.found:
@@ -229,9 +242,8 @@ class CameraParkingCore:
             self.enter('REVERSE_RIGHT', now_ns, 'DIRECTION_PAUSE_COMPLETE', observation_stamp_ns=obs.stamp_ns)
 
         if self.state == 'REVERSE_RIGHT':
-            if not obs.space.found:
-                return self.command(p.max_steering, -p.reverse_pwm)
-            self.enter('PARKING_IN', now_ns, 'REAR_SPACE_ACQUIRED', observation_stamp_ns=obs.stamp_ns)
+            self.last_reverse_command = self.command(p.max_steering, -p.reverse_pwm)
+            return self.last_reverse_command
 
         if self.state == 'PARKING_IN':
             if obs.end.found and obs.end.y >= p.end_stop_y:
@@ -247,9 +259,9 @@ class CameraParkingCore:
                 steer = -p.rear_position_gain * ex - p.rear_angle_gain * ea
             else:
                 self.reason = 'REAR_PARKING_COMMAND_HELD'
-                return self.last_parking_command
-            self.last_parking_command = self.command(steer, -p.reverse_pwm)
-            return self.last_parking_command
+                return self.last_reverse_command
+            self.last_reverse_command = self.command(steer, -p.reverse_pwm)
+            return self.last_reverse_command
 
         if self.state == 'ESCAPE':
             if self.elapsed >= p.escape_s:

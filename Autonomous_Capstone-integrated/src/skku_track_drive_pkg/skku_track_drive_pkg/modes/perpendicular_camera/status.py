@@ -14,7 +14,6 @@ REASONS = {
     'FRONT_LIMIT_REACHED': '전방 평행주차선 접근 — 후진 전환을 위해 정지',
     'DIRECTION_PAUSE': '전진→후진 전환 대기',
     'DIRECTION_PAUSE_COMPLETE': '전진→후진 전환 대기 완료',
-    'REAR_SPACE_ACQUIRED': '후방 칸 중심 위치·방향 확보',
     'REAR_PARKING_GEOMETRY_MISSING': '후방 칸 중심선 또는 정렬 구간의 종료선 미검출',
     'REAR_PARKING_COMMAND_HELD': '후방 추종선 미검출 — 이전 조향·PWM 유지',
     'REAR_END_REACHED': '후방 종료선 정지 기준 도달',
@@ -58,6 +57,8 @@ def reason_text(reason):
     if code == 'FRONT_LIMIT_FALLBACK':
         duration = f'{detail}초' if detail else '설정 시간'
         return f'전방 평행주차선 미검출 — 좌회전 전진 {duration} 경과로 정지'
+    if code == 'RIGHT_REVERSE_COMPLETE':
+        return f'고정 우조향 후진 {detail}초 완료'
     if code == 'STATE_TIMEOUT':
         return f'상태 제한 시간 초과 ({detail})'
     if code == 'OBSERVATION_LOSS_TIMEOUT':

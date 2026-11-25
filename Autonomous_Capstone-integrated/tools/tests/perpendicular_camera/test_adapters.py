@@ -173,7 +173,8 @@ def test_backwards_clock_fault_requires_explicit_reset():
 
 def test_live_parameter_updates_are_rejected_and_disarmed_update_resets():
     obj, timer = adapter()
-    p = [SimpleNamespace(name='align_fallback_s', value=2.5)]
+    p = [SimpleNamespace(name='align_fallback_s', value=2.5),
+         SimpleNamespace(name='reverse_right_s', value=1.25)]
     assert not obj.on_parameters(p).successful
     obj.armed = False
     assert obj.on_parameters(p).successful
@@ -181,6 +182,7 @@ def test_live_parameter_updates_are_rejected_and_disarmed_update_resets():
     assert obj.core.state == 'SEARCHING_SPACE'
     applied = json.loads(obj.tuning_pub.publish.call_args.args[0].data)
     assert applied['config']['control']['align_fallback_s'] == 2.5
+    assert applied['config']['control']['reverse_right_s'] == obj.core.p.reverse_right_s == 1.25
     assert not obj.on_parameters([SimpleNamespace(name='align_fallback_s', value=0.0)]).successful
 
 

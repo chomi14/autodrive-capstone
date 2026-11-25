@@ -38,6 +38,7 @@ def load_config(path):
     data['front'] = {**FRONT_LIMIT_DEFAULTS, **data['front']}
     data['control'].setdefault('front_limit_stop_y', ControlConfig.front_limit_stop_y)
     data['control'].setdefault('align_fallback_s', ControlConfig.align_fallback_s)
+    data['control'].setdefault('reverse_right_s', ControlConfig.reverse_right_s)
     data['rear'].setdefault('roi_band_ratio', 0.0)
     return data
 

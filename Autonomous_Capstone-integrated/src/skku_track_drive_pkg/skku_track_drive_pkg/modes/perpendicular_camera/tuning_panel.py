@@ -18,6 +18,7 @@ CONTROL_GROUPS = {
         'front_angle_gain': 'Front yaw gain',
     },
     'Reverse and stop': {
+        'reverse_right_s': '우회전 후진 시간 (초)',
         'rear_target_x': 'Rear target x (0–1)',
         'rear_position_gain': 'Rear position gain',
         'rear_angle_gain': 'Rear yaw gain',

@@ -106,6 +106,7 @@ def test_save_load_preserves_whole_camera_schema(tmp_path):
     data['rear']['rotate_deg'] = 180
     data['front']['model_path'] = '/tmp/my front.pt'
     data['control']['align_fallback_s'] = 2.75
+    data['control']['reverse_right_s'] = 1.25
     path = tmp_path/'settings.yaml'
     save_config_atomic(path, data, ControlConfig(**data['control']))
     assert load_config(path) == data
@@ -120,6 +121,7 @@ def test_legacy_yaml_without_front_limit_fields_receives_tunable_defaults(tmp_pa
             data['front'].pop(key)
     data['control'].pop('front_limit_stop_y')
     data['control'].pop('align_fallback_s')
+    data['control'].pop('reverse_right_s')
     data['control'].update(confirm_frames=1, align_confirm_frames=4, align_yaw_min_rad=.65)
     path.write_text(yaml.safe_dump(data))
     loaded = load_config(path)

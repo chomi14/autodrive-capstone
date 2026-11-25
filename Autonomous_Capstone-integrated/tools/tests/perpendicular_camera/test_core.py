@@ -66,6 +66,10 @@ def enter_reverse(s):
     assert (cmd.steering, cmd.left_speed) == (7, -60)
     cmd = s.tick('rear', space_found=True)  # mask alone has no center/direction
     assert (cmd.steering, cmd.left_speed) == (7, -60)
+    for _ in range(round(s.core.p.reverse_right_s * 10) - 3):
+        cmd = s.tick('rear', space=rear_line(x=.7))
+        assert (cmd.steering, cmd.left_speed) == (7, -60)
+        assert s.core.state == 'REVERSE_RIGHT'
     cmd = s.tick('rear', space=rear_line(x=.7))
     assert s.core.state == 'PARKING_IN'
     assert (cmd.steering, cmd.left_speed) == (-3, -60)
@@ -112,6 +116,7 @@ def test_initial_missing_transitions_on_fifth_frame():
         'DIRECTION_PAUSE → REVERSE_RIGHT', 'REVERSE_RIGHT → PARKING_IN',
     ]
     assert '전방 주차칸 연속 5회 미검출' in log[0]
+    assert '고정 우조향 후진 3초 완료' in log[-1]
 
 
 def test_same_frame_invalid_and_missing_input_never_count_as_new_misses():
@@ -223,11 +228,39 @@ def test_fixed_reverse_has_no_added_timeout_and_distinguishes_stale_rear_input()
     s.enter('REVERSE_RIGHT')
     for _ in range(10):
         assert s.tick('rear', end=limit_line(.80)).left_speed == -60
+    elapsed = s.core.elapsed
     stale = s.ns - 700_000_000
     assert s.tick('rear', repeat=stale).left_speed == 0
     assert s.core.reason == 'rear_INPUT_STALE'
     assert s.core.state == 'REVERSE_RIGHT'
     assert s.tick('rear').left_speed == -60
+    assert s.core.elapsed == elapsed
+
+
+def test_fixed_reverse_uses_configured_duration_even_with_centerline_at_entry():
+    s = Scenario(reverse_right_s=1.25)
+    s.enter('DIRECTION_PAUSE')
+    for _ in range(5):
+        assert s.tick('rear', dt=.125, space=rear_line(x=.7)).left_speed == 0
+    for _ in range(10):
+        cmd = s.tick('rear', dt=.125, space=rear_line(x=.7))
+        assert (cmd.steering, cmd.left_speed) == (7, -60)
+        assert s.core.state == 'REVERSE_RIGHT'
+    cmd = s.tick('rear', dt=.125, space=rear_line(x=.7))
+    assert s.core.state == 'PARKING_IN'
+    assert (cmd.steering, cmd.left_speed) == (-3, -60)
+
+
+def test_fixed_reverse_hands_off_without_centerline_and_holds_its_last_command():
+    s = Scenario(reverse_right_s=.25)
+    s.enter('REVERSE_RIGHT')
+    previous = s.tick('rear', dt=.125)
+    assert (previous.steering, previous.left_speed) == (7, -60)
+    assert s.tick('rear', dt=.125) == previous
+    assert s.tick('rear', dt=.125) == previous
+    assert s.core.state == 'PARKING_IN'
+    assert s.core.reason == 'REAR_PARKING_COMMAND_HELD'
+    assert s.tick('rear', space=rear_line(x=.7)).steering == -3
 
 
 def test_maneuver_timeout_even_with_fresh_observations():
@@ -255,7 +288,7 @@ def test_disarm_freezes_timers_and_resume_requires_new_capture():
 
 def test_tracking_keeps_last_reverse_command_when_fresh_images_lose_geometry():
     s = Scenario()
-    s.enter('REVERSE_RIGHT')
+    s.enter('PARKING_IN')
     previous = s.tick('rear', space=rear_line(x=.7))
     assert s.core.state == 'PARKING_IN'
     assert (previous.steering, previous.left_speed, previous.right_speed) == (-3, -60, -60)
@@ -355,7 +388,8 @@ def test_reset_clears_fault_and_observation_history():
 @pytest.mark.parametrize('kwargs', [dict(max_steering=8), dict(reverse_pwm=256),
     dict(end_stop_y=.5, end_steering_y=.7), dict(steering_sign=0),
     dict(space_missing_frames=0), dict(calibration_confirmed='false'), dict(align_steering=7),
-    dict(rear_angle_gain=float('nan')), dict(direction_pause_s=0.0), dict(align_fallback_s=0.0)])
+    dict(rear_angle_gain=float('nan')), dict(direction_pause_s=0.0), dict(align_fallback_s=0.0),
+    dict(reverse_right_s=0.0)])
 def test_bad_control_settings_fail_before_runtime(kwargs):
     with pytest.raises(ValueError):
         ControlConfig(**kwargs)
