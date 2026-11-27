@@ -22,22 +22,22 @@ source /opt/ros/humble/setup.bash
 source /path/to/1125/Autonomous_Capstone-integrated/install/setup.bash
 ros2 launch /path/to/Seyeon/Autonomous_Capstone-integrated/seyeon/mission2_parking.launch.py \
   config_file:="$HOME/.config/autodrive/perpendicular_camera.yaml" \
-  mission2_config:="$HOME/.config/autodrive/mission2_measured.json" \
   front_camera_device:=/dev/video0 rear_camera_device:=/dev/video2
 ```
 
-기본은 미리보기이며 기존 `1125` 화면의 `W`를 사용한다. 상태는 터미널과 `/seyeon/mission2/status`에 표시된다. 실제 구동은 `preview:=false`, 두 실측 설정의 승인, 기존 시리얼 주행 허가가 모두 필요하다. 원본 수직주차 YAML은 읽기만 하며 이 실행에서 원본 수직주차 노드의 별도 launch 명령을 동시에 실행하지 않는다.
+기본은 미리보기이며 기존 `1125` 화면의 `W`를 사용한다. 상태는 터미널과 `/seyeon/mission2/status`에 표시된다. `mission2` 블록이 없는 기존 YAML로도 수직주차 미리보기는 열린다. 이때 `WAIT_MEASURED_MISSION2`를 표시하고 평행주차 인계는 대기한다. 실제 구동은 `preview:=false`, 이 YAML의 보정 승인, 기존 시리얼 주행 허가가 모두 필요하다. 원본 YAML은 읽기만 한다. 통합 실행의 `P`는 임시 세션 사본에 저장하며 기존 YAML의 내용을 갱신하지 않는다. 원본 수직주차 launch 명령을 동시에 실행하지 않는다.
 
 ## 한 번 필요한 현장 설정
 
-기본 키는 상위 `tools/parallel_camera_measured.template.json`과 `tools/parallel_camera_live.md`의 형식을 쓴다. `slot`과 `obstacles`는 이 실행에서 아래 값으로 생성된다. 나머지는 측정해 둔 값으로 한 번 구성한다. 주차칸의 절대 원점, 카메라의 실측 좌표 변환, 정지거리와 스티어링 보정은 규정집 치수에서 알 수 없다. 위치 오인식 방지를 위해 진입점에서 측정한 시작 위치와 실제 트랙에 분명히 대응하는 흰 모서리를 등록한다. 동일 모양이 반복돼 영상 위치를 구분할 수 없는 구간에서는 장치가 정지하도록 하고, 통과 가능 여부는 미리보기에서 확인한다.
+별도 JSON은 없다. `mission2_settings_block.yaml`의 `mission2` 블록을 기존 `perpendicular_camera.yaml` 아래에 한 번 추가하고 측정값을 채운다. 수직주차 설정과 카메라 크기, 주차 PWM은 기존 파일에서 재사용한다. `slot`과 `obstacles`는 프로그램에서 생성한다. 주차칸의 절대 원점, 카메라의 실측 좌표 변환, 정지거리와 스티어링 보정은 규정집 치수에서 알 수 없다. 진입점에서 측정한 시작 위치와 트랙에 분명히 대응하는 흰 모서리를 등록한다. 동일 모양이 반복돼 영상 위치를 구분할 수 없는 구간에서는 미리보기에서 통과 가능 여부를 확인한다. 필드별 단위와 허용 기준은 상위 `tools/parallel_camera_live.md`를 참고한다.
 
-`mission2` 키 아래에 다음을 넣는다.
+`mission2.layout` 아래에 다음을 넣는다.
 
 - `parallel_bay1_clear_corner_m`, `perpendicular_bay1_clear_corner_m`. 각각 1번 칸 내부의 최소 `[x, y]` 모서리. 현장 `+x`는 최종 평행주차 차량의 전방이다.
 - `parallel_index_direction`, `perpendicular_index_direction`. 각 줄에서 1→4번이 `+x`나 `-x`인지 각각 `1` 또는 `-1`로 지정한다.
 - `fixed_obstacles`. 다른 고정 장애물 사각형 목록. 각 줄의 개별 주차칸은 프로그램에서 추가한다. 경기에서 놓인 차량 외곽이 칸 밖으로 나오면 해당 구역도 포함해야 한다.
 - `exit_right_limit_s`, `target_confirm_frames`. 최대 우조향으로 나가는 시간이 현장 검증 범위를 넘지 않도록 하며, 서로 다른 후방 이미지에서 두 차량 위치가 반복 확인되어야 한다.
-- `rear_detector`. `model_path`는 이미 설치된 `.pt`, `classes`는 기준 차량 검출에 쓸 실제 클래스 이름의 목록, `device`는 추론 장치, `confidence`는 확인한 모델의 신뢰도 기준, `bay_edge_margin_m`는 모호한 경계 검출을 제외할 여유다. 자동 다운로드하지 않는다. 카메라 평면에 투영한 박스 하단을 이용하므로 차량 전체가 보이는지와 바퀴 접지점 오차를 현장에서 확인한다.
+
+기준 차량 검출기는 기본으로 **1125 설치본의 `models/mission/best_m_s_curve.pt`**를 경로 지정 없이 읽는다. 실제 체크포인트 안에서 `obstacle`, `obstacles`, `car` 클래스를 확인하며, 해당 클래스가 없거나 모델 파일이 없으면 멈춘다. 흰색 기준 차량 2대가 반복해서 검출되는지 먼저 확인한다. 대체 모델이 필요할 때만 `mission2.rear_detector`에 `model_path`와 실제 `classes`를 적는다. `device`, `confidence`, `bay_edge_margin_m`도 이 블록에서 필요할 때 덮어쓸 수 있다. 자동 다운로드하지 않는다.
 
 `1125` 설치본은 GitHub `4af80cef7cb5e56b66dff1849238fac4003bcd9f` 기준이다. 평행 진입 전에는 2→2, 2→3, 3→2, 3→3 조합을 확인하고, 먼저 차를 움직이지 않는 미리보기에서 신호와 정지 동작을 확인한다.

@@ -1,7 +1,6 @@
 """Use the installed 1125 camera parking node, then take over its one publisher."""
 
 from concurrent.futures import ThreadPoolExecutor
-import json
 from pathlib import Path
 import time
 
@@ -9,6 +8,8 @@ import cv2
 import numpy as np
 import rclpy
 import skku_track_drive_pkg
+import yaml
+from ament_index_python.packages import get_package_share_directory
 from cv_bridge import CvBridge
 from interfaces_pkg.msg import MotionCommand
 from rclpy.qos import qos_profile_sensor_data
@@ -71,16 +72,28 @@ class RearVehicleDetector:
 class Mission2Node(CameraParkingController):
     def __init__(self):
         super().__init__()
-        self.declare_parameter('mission2_config', '')
-        path = Path(self.get_parameter('mission2_config').value)
-        raw = json.loads(path.read_text(encoding='utf-8-sig'))
-        params = raw['mission2']
+        self.declare_parameter('mission2_source', '')
+        path = Path(self.get_parameter('mission2_source').value)
+        raw = yaml.safe_load(path.read_text(encoding='utf-8-sig')).get('mission2')
+        self.parallel_enabled = bool(raw)
+        self.worker = None
+        self.flow_status = self.create_publisher(String, '/seyeon/mission2/status', 1)
+        if not self.parallel_enabled:
+            if not self.preview:
+                raise ValueError('live mode requires measured mission2 settings')
+            self.get_logger().warn('WAIT_MEASURED_MISSION2: perpendicular preview only')
+            return
+        params = raw['layout']
         self.bays = parallel_bays(vector(params['parallel_bay1_clear_corner_m'], 2), params['parallel_index_direction'])
         self.perpendicular = perpendicular_bays(vector(params['perpendicular_bay1_clear_corner_m'], 2),
                                                 params['perpendicular_index_direction'])
         self.fixed = tuple(map(rectangle, params['fixed_obstacles']))
         raw['slot'] = list(vars(self.bays[2]).values())
         raw['obstacles'] = [list(vars(b).values()) for b in (*self.fixed, self.bays[1], self.bays[4])]
+        for role in ('front', 'rear'):
+            raw[role].setdefault('image_size', [self.data[role]['width'], self.data[role]['height']])
+        raw['tracking'].setdefault('forward_pwm', self.core.p.exit_pwm)
+        raw['tracking'].setdefault('reverse_pwm', self.core.p.reverse_pwm)
         self.cfg = LiveConfig(raw)
         if not self.preview and not self.cfg.commissioned:
             raise ValueError('the mission 2 measurements have not been commissioned')
@@ -101,8 +114,11 @@ class Mission2Node(CameraParkingController):
             self.create_subscription(Image, self.data[role]['image_topic'],
                                      lambda msg, i=index: self.on_image(msg, i), qos_profile_sensor_data)
         self.keys = self.create_publisher(String, 'vehicle/drive_key', 10)
-        self.flow_status = self.create_publisher(String, '/seyeon/mission2/status', 1)
-        self.detector = RearVehicleDetector(params['rear_detector'], self.cfg.cameras[1], self.bays)
+        checkpoint = Path(get_package_share_directory('skku_track_drive_pkg'), 'models/mission/best_m_s_curve.pt')
+        detector = {'model_path': str(checkpoint), 'classes': ['obstacle', 'obstacles', 'car'],
+                    'device': self.data['rear']['model_device'], 'confidence': 0.5,
+                    'bay_edge_margin_m': self.cfg.error, **raw.get('rear_detector', {})}
+        self.detector = RearVehicleDetector(detector, self.cfg.cameras[1], self.bays)
         self.worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix='mission2_rear')
         self.pending = None
         self.submitted = 0
@@ -170,6 +186,9 @@ class Mission2Node(CameraParkingController):
         return Frame(0, self.pose)
 
     def on_timer(self):
+        if not self.parallel_enabled:
+            self.flow_status.publish(String(data='WAIT_MEASURED_MISSION2'))
+            return super().on_timer()
         self.localize()
         if self.flow is None and self.core.state != 'STOPPED':
             return super().on_timer()
@@ -203,7 +222,8 @@ class Mission2Node(CameraParkingController):
         self.flow_status.publish(String(data=status))
 
     def destroy_node(self):
-        self.worker.shutdown(wait=False, cancel_futures=True)
+        if self.worker is not None:
+            self.worker.shutdown(wait=False, cancel_futures=True)
         return super().destroy_node()
 
 
