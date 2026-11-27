@@ -1,0 +1,49 @@
+{
+  "commissioned": false,
+  "start_pose_m_deg": [null, null, null],
+  "vehicle": {
+    "wheelbase": null,
+    "front_overhang": null,
+    "rear_overhang": null,
+    "width": null,
+    "steer_left_deg": null,
+    "steer_right_deg": null
+  },
+  "slot": [null, null, null, null],
+  "bounds": [null, null, null, null],
+  "obstacles": [[null, null, null, null], [null, null, null, null]],
+  "margin_m": null,
+  "segment_m": null,
+  "heading_tolerance_deg": null,
+  "front": {
+    "image_size": [null, null],
+    "pixel_points": [],
+    "vehicle_points_m": [],
+    "corners_world_m": []
+  },
+  "rear": {
+    "image_size": [null, null],
+    "pixel_points": [],
+    "vehicle_points_m": [],
+    "corners_world_m": []
+  },
+  "tracking": {
+    "pose_error_m": null,
+    "corner_window_m": null,
+    "max_pose_jump_m": null,
+    "max_yaw_jump_deg": null,
+    "max_frame_age_s": null,
+    "max_frame_skew_s": null,
+    "paint_s_max": null,
+    "paint_v_min": null,
+    "max_path_error_m": null,
+    "max_path_error_deg": null,
+    "worst_stop_travel_m": null,
+    "settle_s": null,
+    "settle_drift_m": null,
+    "segment_timeout_s": null,
+    "forward_pwm": null,
+    "reverse_pwm": null,
+    "steering_deg_by_step_minus7_to_plus7": [null, null, null, null, null, null, null, 0, null, null, null, null, null, null, null]
+  }
+}
