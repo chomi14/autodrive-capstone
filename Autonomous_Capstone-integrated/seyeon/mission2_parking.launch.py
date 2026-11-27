@@ -30,11 +30,7 @@ def assemble(context):
     document = yaml.safe_load(path.read_text(encoding='utf-8-sig'))
     if not isinstance(document, dict):
         raise ValueError('config_file must contain the 1125 camera parking YAML')
-    settings = document.pop('mission2', None)
-    if settings is not None and not isinstance(settings, dict):
-        raise ValueError('mission2 must be a mapping in the same YAML as perpendicular parking')
-    if not preview and (not settings or settings.get('commissioned') is not True):
-        raise ValueError('live mode requires the measured mission2 block in config_file and commissioned: true')
+    document.pop('mission2', None)  # Older optional measurements are not used.
     if not 0 < float(arg('command_timeout')) <= .25:
         raise ValueError('mission 2 requires a bounded controller health lease of at most .25 seconds')
     # 1125 validates exactly four root fields; give those nodes an isolated
@@ -67,11 +63,11 @@ def assemble(context):
     session = {role: {'device': arg(role + '_camera_device') or data[role]['device'],
                       'model_path': str(Path(model_path(arg(role + '_model') or data[role]['model_path'])).resolve())}
                for role in ('front', 'rear')}
-    script = Path(__file__).resolve().with_name('mission2_parking_node.py')
+    script = Path(__file__).resolve().with_name('mission2_visual_node.py')
     actions[replaced[0]] = Node(executable=str(script), prefix=[sys.executable],
                                name='perpendicular_camera_controller', namespace=namespace,
                                remappings=remaps, output='screen', parameters=[{
-                                   'config_file': str(runtime_path), 'mission2_source': str(path),
+                                   'config_file': str(runtime_path),
                                    'preview': preview, 'session_overrides_json': json.dumps(session),
                                    'exit_enabled': False,
                                    'cmd_topic': '/sensors_only/topic_control_signal' if preview else 'topic_control_signal',
@@ -82,8 +78,7 @@ def assemble(context):
         session_directory.cleanup()
         return []
 
-    note = ('Using mission2 settings from the existing perpendicular-camera YAML' if settings else
-            'Perpendicular preview only: no measured mission2 block in the existing YAML')
+    note = 'Mission 2 visual handoff: reusing 1125 camera settings; no metric mission settings'
     return [RegisterEventHandler(OnShutdown(on_shutdown=[OpaqueFunction(function=cleanup)])),
             LogInfo(msg=note), *handlers, *actions]
 

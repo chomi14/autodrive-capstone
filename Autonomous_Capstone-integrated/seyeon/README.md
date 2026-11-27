@@ -1,43 +1,29 @@
-# 수직주차에서 평행주차까지 이어지는 미션 2
+# 전·후방 카메라로 이어서 수행하는 미션 2
 
-한 번 실행해서 `1125`의 수직주차 제어를 그대로 사용한다. 기존 제어기가 `STOPPED`에 들어가면 이 폴더의 코드가 같은 명령 발행기를 이어서 사용한다. 원본 수직주차의 `ESCAPE` 출차는 이 실행 모드에서만 끈다. 주차 중 프로그램 교체나 추가 `W`는 없다. 첫 `W`만 기존 GUI에서 누른다.
+기존 `1125` 수직주차를 같은 프로그램에서 실행한다. 수직주차 제어가 `STOPPED`에 들어오면 기존 자동 출차 대신 아래 순서를 수행한다. 새 실측 파일·`mission2` 설정 블록·트랙 좌표·조향각 실측표는 사용하지 않는다.
 
-| 상태 | 동작 |
+| 상태 | 카메라로 확인하는 동작 |
 |---|---|
-| `PERP_HOLD` | 현재 차체가 수직 2번 또는 3번에 있는지 지도에서 확인하고 최소 5초간 정차한다. 위치가 움직이거나 관측이 끊기면 정차 시간을 다시 센다. |
-| `EXIT_RIGHT` | 최대 우조향 전진을 내되 조향 궤적과 정지 여유가 측정한 통로 안에 있을 때만 가능하다. 후방 카메라에서 두 기준 차량을 찾아 칸을 선택한다. |
-| `ENTRY_PAUSE` | 목표가 좌측 후방에 들어오면 정지한다. 같은 칸을 계속 확인하고 정지가 안정된 뒤 후진 경로를 계산한다. |
-| `PARALLEL` | 좌조향 후진으로 시작해 차를 집어넣고 반대 조향으로 펴며, 필요하면 짧은 전·후진으로 위치를 맞춘다. 실제 위치와 장면에서 금지 영역을 재확인한다. |
-| `PARALLEL_HOLD` | 선택한 칸 안에서 차체가 평행한 상태를 유지하고 최소 5초 정차한다. |
-| `PARALLEL_DONE` | 평행주차까지만 완료한 상태다. 전체 경기 성공 조건인 OUT 선 도달은 이 코드의 다음 단계다. |
+| `PERP_HOLD` | 수직주차 직후 전·후방 영상의 변화가 작아지는 것을 확인하고 5초간 정차한다. |
+| `EXIT_RIGHT` | 1125가 사용하는 우조향 부호 그대로 최대 우조향으로 전진한다. 기존 출차·후진 시간보다 오래 탐색하지 않으며, 전방 근접 후보나 영상 지연 시 0 명령을 낸다. |
+| `BEFORE_REVERSE` | 후방에서 두 기준 차량과 그 사이의 주차선이 연속으로 확인되면 정차한다. 1·3 사이에 있든 2·4 사이에 있든 두 차량 사이의 칸을 고른다. 숫자 자체를 읽지는 않는다. |
+| `REVERSE_IN` | 기존 후방 BEV와 수직주차의 조향 계수를 재사용하여 주차선 방향과 화면상 중심으로 후진 조향을 보정한다. 처음 잡은 칸을 짧게 추적하되 정지선 확인이 끊기면 후진하지 않는다. |
+| `BEFORE_ADJUST` / `FORWARD_ADJUST` | 끝 경계에 접근했는데 각도가 어긋나면 일시 정지하고, 전방 근접 후보를 확인한 후 짧게 전진 보정한다. 최대 두 번이며 다시 정차 후 후진한다. |
+| `PARALLEL_HOLD` | 화면의 각도·중심·정지선 조건을 만족하고 정차 상태가 5초 유지되면 0 명령 상태로 끝난다. |
 
-평행 배치는 규정집 PDF 5페이지 도면에서 평행칸 내부 길이 1.50 m, 안쪽 폭 0.85 m, 칸 피치 1.55 m를 사용한다. 폭 0.95 m는 선을 포함한 외곽 치수다. 수직 쪽은 내부 폭 0.95 m, 깊이 1.50 m, 칸 피치 1.00 m를 사용한다. 기준 차량이 평행 1·3에 보이면 2번, 2·4에 보이면 3번이다. 끝의 빈 칸이나 차량 한 대만 보이는 경우에는 목표를 확정하지 않는다. 1125의 후방 주차선 모델과 기준 차량 검출 모델은 역할이 다르다. 흰색 모형에서 두 기준 차량을 일관되게 검출할 수 있음을 별도로 확인해야 한다.
+카메라 입력은 1125 `perpendicular_camera.yaml`의 회전·반전·투시변환을 사용한다. 기준 차량은 1125 설치본의 `models/mission/best_m_s_curve.pt`에서 `obstacle`·`obstacles`·`car` 클래스 중 존재하는 것을 사용해 찾는다. 새 모델을 받거나 모델 경로를 입력하지 않는다. 흰색 모형 차량 검출 재현율, 양방향 시야, 실제 정차·충돌 여유는 실차에서 아직 확인하지 않았다. 영상의 픽셀 기준 근접 판정은 실제 범퍼 거리나 전 차체의 사각지대를 측정하지 않는다. `PARALLEL_DONE`은 코드의 영상 조건 완료이며, 규정집의 바퀴 접지면 판정과 `OUT` 선 도달까지 확인한 결과는 아니다. `OUT` 주행은 포함하지 않는다.
 
 ## 실행
 
-`1125`의 워크스페이스를 평소처럼 빌드한 뒤 해당 `install/setup.bash`를 source한다. 이 폴더는 **로컬 Seyeon 소스 트리의 `Autonomous_Capstone-integrated/seyeon`**에 둔다. 두 워크스페이스를 겹쳐 source하지 않는다. 아래 경로와 카메라 장치는 실제 위치로 바꾼다.
+`1125`에서 기존 수직주차를 돌렸던 것과 같은 빌드를 source한다. `seyeon` 코드는 1125 패키지를 가져와 같은 노드에서 두 단계를 잇는다. 별도의 수직주차 launch를 동시에 실행하지 않는다.
 
 ```bash
 source /opt/ros/humble/setup.bash
-source /path/to/1125/Autonomous_Capstone-integrated/install/setup.bash
-ros2 launch /path/to/Seyeon/Autonomous_Capstone-integrated/seyeon/mission2_parking.launch.py \
+source "$HOME/autodrive_ws/Autonomous_Capstone-integrated/install/setup.bash"
+ros2 launch "$HOME/autodrive_ws/mission2-seyeon/Autonomous_Capstone-integrated/seyeon/mission2_parking.launch.py" \
   config_file:="$HOME/.config/autodrive/perpendicular_camera.yaml" \
-  front_camera_device:=/dev/video0 rear_camera_device:=/dev/video2
+  front_camera_device:=/dev/video0 rear_camera_device:=/dev/video2 \
+  preview:=true
 ```
 
-기본은 미리보기이며 기존 `1125` 화면의 `W`를 사용한다. 상태는 터미널과 `/seyeon/mission2/status`에 표시된다. `mission2` 블록이 없는 기존 YAML로도 수직주차 미리보기는 열린다. 이때 `WAIT_MEASURED_MISSION2`를 표시하고 평행주차 인계는 대기한다. 실제 구동은 `preview:=false`, 이 YAML의 보정 승인, 기존 시리얼 주행 허가가 모두 필요하다. 원본 YAML은 읽기만 한다. 통합 실행의 `P`는 임시 세션 사본에 저장하며 기존 YAML의 내용을 갱신하지 않는다. 원본 수직주차 launch 명령을 동시에 실행하지 않는다.
-
-## 한 번 필요한 현장 설정
-
-별도 JSON은 없다. `mission2_settings_block.yaml`의 `mission2` 블록을 기존 `perpendicular_camera.yaml` 아래에 한 번 추가하고 측정값을 채운다. 수직주차 설정과 카메라 크기, 주차 PWM은 기존 파일에서 재사용한다. `slot`과 `obstacles`는 프로그램에서 생성한다. 주차칸의 절대 원점, 카메라의 실측 좌표 변환, 정지거리와 스티어링 보정은 규정집 치수에서 알 수 없다. 진입점에서 측정한 시작 위치와 트랙에 분명히 대응하는 흰 모서리를 등록한다. 동일 모양이 반복돼 영상 위치를 구분할 수 없는 구간에서는 미리보기에서 통과 가능 여부를 확인한다. 필드별 단위와 허용 기준은 상위 `tools/parallel_camera_live.md`를 참고한다.
-
-`mission2.layout` 아래에 다음을 넣는다.
-
-- `parallel_bay1_clear_corner_m`, `perpendicular_bay1_clear_corner_m`. 각각 1번 칸 내부의 최소 `[x, y]` 모서리. 현장 `+x`는 최종 평행주차 차량의 전방이다.
-- `parallel_index_direction`, `perpendicular_index_direction`. 각 줄에서 1→4번이 `+x`나 `-x`인지 각각 `1` 또는 `-1`로 지정한다.
-- `fixed_obstacles`. 다른 고정 장애물 사각형 목록. 각 줄의 개별 주차칸은 프로그램에서 추가한다. 경기에서 놓인 차량 외곽이 칸 밖으로 나오면 해당 구역도 포함해야 한다.
-- `exit_right_limit_s`, `target_confirm_frames`. 최대 우조향으로 나가는 시간이 현장 검증 범위를 넘지 않도록 하며, 서로 다른 후방 이미지에서 두 차량 위치가 반복 확인되어야 한다.
-
-기준 차량 검출기는 기본으로 **1125 설치본의 `models/mission/best_m_s_curve.pt`**를 경로 지정 없이 읽는다. 실제 체크포인트 안에서 `obstacle`, `obstacles`, `car` 클래스를 확인하며, 해당 클래스가 없거나 모델 파일이 없으면 멈춘다. 흰색 기준 차량 2대가 반복해서 검출되는지 먼저 확인한다. 대체 모델이 필요할 때만 `mission2.rear_detector`에 `model_path`와 실제 `classes`를 적는다. `device`, `confidence`, `bay_edge_margin_m`도 이 블록에서 필요할 때 덮어쓸 수 있다. 자동 다운로드하지 않는다.
-
-`1125` 설치본은 GitHub `4af80cef7cb5e56b66dff1849238fac4003bcd9f` 기준이다. 평행 진입 전에는 2→2, 2→3, 3→2, 3→3 조합을 확인하고, 먼저 차를 움직이지 않는 미리보기에서 신호와 정지 동작을 확인한다.
+기본은 모터 없는 미리보기다. 기존 창의 `W`로 수직주차부터 시작할 수 있고 자동 인계 시 `W`를 한 번 더 누르지 않는다. 단계와 정지 이유는 터미널과 `/seyeon/mission2/status`에서 본다. 실제 송신 경로는 `preview:=false`일 때만 열리며 1125 기존 수직주차의 `calibration_confirmed` 및 시리얼 주행 허가를 그대로 적용한다. 원본 수직주차 YAML은 읽기만 하고, `P`로 저장하면 세션 임시 사본에만 들어간다.
