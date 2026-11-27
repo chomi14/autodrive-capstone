@@ -19,10 +19,22 @@ REASONS = {
     'REAR_END_REACHED': '후방 종료선 정지 기준 도달',
     'PARKED': '주차 완료 — 정지 유지',
     'PARKED_HOLD_COMPLETE': '주차 정지 유지 시간 완료',
-    'ESCAPE_COMPLETE': '출차 직진 시간 완료',
-    'EXIT_LINE_MISSING': '전방 출차선 미검출',
-    'EXIT_LINE_REACHED': '전방 출차선 기준 도달',
+    'ESCAPE_COMPLETE': '출차 첫 직진 시간 완료',
     'FINAL_STRAIGHT_COMPLETE': '마지막 직진 시간 완료 — 출차 종료',
+    'PARALLEL_MODEL_SWITCH': '평행주차 모델 전환 — 새 인식 결과 대기',
+    'PARKING_MODEL_WAIT_FRESH': '전환된 모델의 새 영상 대기',
+    'PARALLEL_ROADSIDE_ACQUIRED': '평행주차 통로선 검출 — 우조향 출차에서 선 추종으로 전환',
+    'PARALLEL_ROADSIDE_MISSING': '평행주차 통로선 미검출 — 직진하며 탐색',
+    'PARALLEL_TARGET_CONFLICT': '평행주차 목표 칸 판정 상충 — 후진 시작 보류',
+    'PARALLEL_APPROACH_LIMIT': '출차 직진 구간 종료 — 평행주차 후진 위치 미확보',
+    'PARALLEL_REVERSE_POSITION_REACHED': '평행주차 후진 시작 위치 도달',
+    'PARALLEL_INSERT_ANGLE_REACHED': '목표 칸 진입 각도 도달 — 직진 후진',
+    'PARALLEL_FAR_LINE_ACQUIRED': '안쪽 평행주차선이 조향 범위에 도달 — 거리·각도로 추종',
+    'PARALLEL_FAR_LINE_LOST_USING_ROADSIDE': '안쪽 선 미검출 — 통로쪽 선으로 후진 조향',
+    'PARALLEL_REAR_GEOMETRY_MISSING': '후방 평행주차 깊이 또는 주차선 각도 미검출',
+    'PARALLEL_REVERSE_COMMAND_HELD': '후방 선 미검출 — 이전 조향·PWM 유지',
+    'PARALLEL_FAR_LINE_REACHED': '평행주차 안쪽 선에 도달 — 정지',
+    'PARALLEL_PARKED': '평행주차 정렬 및 목표 깊이 도달',
     'FINISHED': '출차 완료',
     'ROS_CLOCK_MOVED_BACKWARD_RESET_REQUIRED': 'ROS 시계 역행 — 초기화 필요',
     'UNKNOWN_STATE': '알 수 없는 주차 상태',
@@ -59,6 +71,8 @@ def reason_text(reason):
         return f'전방 평행주차선 미검출 — 좌회전 전진 {duration} 경과로 정지'
     if code == 'RIGHT_REVERSE_COMPLETE':
         return f'고정 우조향 후진 {detail}초 완료'
+    if code == 'EXIT_RIGHT_COMPLETE':
+        return f'출차 우조향 전진 {detail}초 완료'
     if code == 'STATE_TIMEOUT':
         return f'상태 제한 시간 초과 ({detail})'
     if code == 'OBSERVATION_LOSS_TIMEOUT':

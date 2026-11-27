@@ -107,12 +107,16 @@ def test_save_load_preserves_whole_camera_schema(tmp_path):
     data['front']['model_path'] = '/tmp/my front.pt'
     data['control']['align_fallback_s'] = 2.75
     data['control']['reverse_right_s'] = 1.25
+    data['control']['escape_s'] = 2.25
+    data['control']['escape_pwm'] = 175
+    data['control']['exit_turn_s'] = 1.75
+    data['control']['exit_straight_s'] = 2.25
     path = tmp_path/'settings.yaml'
     save_config_atomic(path, data, ControlConfig(**data['control']))
     assert load_config(path) == data
 
 
-def test_legacy_yaml_without_front_limit_fields_receives_tunable_defaults(tmp_path):
+def test_legacy_yaml_receives_camera_and_timed_motion_defaults(tmp_path):
     import yaml
     data = load_config(CONFIG)
     path = tmp_path/'old.yaml'
@@ -122,7 +126,12 @@ def test_legacy_yaml_without_front_limit_fields_receives_tunable_defaults(tmp_pa
     data['control'].pop('front_limit_stop_y')
     data['control'].pop('align_fallback_s')
     data['control'].pop('reverse_right_s')
+    data['control'].pop('escape_pwm')
+    data['control'].pop('exit_turn_s')
+    data['control'].pop('exit_straight_s')
     data['control'].update(confirm_frames=1, align_confirm_frames=4, align_yaw_min_rad=.65)
+    data['control'].update(escape_s=1.5, final_straight_s=2.5, outline_finish_y=.9,
+                           exit_position_gain=.5, exit_angle_gain=10.)
     path.write_text(yaml.safe_dump(data))
     loaded = load_config(path)
     assert loaded == load_config(CONFIG)

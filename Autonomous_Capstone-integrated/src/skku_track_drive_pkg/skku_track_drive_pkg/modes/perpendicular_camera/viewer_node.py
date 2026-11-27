@@ -65,7 +65,7 @@ class CameraParkingViewer(Node):
 
     def build_window(self):
         self.root = tk.Tk()
-        self.root.title('Perpendicular parking | ' + ('PREVIEW' if self.preview else 'LIVE'))
+        self.root.title('카메라 주차 | ' + ('PREVIEW' if self.preview else 'LIVE'))
         self.root.geometry('1260x760')
         self.root.minsize(840, 520)
         self.root.protocol('WM_DELETE_WINDOW', lambda: self.handle_key('q'))
@@ -186,7 +186,9 @@ class CameraParkingViewer(Node):
         revision = self.panel.snapshot['revision']
         request = SetParametersAtomically.Request()
         camera_edit = json.dumps({'revision': revision,
-                                  'cameras': {role: changes[role] for role in ROLES}}, allow_nan=False)
+                                  'cameras': {role: changes[role] for role in ROLES},
+                                  'parallel_cameras': {role: changes['parallel_'+role] for role in ROLES}},
+                                 allow_nan=False)
         parameters = [Parameter('camera_tuning_json', value=camera_edit)]
         parameters.extend(Parameter(key, value=value) for key, value in changes['control'].items())
         request.parameters = [parameter.to_parameter_msg() for parameter in parameters]
@@ -220,21 +222,36 @@ class CameraParkingViewer(Node):
             if self.snapshot and view in ('oriented', 'bev'):
                 cfg = self.snapshot['config']
                 point_key = 'persp_src' if view == 'oriented' else 'persp_dst'
-                corners = np.round(np.array(cfg[role][point_key]).reshape(4, 2) * [nw-1, nh-1]).astype(np.int32)
+                parallel = self.status.get('model') == 'parallel'
+                vision = dict(cfg[role], **cfg.get('parallel', {}).get(role, {})) if parallel else cfg[role]
+                corners = np.round(np.array(vision[point_key]).reshape(4, 2) * [nw-1, nh-1]).astype(np.int32)
                 cv2.polylines(frame, [corners], True, (255, 230, 50), 1)
                 for index, (px, py) in enumerate(corners, 1):
                     cv2.circle(frame, (px, py), 4, (255, 230, 50), -1)
                     cv2.putText(frame, str(index), (min(px+5, nw-11), max(12, min(py, nh-4))),
                                 cv2.FONT_HERSHEY_SIMPLEX, .42, (255, 230, 50), 1)
                 if view == 'bev':
-                    if role == 'front':
-                        limits = [('outline_finish_y', (60, 190, 255), 0, nw-1)]
+                    if parallel and role == 'front':
+                        target = cfg['control']['parallel_target_x']
+                        column = round(target*(nw-1))
+                        cv2.line(frame, (column, 0), (column, nh-1), (180, 220, 120), 1)
+                        cv2.putText(frame, f'x={target:.2f}', (4, 14), cv2.FONT_HERSHEY_SIMPLEX,
+                                    .4, (180, 220, 120), 1)
+                        limits = []
+                    elif parallel:
+                        control = cfg['control']
+                        target = control['parallel_rear_reference_y'] + control['parallel_entry_y'] - 1
+                        if 0 <= target <= 1:
+                            row = round(target*(nh-1))
+                            cv2.line(frame, (0, row), (nw-1, row), (180, 220, 120), 1)
+                        limits = []
+                    elif role == 'front':
                         left, right = (round(cfg['front'][key] * (nw-1))
                                        for key in ('limit_x_min', 'limit_x_max'))
                         top, bottom = (round(cfg['front'][key] * (nh-1))
                                        for key in ('limit_y_min', 'limit_y_max'))
                         cv2.rectangle(frame, (left, top), (right, bottom), (180, 220, 120), 1)
-                        limits.append(('front_limit_stop_y', (180, 220, 120), left, right))
+                        limits = [('front_limit_stop_y', (180, 220, 120), left, right)]
                     else:
                         limits = [('end_steering_y', (60, 190, 255), 0, nw-1),
                                   ('end_stop_y', (70, 80, 255), 0, nw-1)]
@@ -281,6 +298,17 @@ class CameraParkingViewer(Node):
             f"전방 칸 연속 미검출 {s.get('missing_count', 0)}회   평행주차선 y {limit_y}   "
             f"종료선 y {end_y}   출차선 y {exit_y}   오차 {s.get('errors', {})}",
         ]
+        if s.get('model') == 'parallel':
+            front_parallel = front.get('parallel') or {}
+            rear_parallel = rear.get('parallel') or {}
+            road = front_parallel.get('roadside') or {}
+            actual = f"{road['x']:.3f}" if road.get('found') else '미검출'
+            depth = rear_parallel.get('depth')
+            gap = rear_parallel.get('far_gap')
+            depth_text = f'{depth:.3f}' if depth is not None else '미검출'
+            gap_text = f'{gap:.3f}' if gap is not None else '미검출'
+            lines[1] = (f"평행주차 모델   통로선 x {actual}   목표 칸 {s.get('parallel_target') or '미확정'}"
+                        f"   후방 깊이 {depth_text}   안쪽 선까지 {gap_text}   오차 {s.get('errors', {})}")
         if s.get('transition'):
             lines.append(s['transition'])
         if self.snapshot:

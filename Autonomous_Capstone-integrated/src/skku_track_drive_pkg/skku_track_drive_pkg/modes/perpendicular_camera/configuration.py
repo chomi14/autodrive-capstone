@@ -12,6 +12,8 @@ from .core import ControlConfig
 
 CAPTURE_FIELDS = ('device', 'width', 'height', 'fps')
 TUNING_TOPIC = '/parking_camera/tuning'
+MODEL_TOPIC = '/parking_camera/model'
+PARALLEL_BEV_FIELDS = ('persp_src', 'persp_dst')
 VISION_FIELDS = ('rotate_deg', 'flip_horizontal', 'confidence', 'persp_src', 'persp_dst',
                  'min_area_ratio', 'morph_kernel', 'min_longitudinal_span_ratio')
 FRONT_LIMIT_DEFAULTS = {
@@ -22,7 +24,8 @@ FRONT_VISION_FIELDS = tuple(FRONT_LIMIT_DEFAULTS)
 REAR_VISION_FIELDS = ('roi_band_ratio', 'parking_width_ratio', 'pair_min_separation_ratio',
                       'pair_max_angle_rad')
 LEGACY_CONTROL_FIELDS = ('confirm_frames', 'align_confirm_frames', 'align_yaw_min_rad',
-                         'align_yaw_error_max_rad')
+                         'align_yaw_error_max_rad', 'outline_finish_y',
+                         'final_straight_s', 'exit_position_gain', 'exit_angle_gain')
 
 
 def _finite(values):
@@ -36,16 +39,35 @@ def load_config(path):
     for key in LEGACY_CONTROL_FIELDS:
         data['control'].pop(key, None)
     data['front'] = {**FRONT_LIMIT_DEFAULTS, **data['front']}
-    data['control'].setdefault('front_limit_stop_y', ControlConfig.front_limit_stop_y)
-    data['control'].setdefault('align_fallback_s', ControlConfig.align_fallback_s)
-    data['control'].setdefault('reverse_right_s', ControlConfig.reverse_right_s)
+    for item in fields(ControlConfig):
+        data['control'].setdefault(item.name, item.default)
     data['rear'].setdefault('roi_band_ratio', 0.0)
+    data.setdefault('parallel', {'model_path': ''})
     return data
 
 
+def _validate_perspective(view, role):
+    for key in PARALLEL_BEV_FIELDS:
+        points = view[key]
+        if not isinstance(points, list) or len(points) != 8 or not _finite(points) or not all(0 <= x <= 1 for x in points):
+            raise ValueError(f'{role}.{key}: eight normalized finite coordinates required')
+        xy = list(zip(points[::2], points[1::2]))
+        crosses = []
+        for i in range(4):
+            a, b, c = xy[i], xy[(i+1) % 4], xy[(i+2) % 4]
+            crosses.append((b[0]-a[0])*(c[1]-b[1]) - (b[1]-a[1])*(c[0]-b[0]))
+        if not (all(x > 1e-5 for x in crosses) or all(x < -1e-5 for x in crosses)):
+            raise ValueError(f'{role}.{key}: corners must be convex and ordered')
+        if key == 'persp_src':
+            source_cross = crosses[0]
+        elif source_cross*crosses[0] < 0:
+            raise ValueError(f'{role}: BEV source and destination must have the same corner order')
+
+
 def validate_config(data):
-    if not isinstance(data, dict) or set(data) != {'control', 'front', 'rear', 'save_path'}:
-        raise ValueError('Camera parking YAML requires control/front/rear/save_path only')
+    required = {'control', 'front', 'rear', 'save_path'}
+    if not isinstance(data, dict) or not required <= set(data) <= required | {'parallel'}:
+        raise ValueError('Camera parking YAML requires control/front/rear/save_path and optionally parallel')
     control = ControlConfig(**{key: value for key, value in data['control'].items()
                                if key not in LEGACY_CONTROL_FIELDS})
     if not isinstance(data['save_path'], str) or not data['save_path']:
@@ -83,24 +105,7 @@ def validate_config(data):
                 raise ValueError(f'{role}.{key} must be in (0,1)')
         if not _finite([view['fps'], view['pair_max_angle_rad']]) or view['fps'] <= 0 or not 0 < view['pair_max_angle_rad'] < math.pi / 2:
             raise ValueError('Invalid fps or line pair angular tolerance')
-        for key in ('persp_src', 'persp_dst'):
-            points = view[key]
-            if not isinstance(points, list) or len(points) != 8 or not _finite(points) or not all(0 <= x <= 1 for x in points):
-                raise ValueError(f'{role}.{key}: eight normalized finite coordinates required')
-            # Consecutive corners must form a nondegenerate convex quadrilateral.
-            xy = list(zip(points[::2], points[1::2]))
-            crosses = []
-            for i in range(4):
-                a, b, c = xy[i], xy[(i+1) % 4], xy[(i+2) % 4]
-                crosses.append((b[0]-a[0])*(c[1]-b[1]) - (b[1]-a[1])*(c[0]-b[0]))
-            if not (all(x > 1e-5 for x in crosses) or all(x < -1e-5 for x in crosses)):
-                raise ValueError(f'{role}.{key}: corners must be convex and ordered')
-        # A homography which reverses winding would also invert steering.
-        def winding(points):
-            a, b, c = zip(points[:6:2], points[1:6:2])
-            return (b[0]-a[0])*(c[1]-b[1]) - (b[1]-a[1])*(c[0]-b[0])
-        if winding(view['persp_src']) * winding(view['persp_dst']) < 0:
-            raise ValueError(f'{role}: BEV source and destination must have the same corner order')
+        _validate_perspective(view, role)
         expected = {'parking_lot', 'parking_space', 'out_line'} if role == 'front' else {'parking_space', 'end_line'}
         if not isinstance(view['classes'], dict) or set(view['classes']) != expected:
             raise ValueError(f'{role}.classes must map {sorted(expected)} to model class NAMES')
@@ -115,6 +120,15 @@ def validate_config(data):
         raise ValueError('Invalid front limit ROI, white level, span or stop row')
     if data['front']['image_topic'] == data['rear']['image_topic']:
         raise ValueError('Front/rear image topics must differ')
+    parallel = data.get('parallel', {'model_path': ''})
+    if (not isinstance(parallel, dict) or set(parallel) - {'model_path', 'front', 'rear'}
+            or not isinstance(parallel.get('model_path'), str)):
+        raise ValueError('parallel requires model_path and permits camera BEV overrides')
+    for role in ('front', 'rear'):
+        override = parallel.get(role, {})
+        if not isinstance(override, dict) or set(override) - set(PARALLEL_BEV_FIELDS):
+            raise ValueError(f'parallel.{role} supports persp_src and persp_dst overrides')
+        _validate_perspective(dict(data[role], **override), f'parallel.{role}')
 
 
 def save_config_atomic(path, data, control):

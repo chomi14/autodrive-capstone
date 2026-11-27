@@ -12,7 +12,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, SetParameter
 
 from vehicle_bringup_pkg.mode_launch import vehicle_remappings, vehicle_io_nodes
-from skku_track_drive_pkg.modes.perpendicular_camera.configuration import TUNING_TOPIC, load_config
+from skku_track_drive_pkg.modes.perpendicular_camera.configuration import MODEL_TOPIC, TUNING_TOPIC, load_config
 from skku_track_drive_pkg.modes.perpendicular_camera.core import ControlConfig
 from skku_track_drive_pkg.modes.perpendicular_camera.model import model_path
 
@@ -46,6 +46,12 @@ def assemble(context, preview):
     for role in ('front', 'rear'):
         overrides[role] = model_path(LaunchConfiguration(role + '_model').perform(context) or data[role]['model_path'])
         devices[role] = LaunchConfiguration(role + '_camera_device').perform(context) or data[role]['device']
+    parallel = LaunchConfiguration('parallel_model').perform(context) or data['parallel']['model_path']
+    if parallel:
+        try:
+            parallel = model_path(parallel)
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(f'Parallel segmentation checkpoint missing: {parallel}') from exc
     if source == 'camera':
         a, b = (os.path.realpath(devices[role]) for role in ('front', 'rear'))
         if a == b or (os.path.exists(a) and os.path.exists(b) and os.path.samefile(a, b)):
@@ -64,6 +70,7 @@ def assemble(context, preview):
         for suffix in ('status', 'preview_enabled'):
             remappings.append(('/parking_camera/' + suffix, '/parking_camera_preview/' + suffix))
         remappings.append((TUNING_TOPIC, '/parking_camera_preview/tuning'))
+        remappings.append((MODEL_TOPIC, '/parking_camera_preview/model'))
         for suffix in ('reset', 'save'):
             remappings.append((f'/perpendicular_camera_controller/{suffix}',
                                f'/parking_camera_preview/perpendicular_camera_controller/{suffix}'))
@@ -86,16 +93,19 @@ def assemble(context, preview):
         perception = Node(package='skku_track_drive_pkg', executable='camera_parking_perception_node',
                           name=f'parking_{role}_perception', namespace=namespace, remappings=remappings,
                           output='screen', parameters=[{
-                              'config_file': path, 'camera_role': role, 'model_override': overrides[role]}])
+                              'config_file': path, 'camera_role': role, 'model_override': overrides[role],
+                              'parallel_model_override': parallel}])
         actions.append(perception)
         watched.append(perception)
-    session_overrides = json.dumps({role: {
+    session_overrides = {role: {
         'model_path': str(Path(overrides[role]).expanduser().resolve()),
-        'device': devices[role]} for role in ('front', 'rear')})
+        'device': devices[role]} for role in ('front', 'rear')}
+    if parallel:
+        session_overrides['parallel'] = {'model_path': parallel}
     controller = Node(package='skku_track_drive_pkg', executable='camera_parking_controller_node',
                       name='perpendicular_camera_controller', namespace=namespace, output='screen', remappings=remappings,
                       parameters=[{'config_file': path, 'preview': preview, 'cmd_topic': topic,
-                                   'session_overrides_json': session_overrides}])
+                                   'session_overrides_json': json.dumps(session_overrides)}])
     actions.append(controller)
     watched.append(controller)
     if gui:
@@ -120,6 +130,8 @@ def description(preview):
     args = [DeclareLaunchArgument('config_file', default_value=default),
             DeclareLaunchArgument('source', default_value='camera', description='camera opens devices; topics/replay use external Image topics'),
             DeclareLaunchArgument('gui', default_value='true'),
+            DeclareLaunchArgument('parallel_model', default_value='',
+                                  description='Shared front/rear segmentation checkpoint for parallel parking'),
             DeclareLaunchArgument('use_sim_time', default_value='false'),
             DeclareLaunchArgument('command_timeout', default_value='0.5'),
             DeclareLaunchArgument('ui_timeout', default_value='0.75'),

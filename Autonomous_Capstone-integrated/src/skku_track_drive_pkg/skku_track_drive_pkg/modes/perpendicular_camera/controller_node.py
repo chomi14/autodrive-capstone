@@ -1,5 +1,5 @@
 """ROS control adapter; the ONLY camera-parking MotionCommand producer."""
-from dataclasses import fields
+from dataclasses import asdict, fields
 import json
 import time
 
@@ -13,7 +13,8 @@ from interfaces_pkg.msg import MotionCommand
 
 from skku_track_drive_pkg.command_lease import CommandLease
 from skku_track_drive_pkg.controller_liveness import ControllerLiveness, run_controller
-from .configuration import (CAPTURE_FIELDS, VISION_FIELDS, FRONT_VISION_FIELDS, REAR_VISION_FIELDS, TUNING_TOPIC,
+from .configuration import (CAPTURE_FIELDS, MODEL_TOPIC, PARALLEL_BEV_FIELDS, VISION_FIELDS,
+                            FRONT_VISION_FIELDS, REAR_VISION_FIELDS, TUNING_TOPIC,
                             load_config, save_config_atomic, validate_config)
 from .core import CameraParkingCore, ControlConfig
 from .observations import Observation
@@ -31,8 +32,9 @@ class CameraParkingController(Node):
         if not isinstance(overrides, dict):
             raise ValueError('Invalid session overrides')
         for role, values in overrides.items():
-            if role not in ('front', 'rear') or not isinstance(values, dict) or set(values)-{'model_path', 'device'}:
-                raise ValueError('Only front/rear device and model_path session overrides are allowed')
+            allowed = {'model_path'} if role == 'parallel' else {'model_path', 'device'}
+            if role not in ('front', 'rear', 'parallel') or not isinstance(values, dict) or set(values)-allowed:
+                raise ValueError('Invalid parking model or camera session override')
             self.data[role].update(values)
         validate_config(self.data)
         self.active_capture = {
@@ -45,6 +47,7 @@ class CameraParkingController(Node):
             self.declare_parameter(item.name, getattr(defaults, item.name))
         settings = {item.name: self.get_parameter(item.name).value for item in fields(defaults)}
         self.core = CameraParkingCore(ControlConfig(**settings), require_calibration=not self.preview,
+                                      parallel_enabled=bool(self.data['parallel']['model_path']),
                                       on_transition=self.get_logger().info)
         topic = self.get_parameter('cmd_topic').value
         if self.preview and not topic.startswith(('/dry_run/', '/sensors_only/')):
@@ -57,6 +60,8 @@ class CameraParkingController(Node):
         latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                              durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.tuning_pub = self.create_publisher(String, TUNING_TOPIC, latched)
+        self.model_pub = self.create_publisher(String, MODEL_TOPIC, latched)
+        self.last_model = ''
         self.observations = {'front': None, 'rear': None}
         self.received = {'front': 0.0, 'rear': 0.0}
         self.pipeline_seen = set()
@@ -78,6 +83,7 @@ class CameraParkingController(Node):
         self.timer = self.create_timer(.05, self.on_timer)
         self.liveness = ControllerLiveness(self)
         self.publish_tuning()
+        self.publish_model()
 
     def capture_restart_pending(self):
         return any(self.data[role][key] != value for role, settings in self.active_capture.items()
@@ -88,6 +94,11 @@ class CameraParkingController(Node):
         self.tuning_pub.publish(String(data=json.dumps({
             'revision': self.tuning_revision, 'config': data, 'active_capture': self.active_capture,
         }, allow_nan=False)))
+
+    def publish_model(self):
+        if self.last_model != self.core.model:
+            self.last_model = self.core.model
+            self.model_pub.publish(String(data=self.last_model))
 
     def on_observation(self, role, message):
         try:
@@ -125,6 +136,7 @@ class CameraParkingController(Node):
             self.core.reset(self.get_clock().now().nanoseconds)
             self.observations = {'front': None, 'rear': None}
             self.pipeline_seen.clear()
+            self.publish_model()
         return response
 
     def on_save(self, _request, response):
@@ -158,6 +170,15 @@ class CameraParkingController(Node):
                         if not isinstance(updates, dict) or set(updates) - set(keys):
                             raise ValueError(f'{role}: unknown camera tuning field')
                         data[role] = dict(data[role], **updates)
+                    parallel_cameras = edit.get('parallel_cameras', {})
+                    if not isinstance(parallel_cameras, dict) or set(parallel_cameras) - {'front', 'rear'}:
+                        raise ValueError('Expected front or rear parallel BEV settings')
+                    data['parallel'] = dict(data['parallel'])
+                    for role, updates in parallel_cameras.items():
+                        if not isinstance(updates, dict) or set(updates) - set(PARALLEL_BEV_FIELDS):
+                            raise ValueError(f'{role}: unknown parallel BEV field')
+                        if updates:
+                            data['parallel'][role] = dict(data['parallel'].get(role, {}), **updates)
                 elif parameter.name in allowed:
                     values[parameter.name] = parameter.value
                 else:
@@ -171,6 +192,7 @@ class CameraParkingController(Node):
             self.observations = {'front': None, 'rear': None}
             self.pipeline_seen.clear()
             self.publish_tuning()
+            self.publish_model()
             return SetParametersResult(successful=True)
         except (KeyError, TypeError, ValueError) as exc:
             return SetParametersResult(successful=False, reason=str(exc))
@@ -191,6 +213,7 @@ class CameraParkingController(Node):
         restart = self.capture_restart_pending()
         command = self.core.step(dt, stamp, self.armed and ready and (self.preview or not restart),
                                  **self.observations, stale_cameras=stale_cameras)
+        self.publish_model()
         self.cmd_pub.publish(MotionCommand(steering=command.steering,
                                            left_speed=command.left_speed, right_speed=command.right_speed))
         reason = self.core.reason
@@ -204,6 +227,7 @@ class CameraParkingController(Node):
             reason = 'WAIT_BOTH_PERCEPTION_PIPELINES'
         status = {
             'state': self.core.state, 'reason': reason,
+            'model': self.core.model, 'parallel_target': self.core.parallel_target,
             'transition': self.core.transition, 'fault': self.core.fault,
             'armed': self.armed, 'preview': self.preview,
             'tuning_revision': self.tuning_revision, 'capture_restart_pending': restart,
@@ -216,7 +240,8 @@ class CameraParkingController(Node):
                 'source_age_s': (stamp-obs.stamp_ns)/1e9,
                 'arrival_age_s': now-self.received[role], 'error': obs.error,
                 'space_found': obs.space_found, 'line': vars(obs.line), 'space': vars(obs.space),
-                'end': vars(obs.end), 'outline': vars(obs.outline), 'front_limit': vars(obs.front_limit)}
+                'end': vars(obs.end), 'outline': vars(obs.outline), 'front_limit': vars(obs.front_limit),
+                'model': obs.model, 'parallel': asdict(obs.parallel) if obs.parallel is not None else None}
                 for role, obs in self.observations.items()},
         }
         self.status_pub.publish(String(data=json.dumps(status, allow_nan=False)))

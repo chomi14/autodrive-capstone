@@ -11,6 +11,10 @@ from .observations import axis_error
 from .status import reason_text
 
 
+PARALLEL_REVERSE_STATES = ('PARALLEL_PAUSE', 'PARALLEL_REVERSE_LEFT',
+                           'PARALLEL_REVERSE_STRAIGHT', 'PARALLEL_FAR_ALIGN')
+
+
 @dataclass(frozen=True)
 class ControlConfig:
     calibration_confirmed: bool = False
@@ -19,7 +23,8 @@ class ControlConfig:
     space_missing_frames: int = 5
     forward_pwm: int = 70
     reverse_pwm: int = 60
-    exit_pwm: int = 70
+    escape_pwm: int = 200
+    exit_pwm: int = 110
     max_steering: int = 7
     steering_sign: int = 1
     front_target_x: float = 0.7
@@ -29,8 +34,6 @@ class ControlConfig:
     rear_position_gain: float = 14.0
     rear_angle_gain: float = 16.0
     end_angle_gain: float = 50.0
-    exit_position_gain: float = 0.5
-    exit_angle_gain: float = 10.0
     steering_deadband: float = 0.3
     align_steering: int = -7
     align_fallback_s: float = 5.0
@@ -42,10 +45,27 @@ class ControlConfig:
     stopped_hold_s: float = 3.0
     exit_enabled: bool = True
     escape_s: float = 1.5
-    outline_finish_y: float = 0.90
-    final_straight_s: float = 2.5
+    exit_turn_s: float = 10.0
+    exit_straight_s: float = 20.0
     search_timeout_s: float = 60.0
     maneuver_timeout_s: float = 25.0
+    parallel_forward_pwm: int = 70
+    parallel_reverse_pwm: int = 60
+    parallel_target_x: float = 0.35
+    parallel_position_gain: float = 135.0
+    parallel_angle_gain: float = 8.771929824561404
+    parallel_entry_y: float = 0.84
+    parallel_entry_tolerance: float = 0.07
+    parallel_approach_tolerance: float = 0.10
+    parallel_row_width_ratio: float = 0.22
+    parallel_slot_length_ratio: float = 0.36
+    parallel_rear_reference_y: float = 1.0
+    parallel_far_track_gap: float = 0.80
+    parallel_stop_depth: float = 0.55
+    parallel_insert_yaw_rad: float = 0.38
+    parallel_align_yaw_rad: float = 0.18
+    parallel_far_position_gain: float = 8.0
+    parallel_far_angle_gain: float = 24.0
 
     def __post_init__(self):
         # Exact types catch quoted booleans/integers and NaNs before arming.
@@ -57,13 +77,29 @@ class ControlConfig:
             raise ValueError('Space missing count must be in 1..100')
         if not (1 <= self.max_steering <= 7 and self.steering_sign in (-1, 1)):
             raise ValueError('Invalid confirmation or steering limits')
-        if not all(1 <= pwm <= 255 for pwm in (self.forward_pwm, self.reverse_pwm, self.exit_pwm)):
+        if not all(1 <= pwm <= 255 for pwm in (self.forward_pwm, self.reverse_pwm,
+                                               self.escape_pwm, self.exit_pwm, self.parallel_forward_pwm,
+                                               self.parallel_reverse_pwm)):
             raise ValueError('PWM must be in 1..255')
         if not -self.max_steering <= self.align_steering < 0:
             raise ValueError('align_steering must request a left turn within the output range')
-        for name in ('front_target_x', 'rear_target_x', 'outline_finish_y', 'front_limit_stop_y'):
+        for name in ('front_target_x', 'rear_target_x', 'front_limit_stop_y',
+                     'parallel_target_x', 'parallel_rear_reference_y'):
             if not 0 <= getattr(self, name) <= 1:
                 raise ValueError(f'{name} outside normalized image')
+        for name in ('parallel_entry_tolerance', 'parallel_approach_tolerance', 'parallel_row_width_ratio',
+                     'parallel_slot_length_ratio'):
+            if not 0 < getattr(self, name) < .5:
+                raise ValueError(f'{name} must be in (0, .5)')
+        if not self.parallel_entry_tolerance < self.parallel_entry_y < 1 - self.parallel_entry_tolerance:
+            raise ValueError('Parallel reverse start band must fit within the rear BEV')
+        if not 0 < 1-self.parallel_far_track_gap < self.parallel_stop_depth < 1:
+            raise ValueError('Parallel far-line tracking must start before the stop depth')
+        if not 0 < self.parallel_align_yaw_rad < self.parallel_insert_yaw_rad < math.pi/2:
+            raise ValueError('Parallel yaw tolerances must increase within (0, pi/2)')
+        if min(self.parallel_position_gain, self.parallel_angle_gain,
+               self.parallel_far_position_gain, self.parallel_far_angle_gain) < 0:
+            raise ValueError('Parallel steering gains must be nonnegative')
         if not 0 <= self.end_steering_y < self.end_stop_y <= 1:
             raise ValueError('Require 0 <= end_steering_y < end_stop_y <= 1')
         if self.steering_deadband < 0:
@@ -76,15 +112,19 @@ class ControlConfig:
 
 
 class CameraParkingCore:
-    def __init__(self, config=None, require_calibration=True, on_transition=None):
+    def __init__(self, config=None, require_calibration=True, on_transition=None, parallel_enabled=False):
         self.p = config or ControlConfig()
         self.require_calibration = require_calibration
         self.on_transition = on_transition
+        self.parallel_enabled = parallel_enabled
         self.state = 'SEARCHING_SPACE'
         self.transition = ''
         self.reset()
 
     def reset(self, now_ns=0, reason='RESET'):
+        self.model = 'perpendicular'
+        self.parallel_switch_ns = 0
+        self.parallel_target = 0
         self.enter('SEARCHING_SPACE', now_ns, reason)
         self.search_frame_stamp = 0
         self.was_armed = False
@@ -100,6 +140,7 @@ class CameraParkingCore:
         self.elapsed = self.loss_elapsed = 0.0
         self.missing_count = 0
         self.last_reverse_command = None
+        self.exit_command_active = False
         self.reason = reason
         if previous != state:
             self.transition = f'{previous} → {state} / {reason_text(reason)}'
@@ -124,6 +165,7 @@ class CameraParkingCore:
     def _wait(self, reason, dt, now_ns):
         self.reason = reason
         self.last_reverse_command = None
+        self.exit_command_active = False
         # Maneuver elapsed freezes. A separate loss watchdog prevents a hidden
         # indefinite wait while the operator believes a maneuver is active.
         self.loss_elapsed += dt
@@ -145,12 +187,108 @@ class CameraParkingCore:
     def observe_front(self, obs, now_ns):
         # The adapter also calls this on reception so an intervening detection
         # cannot be overwritten by a newer frame before the control tick.
-        if (self.state == 'SEARCHING_SPACE' and self.was_armed
+        if (self.state == 'SEARCHING_SPACE' and self.was_armed and obs.model == 'perpendicular'
                 and self.missing_count < self.p.space_missing_frames
                 and obs.stamp_ns > self.search_frame_stamp
                 and not self._observation_problem('front', obs, now_ns)):
             self.search_frame_stamp = obs.stamp_ns
             self.missing_count = 0 if obs.space_found else self.missing_count + 1
+
+    def _approach_parallel(self, front, rear, now_ns):
+        p = self.p
+        if self.elapsed >= p.exit_straight_s:
+            return self.fail('PARALLEL_APPROACH_LIMIT', now_ns)
+        road = front.roadside
+        error, yaw = (road.x-p.parallel_target_x, axis_error(road.yaw)) if road.found else (0.0, 0.0)
+        self.errors = {'center': error, 'yaw': yaw} if road.found else {}
+        self.reason = 'ACTIVE' if road.found else 'PARALLEL_ROADSIDE_MISSING'
+        self.exit_command_active = True
+        command = self.command(p.parallel_position_gain*error + p.parallel_angle_gain*yaw, p.parallel_forward_pwm)
+        votes = {view.route_target for view in (front, rear) if view is not None and view.route_target}
+        if -1 in votes or len(votes) > 1 or (self.parallel_target and votes and self.parallel_target not in votes):
+            self.reason = 'PARALLEL_TARGET_CONFLICT'
+            return command
+        if votes:
+            self.parallel_target = next(iter(votes))
+        elif not self.parallel_target:
+            front_targets = {bay.number for bay in front.bays
+                             if bay.number in (2, 3) and bay.target_mask and not bay.occupied}
+            if len(front_targets) == 1:
+                self.parallel_target = next(iter(front_targets))
+        if rear is None:
+            return command
+        rear_aligned = (rear.roadside.found and abs(rear.roadside.x-(1-p.parallel_target_x)) <= p.parallel_approach_tolerance
+                        and abs(axis_error(rear.roadside.yaw)) <= p.parallel_align_yaw_rad)
+        front_aligned = (road.found and abs(error) <= p.parallel_approach_tolerance
+                         and abs(yaw) <= p.parallel_align_yaw_rad)
+        if not (rear_aligned or front_aligned):
+            return command
+        candidates = [bay for bay in rear.bays
+                      if not bay.occupied and bay.number in (0, 2, 3)
+                      and (not self.parallel_target or bay.number in (0, self.parallel_target))
+                      and ((self.parallel_target and bay.number == self.parallel_target)
+                           or bay.target_mask or bay.between_vehicles)
+                      and abs(bay.entry_y-p.parallel_entry_y) <= p.parallel_entry_tolerance]
+        if len(candidates) == 1:
+            self.parallel_target = candidates[0].number or self.parallel_target
+            self.enter('PARALLEL_PAUSE', now_ns, 'PARALLEL_REVERSE_POSITION_REACHED')
+            return MotionCommand()
+        return command
+
+    def _parallel_rear(self, rear, now_ns, stale_cameras):
+        if (not self._observation_problem('rear', rear, now_ns, 'rear' in stale_cameras)
+                and rear.model == 'parallel'):
+            return rear.parallel
+        return None
+
+    def _reverse_parallel(self, obs, dt, now_ns):
+        p = self.p
+        view = obs.parallel
+        self.reason = 'ACTIVE'
+        self.elapsed += dt
+        depth = 1-view.far_gap if view.far_gap is not None else view.depth
+        yaw = view.far_yaw_error if view.far_yaw_error is not None else view.yaw_error
+        self.errors = {'depth': depth, 'yaw': yaw}
+        if self.state == 'PARALLEL_PAUSE':
+            if self.elapsed + 1e-9 < p.direction_pause_s:
+                self.reason = 'DIRECTION_PAUSE'
+                return MotionCommand()
+            self.enter('PARALLEL_REVERSE_LEFT', now_ns, 'DIRECTION_PAUSE_COMPLETE',
+                       observation_stamp_ns=obs.stamp_ns)
+        if self.elapsed >= p.maneuver_timeout_s:
+            return self.fail('STATE_TIMEOUT: ' + self.state, now_ns)
+        if view.far_gap is not None and view.far_gap <= 0:
+            return self.fail('PARALLEL_FAR_LINE_REACHED', now_ns)
+        if (self.state != 'PARALLEL_FAR_ALIGN' and view.far_gap is not None
+                and view.far_gap <= p.parallel_far_track_gap):
+            self.enter('PARALLEL_FAR_ALIGN', now_ns, 'PARALLEL_FAR_LINE_ACQUIRED',
+                       observation_stamp_ns=obs.stamp_ns)
+        if self.state == 'PARALLEL_REVERSE_LEFT':
+            self.loss_elapsed = 0.0
+            if yaw is None or abs(yaw) < p.parallel_insert_yaw_rad:
+                return self.command(-p.max_steering, -p.parallel_reverse_pwm)
+            self.enter('PARALLEL_REVERSE_STRAIGHT', now_ns, 'PARALLEL_INSERT_ANGLE_REACHED',
+                       observation_stamp_ns=obs.stamp_ns)
+        if self.state == 'PARALLEL_REVERSE_STRAIGHT':
+            self.loss_elapsed = 0.0
+            return self.command(speed=-p.parallel_reverse_pwm)
+        if depth is None or yaw is None:
+            if self.last_reverse_command is not None:
+                self.reason = 'PARALLEL_REVERSE_COMMAND_HELD'
+                return self.last_reverse_command
+            self.elapsed -= dt
+            return self._wait('PARALLEL_REAR_GEOMETRY_MISSING', dt, now_ns)
+        self.loss_elapsed = 0.0
+        if view.far_gap is not None and depth >= p.parallel_stop_depth and abs(yaw) <= p.parallel_align_yaw_rad:
+            self.enter('FINISHED', now_ns, 'PARALLEL_PARKED')
+            return MotionCommand()
+        if view.far_gap is None:
+            self.reason = 'PARALLEL_FAR_LINE_LOST_USING_ROADSIDE'
+        # A left turn while backing yaws the body away from the parking row.
+        # The rear BEV then has negative angle error, so -gain*yaw unwinds right.
+        steer = p.parallel_far_position_gain*(depth-p.parallel_stop_depth) - p.parallel_far_angle_gain*yaw
+        self.last_reverse_command = self.command(steer, -p.parallel_reverse_pwm)
+        return self.last_reverse_command
 
     def step(self, dt, now_ns, armed, front=None, rear=None, *, stale_cameras=()):
         p = self.p
@@ -166,9 +304,10 @@ class CameraParkingCore:
             self.barrier_ns = max(self.barrier_ns, now_ns)
             self.missing_count = 0
             self.last_reverse_command = None
+            self.exit_command_active = False
             self.was_armed = True
         if self.state in ('FAULT_STOP', 'FINISHED'):
-            self.reason = self.fault or 'FINISHED'
+            self.reason = self.fault or ('PARALLEL_PARKED' if self.model == 'parallel' else 'FINISHED')
             return MotionCommand()
         if self.require_calibration and not p.calibration_confirmed:
             self.reason = 'CALIBRATION_NOT_CONFIRMED'
@@ -181,11 +320,34 @@ class CameraParkingCore:
                 self.enter('ESCAPE', now_ns, 'PARKED_HOLD_COMPLETE')
             return MotionCommand()
 
-        camera = 'rear' if self.state in ('DIRECTION_PAUSE', 'REVERSE_RIGHT', 'PARKING_IN') else 'front'
+        camera = ('rear' if self.state in ('DIRECTION_PAUSE', 'REVERSE_RIGHT', 'PARKING_IN',
+                                           *PARALLEL_REVERSE_STATES) else 'front')
         obs = rear if camera == 'rear' else front
         problem = self._observation_problem(camera, obs, now_ns, camera in stale_cameras)
         if problem:
             return self._wait(problem, dt, now_ns)
+        if obs.model != self.model:
+            if (self.state == 'TURN_RIGHT' and self.model == 'parallel' and self.exit_command_active
+                    and self.elapsed + dt + 1e-9 < p.exit_turn_s
+                    and (now_ns - self.parallel_switch_ns)/1e9 <= p.observation_timeout_s):
+                self.reason = 'PARALLEL_MODEL_SWITCH'
+                self.elapsed += dt
+                return self.command(p.max_steering, p.exit_pwm)
+            return self._wait('PARKING_MODEL_WAIT_FRESH', dt, now_ns)
+
+        if self.state in PARALLEL_REVERSE_STATES:
+            return self._reverse_parallel(obs, dt, now_ns)
+        if self.state == 'PARALLEL_APPROACH':
+            secondary = self._parallel_rear(rear, now_ns, stale_cameras)
+            self.loss_elapsed = 0.0
+            if self.exit_command_active:
+                self.elapsed += dt
+            return self._approach_parallel(obs.parallel, secondary, now_ns)
+
+        # Count intervals after an exit command, including the first command
+        # after resuming from a stopped or stale-camera interval.
+        if self.state in ('ESCAPE', 'TURN_RIGHT', 'FINAL_STRAIGHT') and not self.exit_command_active:
+            dt = 0.0
 
         if self.state == 'REVERSE_RIGHT':
             # After a stop, the first usable frame starts commanding reverse
@@ -211,8 +373,6 @@ class CameraParkingCore:
         elif (self.state == 'PARKING_IN' and self.last_reverse_command is None
               and not (obs.space.found or end_can_steer)):
             return self._wait('REAR_PARKING_GEOMETRY_MISSING', dt, now_ns)
-        elif self.state == 'TURN_RIGHT' and not obs.outline.found:
-            return self._wait('EXIT_LINE_MISSING', dt, now_ns)
 
         self.loss_elapsed = 0.0
         self.reason = 'ACTIVE'
@@ -264,22 +424,35 @@ class CameraParkingCore:
             return self.last_reverse_command
 
         if self.state == 'ESCAPE':
-            if self.elapsed >= p.escape_s:
-                self.enter('TURN_RIGHT', now_ns, 'ESCAPE_COMPLETE')
-                return MotionCommand()
-            return self.command(speed=p.exit_pwm)
+            if self.elapsed + 1e-9 < p.escape_s:
+                self.exit_command_active = True
+                return self.command(speed=p.escape_pwm)
+            self.enter('TURN_RIGHT', now_ns, 'ESCAPE_COMPLETE', observation_stamp_ns=obs.stamp_ns)
+            if self.parallel_enabled:
+                self.model = 'parallel'
+                self.parallel_switch_ns = now_ns
+                self.exit_command_active = True
+                return self.command(p.max_steering, p.exit_pwm)
 
         if self.state == 'TURN_RIGHT':
-            if obs.outline.y >= p.outline_finish_y:
-                self.enter('FINAL_STRAIGHT', now_ns, 'EXIT_LINE_REACHED')
-                return MotionCommand()
-            ex, ea = obs.outline.x - .5, axis_error(obs.outline.yaw, 0.0)
-            self.errors = {'center': ex, 'yaw': ea}
-            return self.command(p.exit_position_gain * ex + p.exit_angle_gain * ea, p.exit_pwm)
+            roadside_acquired = obs.parallel is not None and obs.parallel.roadside.found
+            if not roadside_acquired and self.elapsed + 1e-9 < p.exit_turn_s:
+                self.exit_command_active = True
+                return self.command(p.max_steering, p.exit_pwm)
+            if self.parallel_enabled:
+                reason = ('PARALLEL_ROADSIDE_ACQUIRED' if roadside_acquired else
+                          f'EXIT_RIGHT_COMPLETE: {p.exit_turn_s:g}')
+                self.enter('PARALLEL_APPROACH', now_ns, reason,
+                           observation_stamp_ns=obs.stamp_ns)
+                return self._approach_parallel(obs.parallel, self._parallel_rear(rear, now_ns, stale_cameras),
+                                               now_ns)
+            self.enter('FINAL_STRAIGHT', now_ns, f'EXIT_RIGHT_COMPLETE: {p.exit_turn_s:g}',
+                       observation_stamp_ns=obs.stamp_ns)
 
         if self.state == 'FINAL_STRAIGHT':
-            if self.elapsed >= p.final_straight_s:
+            if self.elapsed + 1e-9 >= p.exit_straight_s:
                 self.enter('FINISHED', now_ns, 'FINAL_STRAIGHT_COMPLETE')
                 return MotionCommand()
+            self.exit_command_active = True
             return self.command(speed=p.exit_pwm)
         return self.fail('UNKNOWN_STATE', now_ns)

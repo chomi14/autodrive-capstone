@@ -3,7 +3,7 @@ import math
 import tkinter as tk
 from tkinter import ttk
 
-from .configuration import CAPTURE_FIELDS, FRONT_VISION_FIELDS, REAR_VISION_FIELDS, VISION_FIELDS
+from .configuration import CAPTURE_FIELDS, FRONT_VISION_FIELDS, PARALLEL_BEV_FIELDS, REAR_VISION_FIELDS, VISION_FIELDS
 
 
 CONTROL_GROUPS = {
@@ -29,11 +29,10 @@ CONTROL_GROUPS = {
     'Exit': {
         'exit_enabled': 'Automatic exit',
         'stopped_hold_s': 'Parked hold (s)',
-        'escape_s': 'Straight out (s)',
-        'outline_finish_y': 'Exit line finish y (0–1)',
-        'exit_position_gain': 'Exit position gain',
-        'exit_angle_gain': 'Exit yaw gain',
-        'final_straight_s': 'Final straight (s)',
+        'escape_s': '출차 첫 직진 시간 (초)',
+        'escape_pwm': '출차 첫 직진 PWM',
+        'exit_turn_s': '출차 우조향 전진 시간 (초)',
+        'exit_straight_s': '출차 직진 / 평행주차 탐색 상한 (초)',
     },
     'Vehicle and timing': {
         'forward_pwm': 'Forward PWM',
@@ -47,6 +46,29 @@ CONTROL_GROUPS = {
         'search_timeout_s': 'Search timeout (s)',
         'maneuver_timeout_s': 'Maneuver timeout (s)',
         'calibration_confirmed': 'Vehicle calibration verified',
+    },
+}
+PARALLEL_GROUPS = {
+    '평행주차 접근': {
+        'parallel_forward_pwm': '평행주차 전진 PWM',
+        'parallel_target_x': '전방 통로선 목표 x (0–1)',
+        'parallel_position_gain': '통로선 위치 게인',
+        'parallel_angle_gain': '통로선 각도 게인',
+        'parallel_entry_y': '후방 구분선 기준 y (0–1)',
+        'parallel_entry_tolerance': '후진 시작 y 허용 오차',
+        'parallel_approach_tolerance': '전진 정렬 x 허용 오차',
+        'parallel_row_width_ratio': '주차 줄 폭 / BEV 너비',
+        'parallel_slot_length_ratio': '칸 길이 / BEV 높이',
+        'parallel_rear_reference_y': '후방 차량 기준점 y',
+    },
+    '평행주차 후진': {
+        'parallel_reverse_pwm': '평행주차 후진 PWM',
+        'parallel_insert_yaw_rad': '좌조향 종료 각도 (rad)',
+        'parallel_far_track_gap': '안쪽 선 추종 시작 남은 거리 (0–1)',
+        'parallel_stop_depth': '주차 완료 깊이',
+        'parallel_align_yaw_rad': '정렬 각도 허용 오차 (rad)',
+        'parallel_far_position_gain': '안쪽 선 거리 게인',
+        'parallel_far_angle_gain': '안쪽 선 각도 게인',
     },
 }
 CAMERA_LABELS = {
@@ -102,12 +124,19 @@ class TuningPanel:
         tab.bind('<Leave>', lambda _: canvas.unbind_all('<Button-5>'), add='+')
         return content
 
+    def _value(self, section, key):
+        config = self.snapshot['config']
+        if section.startswith('parallel_'):
+            role = section.removeprefix('parallel_')
+            return config['parallel'].get(role, {}).get(key, config[role][key])
+        return config[section][key]
+
     def _group(self, parent, title, section, labels):
         group = ttk.LabelFrame(parent, text=title, padding=7)
         group.pack(fill='x', pady=(0, 7))
         group.columnconfigure(0, weight=1)
         for row, (key, label) in enumerate(labels.items()):
-            value = self.snapshot['config'][section][key]
+            value = self._value(section, key)
             if type(value) is bool:
                 variable = tk.BooleanVar(value=value)
                 ttk.Checkbutton(group, text=label, variable=variable).grid(row=row, column=0, columnspan=2, sticky='w', pady=2)
@@ -152,17 +181,22 @@ class TuningPanel:
                 keys = VISION_FIELDS + (FRONT_VISION_FIELDS if role == 'front' else REAR_VISION_FIELDS)
                 self._group(tab, 'Image and BEV', role, {key: CAMERA_LABELS[key] for key in keys})
                 self._group(tab, 'Capture (save and restart)', role, {key: CAMERA_LABELS[key] for key in CAPTURE_FIELDS})
+            parallel = self._tab('평행주차')
+            for title, labels in PARALLEL_GROUPS.items():
+                self._group(parallel, title, 'control', labels)
+            for role, title in (('front', '평행주차 전방 BEV'), ('rear', '평행주차 후방 BEV')):
+                self._group(parallel, title, 'parallel_'+role, {key: CAMERA_LABELS[key] for key in PARALLEL_BEV_FIELDS})
         else:
             for (section, key), variables in self.fields.items():
-                value = snapshot['config'][section][key]
+                value = self._value(section, key)
                 for variable, item in zip(variables, value if isinstance(value, list) else [value]):
                     variable.set(item)
         self.loading = False
 
     def changes(self):
-        changes = {section: {} for section in ('control', 'front', 'rear')}
+        changes = {section: {} for section in ('control', 'front', 'rear', 'parallel_front', 'parallel_rear')}
         for (section, key), variables in self.fields.items():
-            baseline = self.snapshot['config'][section][key]
+            baseline = self._value(section, key)
             try:
                 if isinstance(baseline, list):
                     value = [float(var.get()) for var in variables]

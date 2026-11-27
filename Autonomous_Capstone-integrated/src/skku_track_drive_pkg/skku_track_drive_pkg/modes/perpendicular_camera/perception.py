@@ -181,12 +181,25 @@ def front_limit_geometry(bev, exit_mask, cfg):
     return nearest, endpoints
 
 
+def bev_matrix(cfg, w, h):
+    scale = np.float32([w-1, h-1])
+    return cv2.getPerspectiveTransform(np.float32(cfg['persp_src']).reshape(4, 2)*scale,
+                                       np.float32(cfg['persp_dst']).reshape(4, 2)*scale)
+
+
+def mask_overlay(frame, polygons):
+    overlay = frame.copy()
+    for i, items in enumerate(polygons.values()):
+        color = ((60+i*65) % 255, (220-i*45) % 255, (80+i*80) % 255)
+        for poly in items:
+            cv2.polylines(overlay, [np.int32(poly)], True, color, 2)
+    return overlay
+
+
 def extract(frame, polygons, cfg, role, stamp_ns, frame_id=''):
     """polygons: canonical class -> list of polygons in this oriented image."""
     h, w = frame.shape[:2]
-    scale = np.float32([w-1, h-1])
-    matrix = cv2.getPerspectiveTransform(np.float32(cfg['persp_src']).reshape(4, 2)*scale,
-                                       np.float32(cfg['persp_dst']).reshape(4, 2)*scale)
+    matrix = bev_matrix(cfg, w, h)
     bev = cv2.warpPerspective(frame, matrix, (w, h))
     masks = {}
     for name in cfg['classes']:
@@ -218,11 +231,7 @@ def extract(frame, polygons, cfg, role, stamp_ns, frame_id=''):
             roi = cv2.morphologyEx(roi, cv2.MORPH_GRADIENT, np.ones((size, size), np.uint8))
         obs = Observation(stamp_ns, role, frame_id, space_found=space_found,
                           space=rear_center(bev, roi, cfg), end=stripe(masks['end_line']))
-    segmentation = frame.copy()
-    for i, (name, items) in enumerate(polygons.items()):
-        color = ((60+i*65) % 255, (220-i*45) % 255, (80+i*80) % 255)
-        for poly in items:
-            cv2.polylines(segmentation, [np.int32(poly)], True, color, 2)
+    segmentation = mask_overlay(frame, polygons)
     overlay = bev.copy()
     for i, mask in enumerate(masks.values()):
         color = np.array(((80+i*60) % 255, 180, (30+i*80) % 255), np.uint8)

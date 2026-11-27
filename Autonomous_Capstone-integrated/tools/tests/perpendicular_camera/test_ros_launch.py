@@ -31,7 +31,7 @@ def topology(tmp_path, preview, **options):
     settings = dict(config_file=str(config), source='camera', gui='true', use_sim_time='false',
                     command_timeout='0.5', ui_timeout='0.75', arduino_port='/dev/arduino',
                     arduino_baud='115200', auto_calibrate='false', calibration_tolerance='35',
-                    front_model='', rear_model='', front_camera_device='', rear_camera_device='')
+                    front_model='', rear_model='', parallel_model='', front_camera_device='', rear_camera_device='')
     settings.update(options)
     context = LaunchContext()
     context.launch_configurations.update(settings)

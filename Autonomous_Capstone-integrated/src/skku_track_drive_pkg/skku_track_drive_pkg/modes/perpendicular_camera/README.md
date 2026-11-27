@@ -153,6 +153,43 @@ ros2 launch vehicle_bringup_pkg perpendicular_camera_preview.launch.py \
   front_model:=/absolute/path/parking_front.pt rear_model:=/absolute/path/parking_rear.pt
 ```
 
+## 수직주차에서 평행주차까지 이어서 실행
+
+전·후방 11월 25일 데이터로 학습한 공용 평행주차 세그멘테이션 가중치를
+`parallel_model:=/absolute/path/parallel_parking.pt`로 지정한다. 또는 같은 YAML의
+`parallel.model_path`에 경로를 저장한다. 경로가 비어 있으면 기존 수직주차와
+시간제 출차로 동작한다. 두 카메라 노드는 시작할 때 새 모델을 준비하며
+출차 첫 직진이 끝나면 이를 사용한다. 분류 ID는 모델의 이름으로 찾아 사용한다.
+필수 클래스는 `parallel_roadside_line`, `parallel_divider`, `parallel_row_start`,
+`parallel_row_end`, `parallel_far_line`, `parallel_parking_space`, `vehicle`이다.
+
+```bash
+ros2 launch vehicle_bringup_pkg perpendicular_camera_preview.launch.py \
+  config_file:=$HOME/.config/autodrive/perpendicular_camera.yaml \
+  front_camera_device:=/dev/video0 rear_camera_device:=/dev/video4 \
+  parallel_model:=/absolute/path/parallel_parking.pt
+```
+
+출차 우조향 중 통로 쪽 긴 선이 BEV에서 조향에 쓸 수 있게 잡히면 같은 제어
+주기에 선 추종으로 넘어간다. `exit_turn_s`는 최대 우조향 시간이다.
+`parallel_target_x` 기본값 0.35는 **전방 BEV 하단에서 본 긴 선의 목표 x**다.
+통로선 미검출이면 선을 찾으며 직진하고, 목표 칸과 후진 기준이 없으면 기존
+출차 직진 시간(`exit_straight_s`)이 끝나는 때 정지한다.
+
+`parallel_row_start`와 `parallel_row_end`에서 칸 사이의 `parallel_divider`를 세고,
+`vehicle` 접점으로 점유를 판단한다. `parallel_parking_space`는 통로선이
+정의한 줄 안에서만 목표 칸 후보로 사용한다. 뒤쪽에서 목표 칸의 접근측
+경계를 잡고 후방 BEV의 후진 시작 y에 도달하면 전후진 전환 대기를 적용한다.
+
+GUI의 **평행주차** 탭에서 전·후방 BEV, PWM, 통로선 목표 x, 후진 시작 y,
+진입 각도, 안쪽 선 추종 기준과 종료 깊이, 조향 게인을 조절한다.
+`far_gap`은 후방 차량 기준점에서 `parallel_far_line`까지 남은 거리를
+주차 줄 폭으로 나눈 값이다. 1은 통로 쪽 선, 0은 안쪽 선에 해당한다.
+좌조향 후진으로 각도를 만들고 필요하면 직진 후진으로 깊이를 늘린다.
+`far_gap <= parallel_far_track_gap`(기본 0.80)이면 안쪽 선 각도와 거리로
+후진 조향한다. 목표 깊이(기본 0.55)와 정렬 각도를 만족하면 정지한다.
+이 값들과 BEV는 preview에서 차량과 주차 줄에 맞춰 보정한다.
+
 외부 영상 토픽을 쓰려면 preview에서 `source:=topics`를 사용한다.
 rosbag 재생은 명시적으로 `source:=replay use_sim_time:=true`를 사용한다.
 이때 카메라 장치는 열지 않으며, 별도 터미널에서 실제 녹화 bag을
@@ -170,7 +207,7 @@ Front 탭의 제한선 검출 범위(x/y), 도색 밝기, 최소 가로 폭을 �
 Front BEV에는 그 범위, 초록색 검출 후보와 `front_limit_stop_y` 기준선이
 표시된다. Control 탭에서 접근 정지 y, 제한선 미검출 시 좌회전 전진 시간,
 고정 우조향 후진 시간, 탐색 미검출 횟수, 조향 게인·부호, 단계별 PWM,
-종료선 y, 출차 기준과 대기시간을 조절한다.
+종료선 y, 출차 우조향 전진·직진 시간과 대기시간을 조절한다.
 요약에는 PWM 0을 낸 실제 분기 이유와 최근 상태 전이가 한글로 표시된다.
 
 **Apply**는 비활성 상태에서 검증된 값을 함께 적용하고 FSM을 초기화한다.
@@ -215,9 +252,13 @@ BEV는 +x가 화면 오른쪽, +y가 아래이며 yaw는 `atan2(dy, dx)` rad다.
 | REVERSE_RIGHT | 후방 칸 중심선이 일찍 잡혀도 `reverse_right_s`(기본 3초) 동안 고정 우조향 후진. 시간이 끝난 주기에 PARKING_IN으로 전환 |
 | PARKING_IN | 후방 중심선으로 후진. 종료선이 지정 y 이후면 종료선 방향 사용. 정상 후방 영상에서 두 조향 기준을 모두 잃으면 직전 조향·PWM 유지. 정지 y 도달 시 같은 주기에 0 출력 |
 | STOPPED | 3초간 정지한 뒤 자동 출차. Control 탭에서 자동 출차를 끄면 계속 정지 |
-| ESCAPE | 출차 활성화 시 최신 전방 관측과 함께 제한 시간 직진 |
-| TURN_RIGHT | 최신 전방 출차선을 따라 진행. 출차선 상실 시 정지 |
-| FINAL_STRAIGHT | 최신 전방 관측과 함께 제한 시간 직진 후 FINISHED |
+| ESCAPE | 정상 전방 영상으로 첫 직진. `escape_s`(기본 1.5초) 동안 조향 0과 `escape_pwm`(기본 200)을 사용 |
+| TURN_RIGHT | 정상 전방 영상으로 최대 우조향 전진. 평행주차 모델이 통로선을 잡으면 바로 추종으로 전환. 선이 늦게 잡혀도 `exit_turn_s`(기본 10초)에서 우조향 종료 |
+| FINAL_STRAIGHT | 평행주차 모델 미설정 시 조향 0 유지. `exit_straight_s`(기본 20초) 이후 정지 |
+| PARALLEL_APPROACH | 전방 통로선의 x=0.35 추종. 후방 목표 칸 경계가 후진 시작 기준에 도달하면 전환 대기 |
+| PARALLEL_PAUSE | 전진→후진 전환 대기 후 좌조향 후진 |
+| PARALLEL_REVERSE_LEFT / STRAIGHT | 좌조향 후진으로 각도를 만들고 필요하면 직진 후진. 안쪽 선이 추종 거리에 도달하면 정렬 |
+| PARALLEL_FAR_ALIGN | 안쪽 긴 선 각도와 거리로 후진 조향. 잠깐 놓치면 통로선 또는 직전 명령 유지. 정렬과 목표 깊이가 확인되면 정지 |
 | FINISHED / FAULT_STOP | 정지. fault 재시작은 S/R 필요 |
 
 원본 `allowed_states`와 `/motion_state` 의존성은 **전·후방 연속 추론**으로
@@ -239,6 +280,11 @@ geometry를 계산하므로 서로 다른 프레임을 결합하지 않는다.
 또는 추종 중에 영상은 정상인데 선이 잠시 안 잡히면 직전 후진 명령을
 유지하고 그 시간도 기존 상태 제한 시간에 포함한다. 추종 중 영상 문제나
 S로 정지한 뒤에는 현재 영상에서 추종에 쓸 선을 확보한 후 후진한다.
+자동 출차는 각 단계의 시간으로 전환한다. 첫 직진 뒤 우조향 전진과 마지막
+직진은 공통으로 `exit_pwm`(기본 110)을 사용한다. 전방 출차선 검출 여부는
+전환에 사용하지 않는다. 영상 문제 또는 S로 정지한 시간은 출차 시간에서
+제외된다. 기존 YAML에 새 시간 설정이 없으면 우조향 10초와 마지막 직진
+20초가 적용된다.
 
 원본의 탐색 카운터와 좌조향 전진을 따르고, 전진 종료는 후방 yaw 대신
 전방 평행주차선 접근으로 판단한다. 방향 전환 후 고정 우조향 후진을 먼저 수행한다.

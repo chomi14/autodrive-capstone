@@ -88,22 +88,57 @@ def test_full_parking_stops_on_same_tick_and_holds_without_exit():
     assert s.core.state == 'STOPPED'
 
 
-def test_optional_exit_finishes_in_zero_command():
-    s = Scenario(exit_enabled=True, stopped_hold_s=.8, escape_s=.3, final_straight_s=.3)
+def test_timed_exit_keeps_initial_straight_before_ten_second_turn_and_twenty_second_straight():
+    s = Scenario()
     enter_reverse(s)
-    s.tick('rear', end=Line(True, .5, .98, 0.0))
-    for _ in range(9):
-        s.tick()
+    assert s.tick('rear', end=Line(True, .5, .98, 0.0)).left_speed == 0
+    for _ in range(23):
+        assert s.tick(dt=.125).left_speed == 0
+        assert s.core.state == 'STOPPED'
+    assert s.tick(dt=.125).left_speed == 0
     assert s.core.state == 'ESCAPE'
-    for _ in range(4):
-        s.tick()
+
+    initial = s.tick(dt=.125)
+    assert (initial.steering, initial.left_speed, initial.right_speed) == (0, 200, 200)
+    for _ in range(11):
+        assert s.tick(dt=.125) == initial
+        assert s.core.state == 'ESCAPE'
+    # An outline at the old finishing threshold must not bypass the turn.
+    cmd = s.tick(dt=.125, outline=Line(True, .5, .95, 0.0))
     assert s.core.state == 'TURN_RIGHT'
-    assert s.tick(outline=Line(True, .5, .95, 0.0)).left_speed == 0
+    assert (cmd.steering, cmd.left_speed, cmd.right_speed) == (7, 110, 110)
+    for _ in range(79):
+        assert s.tick(dt=.125) == cmd  # normal front frames with no outline
+        assert s.core.state == 'TURN_RIGHT'
+    cmd = s.tick(dt=.125)
+    assert (cmd.steering, cmd.left_speed, cmd.right_speed) == (0, 110, 110)
     assert s.core.state == 'FINAL_STRAIGHT'
-    for _ in range(4):
-        s.tick()
+    for _ in range(159):
+        assert s.tick(dt=.125) == cmd
+        assert s.core.state == 'FINAL_STRAIGHT'
+    assert s.tick(dt=.125).left_speed == 0
     assert s.core.state == 'FINISHED'
     assert s.tick().left_speed == 0
+
+
+@pytest.mark.parametrize('state, steering, pwm', [
+    ('ESCAPE', 0, 200), ('TURN_RIGHT', 7, 110), ('FINAL_STRAIGHT', 0, 110),
+])
+def test_timed_exit_stops_for_stale_video_and_excludes_paused_time(state, steering, pwm):
+    s = Scenario()
+    s.enter(state)
+    assert s.tick(dt=.125).left_speed == pwm
+    for _ in range(8):
+        assert s.tick(dt=.125).left_speed == pwm
+    assert s.core.elapsed == 1.0
+    assert s.tick(dt=.125, repeat=1).left_speed == 0
+    assert s.core.reason == 'front_INPUT_STALE'
+    assert s.tick(dt=.125, armed=False).left_speed == 0
+    assert s.tick(dt=.125).left_speed == 0  # first W tick waits for a new frame
+    cmd = s.tick(dt=.125)
+    assert (cmd.steering, cmd.left_speed) == (steering, pwm)
+    assert s.core.elapsed == 1.0
+    assert s.core.state == state
 
 
 def test_initial_missing_transitions_on_fifth_frame():

@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-from skku_track_drive_pkg.modes.perpendicular_camera.configuration import TUNING_TOPIC, load_config
+from skku_track_drive_pkg.modes.perpendicular_camera.configuration import MODEL_TOPIC, TUNING_TOPIC, load_config
 from skku_track_drive_pkg.modes.perpendicular_camera.core import ControlConfig
 from skku_track_drive_pkg.modes.perpendicular_camera.model import model_path
 
@@ -38,7 +38,8 @@ def plan(tmp_path, preview=True, **options):
     definitions = [node for node in ast.parse(FILE.read_text()).body
                    if isinstance(node, ast.FunctionDef) and node.name in ('_bool', 'assemble')]
     ns = dict(Path=Path, os=os, json=json, LaunchConfiguration=FakeLaunchConfiguration,
-              load_config=load_config, TUNING_TOPIC=TUNING_TOPIC, ControlConfig=ControlConfig, model_path=model_path,
+              load_config=load_config, MODEL_TOPIC=MODEL_TOPIC, TUNING_TOPIC=TUNING_TOPIC,
+              ControlConfig=ControlConfig, model_path=model_path,
               Node=Action, EmitEvent=Action, Shutdown=Action, RegisterEventHandler=Action, OnProcessExit=Action,
               vehicle_remappings=lambda prefix: [('vehicle/drive_key', prefix+'/vehicle/drive_key')],
               vehicle_io_nodes=lambda: [Action(executable='serial_sender_node_v2'), Action(executable='drive_arm_node')])
@@ -54,7 +55,7 @@ def plan(tmp_path, preview=True, **options):
     config = tmp_path/'settings.yaml'
     config.write_text(yaml.safe_dump(data))
     context = dict(config_file=str(config), source='camera', gui='true', use_sim_time='false',
-                   front_model='', rear_model='', front_camera_device='', rear_camera_device='')
+                   front_model='', rear_model='', parallel_model='', front_camera_device='', rear_camera_device='')
     context.update(options)
     actions = ns['assemble'](context, preview)
     return [a.kwargs for a in actions if 'executable' in a.kwargs]
@@ -70,6 +71,7 @@ def test_preview_isolates_commands_observations_services_and_hardware(tmp_path):
         mappings = dict(node['remappings'])
         assert mappings['/parking_camera/front/observation'] == '/parking_camera_preview/front/observation'
         assert mappings[TUNING_TOPIC] == '/parking_camera_preview/tuning'
+        assert mappings[MODEL_TOPIC] == '/parking_camera_preview/model'
         assert mappings['/perpendicular_camera_controller/reset'].startswith('/parking_camera_preview/')
         assert mappings['/parking_camera/front/image_raw'] == '/parking_camera_preview/front/image_raw'
     controller = next(n for n in nodes if n['executable'] == 'camera_parking_controller_node')
@@ -96,6 +98,19 @@ def test_live_reuses_single_serial_arm_and_saves_effective_cli_overrides(tmp_pat
     controller = next(n for n in nodes if n['executable'] == 'camera_parking_controller_node')
     effective = json.loads(controller['parameters'][0]['session_overrides_json'])
     assert effective['front']['device'] == '/dev/custom-front'
+
+
+def test_parallel_checkpoint_reaches_both_perception_nodes_and_controller(tmp_path):
+    checkpoint = tmp_path/'parallel.pt'
+    with pytest.raises(FileNotFoundError, match='Parallel segmentation checkpoint missing'):
+        plan(tmp_path, parallel_model=str(checkpoint))
+    checkpoint.touch()
+    nodes = plan(tmp_path, parallel_model=str(checkpoint))
+    perceptions = [n for n in nodes if n['executable'] == 'camera_parking_perception_node']
+    assert len(perceptions) == 2
+    assert all(n['parameters'][0]['parallel_model_override'] == str(checkpoint) for n in perceptions)
+    controller = next(n for n in nodes if n['executable'] == 'camera_parking_controller_node')
+    assert json.loads(controller['parameters'][0]['session_overrides_json'])['parallel']['model_path'] == str(checkpoint)
 
 
 def test_all_camera_python_files_compile_even_without_ros():

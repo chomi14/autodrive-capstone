@@ -8,7 +8,8 @@ control:
   space_missing_frames: 5
   forward_pwm: 70
   reverse_pwm: 60
-  exit_pwm: 70
+  escape_pwm: 200
+  exit_pwm: 110
   max_steering: 7
   steering_sign: 1
   front_target_x: 0.7
@@ -18,8 +19,6 @@ control:
   rear_position_gain: 14.0
   rear_angle_gain: 16.0
   end_angle_gain: 50.0
-  exit_position_gain: 0.5
-  exit_angle_gain: 10.0
   steering_deadband: 0.3
   align_steering: -7
   align_fallback_s: 5.0
@@ -31,8 +30,9 @@ control:
   stopped_hold_s: 3.0
   exit_enabled: true
   escape_s: 1.5
-  outline_finish_y: 0.90
-  final_straight_s: 2.5
+  exit_turn_s: 10.0
+  exit_straight_s: 20.0
+  parallel_target_x: 0.35
   search_timeout_s: 60.0
   maneuver_timeout_s: 25.0
 
@@ -89,5 +89,9 @@ rear:
   pair_min_separation_ratio: 0.2777777777777778  # reference 200 pixels / 720
   pair_max_angle_rad: 0.6981317007977318  # reference 40 degrees
   min_longitudinal_span_ratio: 0.0234375
+
+parallel:
+  model_path: ''  # Supply a shared parallel checkpoint here or use parallel_model:= at launch.
+  # Optional front/rear persp_src and persp_dst arrays override BEV only for parallel parking.
 
 save_path: ~/.config/autodrive/perpendicular_camera.yaml

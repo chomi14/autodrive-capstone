@@ -4,7 +4,7 @@ This does NOT claim ROS middleware/launch validation. Imports are omitted by
 AST so the control adapter can be checked on a machine without ROS installed.
 """
 import ast
-from dataclasses import fields, replace
+from dataclasses import asdict, fields, replace
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,9 +14,10 @@ import pytest
 
 from skku_track_drive_pkg.messages import MotionCommand
 from skku_track_drive_pkg.modes.perpendicular_camera.configuration import (
-    CAPTURE_FIELDS, FRONT_VISION_FIELDS, REAR_VISION_FIELDS, VISION_FIELDS, load_config, validate_config)
+    CAPTURE_FIELDS, FRONT_VISION_FIELDS, PARALLEL_BEV_FIELDS, REAR_VISION_FIELDS, VISION_FIELDS,
+    load_config, validate_config)
 from skku_track_drive_pkg.modes.perpendicular_camera.core import CameraParkingCore, ControlConfig
-from skku_track_drive_pkg.modes.perpendicular_camera.observations import Line, Observation
+from skku_track_drive_pkg.modes.perpendicular_camera.observations import Line, Observation, ParallelView
 from skku_track_drive_pkg.modes.perpendicular_camera.status import gate_reason_text, reason_text
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -29,9 +30,10 @@ def adapter():
     fake_time = SimpleNamespace(value=10.0)
     fake_time.monotonic = lambda: fake_time.value
     ns = dict(Node=object, time=fake_time, json=json, MotionCommand=MotionCommand,
-              Observation=Observation, ControlConfig=ControlConfig, fields=fields,
+              Observation=Observation, ControlConfig=ControlConfig, fields=fields, asdict=asdict,
               CAPTURE_FIELDS=CAPTURE_FIELDS, VISION_FIELDS=VISION_FIELDS,
               FRONT_VISION_FIELDS=FRONT_VISION_FIELDS, REAR_VISION_FIELDS=REAR_VISION_FIELDS,
+              PARALLEL_BEV_FIELDS=PARALLEL_BEV_FIELDS,
               validate_config=validate_config,
               String=lambda **kw: SimpleNamespace(**kw),
               SetParametersResult=lambda **kw: SimpleNamespace(**kw))
@@ -43,6 +45,7 @@ def adapter():
     obj.cmd_pub = Mock()
     obj.status_pub = Mock()
     obj.tuning_pub = Mock()
+    obj.model_pub, obj.last_model = Mock(), 'perpendicular'
     obj.tuning_revision = 0
     obj.data = load_config(CONFIG)
     obj.active_capture = {
@@ -246,19 +249,37 @@ def test_model_adapter_maps_actual_nonfixed_ids_and_rejects_box_only(monkeypatch
         SegmentModel(cfg)
 
 
+def test_parallel_bev_and_control_apply_without_overwriting_perpendicular_settings():
+    obj, _ = adapter()
+    obj.armed = False
+    original = obj.data['front']['persp_src']
+    new_points = [.2, 1., .8, 1., .65, .60, .35, .60]
+    edit = SimpleNamespace(name='camera_tuning_json', value=json.dumps({
+        'revision': 0, 'cameras': {}, 'parallel_cameras': {'front': {'persp_src': new_points}},
+    }))
+    gain = SimpleNamespace(name='parallel_far_angle_gain', value=18.0)
+    assert obj.on_parameters([edit, gain]).successful
+    assert obj.data['parallel']['front']['persp_src'] == new_points
+    assert obj.data['front']['persp_src'] == original
+    assert obj.core.p.parallel_far_angle_gain == 18.0
+
+
 def test_perception_preserves_stamp_rejects_duplicate_and_accepts_replay_clock_reset():
     file = MODULE.with_name('perception_node.py')
     definition = next(n for n in ast.parse(file.read_text()).body if isinstance(n, ast.ClassDef))
     ns = dict(Node=object, Observation=Observation, time=SimpleNamespace(monotonic=lambda: 1.0),
-              replace=replace, json=json, VISION_FIELDS=VISION_FIELDS,
+              replace=replace, json=json, VISION_FIELDS=VISION_FIELDS, ControlConfig=ControlConfig,
               FRONT_VISION_FIELDS=FRONT_VISION_FIELDS, REAR_VISION_FIELDS=REAR_VISION_FIELDS,
               String=lambda **kw: SimpleNamespace(**kw),
               orient_image=lambda frame, *a: frame,
               extract=lambda frame, polygons, cfg, role, stamp, frame_id:
-                  (Observation(stamp, role, frame_id), frame, frame))
+                  (Observation(stamp, role, frame_id), frame, frame),
+              extract_parallel=lambda frame, polygons, cfg, control, role, stamp, frame_id:
+                  (Observation(stamp, role, frame_id, model='parallel', parallel=ParallelView()), frame, frame))
     exec(compile(ast.Module(body=[definition], type_ignores=[]), str(file), 'exec'), ns)
     obj = ns['ParkingPerceptionNode'].__new__(ns['ParkingPerceptionNode'])
     obj.role, obj.timeout = 'rear', .5
+    obj.model_mode, obj.parallel_cfg, obj.parallel_bev = 'perpendicular', {}, {}
     obj.tuning_revision = 0
     obj.last_stamp, obj.last_clock_ns = 0, 2_000_000_000
     clock = SimpleNamespace(ns=2_000_000_000)
@@ -266,6 +287,7 @@ def test_perception_preserves_stamp_rejects_duplicate_and_accepts_replay_clock_r
     obj.get_logger = lambda: Mock()
     obj.cfg = dict(rotate_deg=0, flip_horizontal=False)
     obj.model = SimpleNamespace(predict=Mock(return_value={}))
+    obj.parallel_model = SimpleNamespace(predict=Mock(return_value={}))
     obj.bridge = SimpleNamespace(imgmsg_to_cv2=lambda *a: None,
                                  cv2_to_imgmsg=lambda *a, **kw: SimpleNamespace())
     obj.obs_pub, obj.status_pub = Mock(), Mock()
@@ -288,3 +310,10 @@ def test_perception_preserves_stamp_rejects_duplicate_and_accepts_replay_clock_r
     assert obj.model.predict.call_count == 2
     latest = Observation.from_json(obj.obs_pub.publish.call_args.args[0].data)
     assert latest.stamp_ns == 900_000_000 and latest.tuning_revision == 1
+    obj.on_model(SimpleNamespace(data='parallel'))
+    header.stamp.nanosec = 950_000_000
+    obj.on_image(message)
+    latest = Observation.from_json(obj.obs_pub.publish.call_args.args[0].data)
+    assert latest.model == 'parallel' and latest.parallel == ParallelView()
+    assert latest.stamp_ns == 950_000_000 and latest.tuning_revision == 1
+    assert obj.parallel_model.predict.call_count == 1 and obj.model.predict.call_count == 2
